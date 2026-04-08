@@ -20,6 +20,7 @@
 ### 具体目标
 - 使用 `NEW-API` 统一管理上游渠道、模型映射、服务 token、额度与限流。
 - 使用 `LibreChat` 作为对话前端，给内部用户提供浏览器可用的聊天界面。
+- 让 LibreChat 能动态同步 `NEW-API` 当前授权模型列表，并支持前端展示白名单。
 - 将真实上游密钥仅保存在服务端环境变量和 `NEW-API` 渠道配置中。
 - 建立完整的脚本体系，覆盖初始化、启动、停止、重启、健康检查、联调、备份、恢复、密钥检查。
 - 建立完整中文文档，覆盖需求、架构、部署、运维、验收和管理员操作。
@@ -58,6 +59,9 @@
 ### 场景 3：平台运维进行启动、联调与恢复
 管理员在新机器或故障机器上，根据文档执行 `make init`、`make up`、`make smoke-zhipu`、`make backup`、`make restore`，完成平台部署或恢复。
 
+### 场景 4：管理员只想让前端显示部分模型
+管理员在 `NEW-API` 后台维护完整模型矩阵，同时在 `.env` 中配置 `LIBRECHAT_VISIBLE_MODELS`，随后执行 `make sync-librechat-models`，让 LibreChat 只展示指定模型子集。
+
 ## 范围定义
 
 ### In Scope
@@ -87,17 +91,20 @@
 - `NEW-API` 必须作为唯一模型网关。
 - 必须支持智谱 `ZhipuV4` 渠道。
 - 必须支持模型别名暴露，例如 `zhipu-primary -> glm-4-flash`。
-- 必须支持服务 token 与模型白名单。
+- 必须支持服务 token、可选模型白名单与多模型矩阵。
 - 必须支持模型请求限流配置。
 
 ### 前端对话
 - LibreChat 必须可访问。
 - LibreChat 必须只通过 `NEW-API` 自定义端点访问模型。
+- LibreChat 必须支持从 `NEW-API /v1/models` 动态获取模型列表。
+- LibreChat 必须支持通过前端白名单只展示指定模型子集。
 - LibreChat 必须只看到允许暴露的模型名，不直接看到采购模型全量列表。
 
 ### 运维能力
 - 必须具备应用层健康检查脚本。
 - 必须具备主链路 smoke test 和智谱真实联调脚本。
+- 必须具备前端模型同步脚本。
 - 必须具备备份和恢复脚本。
 - 必须具备基础敏感信息扫描能力。
 
@@ -143,5 +150,6 @@
 - `NEW-API` 管理后台可访问。
 - LibreChat 页面可访问。
 - `make smoke-zhipu` 可以真实调用智谱成功返回。
-- LibreChat 中可见 `zhipu-primary`，并能完成一次真实问答。
+- `NEW-API /v1/models` 能返回当前授权模型列表，且至少包含 `zhipu-primary`。
+- LibreChat 中可见当前授权模型或前端白名单后的模型集合，并能完成一次真实问答。
 - 文档、脚本、Compose、环境变量模板形成闭环。

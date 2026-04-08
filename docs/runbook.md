@@ -120,10 +120,11 @@ docker compose --env-file .env -f deploy/docker-compose.local.yml logs -f librec
 
 ### 场景 3：模型列表为空
 排查：
-1. `make bootstrap`
-2. 手工请求 `/v1/models`
-3. 检查 `NEW-API` 后台渠道是否启用
-4. 检查模型映射与组别是否正确
+1. 手工请求 `/v1/models`
+2. 检查 `.env` 中 `NEW_API_TOKEN_MODEL_LIMITS_ENABLED` 是否误设为 `true`
+3. 若配置了 `LIBRECHAT_VISIBLE_MODELS`，检查目标模型是否在白名单内
+4. 执行 `make sync-librechat-models`
+5. 再检查 `NEW-API` 后台渠道是否启用、模型映射与组别是否正确
 
 ### 场景 4：聊天请求返回 404
 重点检查：
@@ -185,6 +186,18 @@ BACKUP_FILE=backups/xxx.tar.gz make restore
 命令：
 ```bash
 make bootstrap
+```
+
+## 何时只需要同步 LibreChat 模型列表
+
+以下场景通常不需要全量 bootstrap：
+- 你只是在 `NEW-API` 后台新增或下线了模型
+- 你只修改了 `.env` 中的 `LIBRECHAT_VISIBLE_MODELS`
+- 你确认服务 token、渠道 key、root 账号均未变化
+
+命令：
+```bash
+make sync-librechat-models
 ```
 
 ## 敏感信息检查

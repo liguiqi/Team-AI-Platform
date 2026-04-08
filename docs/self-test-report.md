@@ -25,6 +25,7 @@
 - 智谱 `ZhipuV4` 渠道接入
 - 服务用户与服务 token 自动化
 - LibreChat 运行时配置渲染
+- LibreChat 动态模型同步与前端白名单筛选
 - 健康检查、smoke test、诊断、备份恢复、敏感信息扫描脚本
 
 ## 实际执行过的验证命令
@@ -34,6 +35,7 @@
 - `bash scripts/healthcheck.sh`
 - `bash scripts/smoke-test-zhipu.sh`
 - `bash scripts/smoke-test.sh`
+- `bash scripts/sync-librechat-models.sh`
 
 ## 自测结果
 
@@ -71,7 +73,7 @@
 
 实际含义：
 - bootstrap 可成功执行
-- `NEW-API /v1/models` 返回 `zhipu-primary`
+- `NEW-API /v1/models` 返回当前授权模型集合，包含 `zhipu-primary`
 - `NEW-API /v1/chat/completions` 真实调用智谱成功
 - `zhipu-primary -> glm-4-flash` 映射生效
 
@@ -81,8 +83,19 @@
 实际含义：
 - 健康检查和主链路 smoke 形成闭环
 
+### 7. LibreChat 模型同步
+结果：通过
+
+实际含义：
+- `make sync-librechat-models` 可成功执行
+- LibreChat 会按当前配置重渲染运行时模型列表
+- 当前默认模式下，前端模型源为 `NEW-API /v1/models`
+- 当配置 `LIBRECHAT_VISIBLE_MODELS` 时，可切换为前端白名单筛选模式
+- 实测中把 `LIBRECHAT_VISIBLE_MODELS` 临时设置为 `glm-4-flash,glm-5,not-exist`
+- 渲染结果只保留 `glm-4-flash` 与 `glm-5`，并自动跳过不存在的 `not-exist`
+
 ## 关键联调证据
-- `GET /v1/models` 返回 `zhipu-primary`
+- `GET /v1/models` 返回多模型集合，包含 `zhipu-primary`
 - `POST /v1/chat/completions` 返回 `HTTP 200`
 - 返回体中包含 `choices`
 - 实际返回的 `model` 为 `glm-4-flash`
@@ -133,9 +146,22 @@
 - 新增 `scripts/render-librechat-config.sh`
 - 运行时渲染真实 `librechat.yaml`
 
+### 修复 6：LibreChat 只能看到单模型
+问题：
+- 前端模型列表过于依赖静态配置
+- `bootstrap` 会把服务 token 与渠道模型范围收窄回单模型
+
+修复：
+- 默认开启 `NEW-API /v1/models` 动态同步
+- 默认关闭 token 单模型白名单
+- 默认保留后台现有模型矩阵
+- 新增 `scripts/sync-librechat-models.sh`
+- 支持 `LIBRECHAT_VISIBLE_MODELS` 前端白名单筛选
+
 ## 当前已知结论
 - 平台主链路已打通。
 - 验收人不需要手工去后台补渠道或 token。
+- 前端模型展示已经与 `NEW-API` 模型矩阵解耦为“动态同步 + 可选白名单”模式。
 - 只要 `ZHIPU_API_KEY` 有效，按文档即可完成最终验收。
 
 ## 剩余说明

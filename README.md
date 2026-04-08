@@ -54,6 +54,10 @@
    ```bash
    make smoke-zhipu
    ```
+5. 如果你后续在 `NEW-API` 后台调整了模型矩阵，或配置了 LibreChat 前端白名单，执行：
+   ```bash
+   make sync-librechat-models
+   ```
 
 说明：
 - `make smoke-zhipu` 会调用 `scripts/bootstrap-new-api.sh`，自动完成 `NEW-API` 初始化、限流参数写入、智谱渠道创建、LibreChat 服务用户与 token 生成。
@@ -103,6 +107,20 @@ ZHIPU_EXPOSED_MODEL=zhipu-primary
 - NEW-API 可继续扩展其它上游而不改前端
 
 `NEW-API` 的 `ZhipuV4` 渠道会自动补上 `/api/paas/v4`，所以 `ZHIPU_API_BASE_URL` 必须写成 `https://open.bigmodel.cn`，不要重复带完整路径。
+
+## 模型同步说明
+当前 LibreChat 支持两种模型展示方式：
+
+- 全量动态同步：保持 `LIBRECHAT_FETCH_MODELS=true` 且 `LIBRECHAT_VISIBLE_MODELS=` 为空，前端将直接显示 `NEW-API /v1/models` 当前返回的模型集合。
+- 前端白名单筛选：设置 `LIBRECHAT_VISIBLE_MODELS=glm-4-flash,glm-4-plus,glm-5` 这类逗号分隔列表后，前端只显示白名单与 `NEW-API` 实际模型集合的交集。
+
+推荐默认策略：
+- `NEW_API_TOKEN_MODEL_LIMITS_ENABLED=false`
+- `NEW_API_SYNC_CHANNEL_MODELS_FROM_ENV=false`
+- `LIBRECHAT_FETCH_MODELS=true`
+- `LIBRECHAT_VISIBLE_MODELS=` 留空
+
+这样可以把 `NEW-API` 后台作为模型矩阵的主维护入口，而把 LibreChat 作为展示层。
 
 ## smoke test
 - 通用检查：

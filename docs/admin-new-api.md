@@ -72,6 +72,7 @@
 - `NEW_API_TOKEN_MODEL_LIMITS_ENABLED=false`
 - 让 `NEW-API /v1/models` 直接返回当前服务 token 可访问的真实模型集合
 - 由 LibreChat 动态拉取，而不是在前端写死单模型
+- 如果前端只想显示部分模型，再由 LibreChat 侧用 `LIBRECHAT_VISIBLE_MODELS` 做展示过滤
 
 ### 4. 智谱渠道
 默认名称：
@@ -149,6 +150,10 @@
 - `model_mapping` 是否正确
 - 状态是否启用
 
+补充检查：
+- `GET /v1/models` 是否返回你刚在后台维护的模型
+- 若前端没同步到最新列表，执行 `make sync-librechat-models`
+
 ### 场景 2：更换智谱 API Key
 推荐步骤：
 1. 修改 `.env` 中 `ZHIPU_API_KEY`
@@ -197,6 +202,17 @@ make bootstrap
 - 渠道 base_url 是否为 `https://open.bigmodel.cn`
 
 如果你在后台看到它带了 `/api/paas/v4`，说明配置被写错了。此时应回到 `.env` 修正后重新 bootstrap。
+
+### 场景 6：后台已新增模型，但前端还没看到
+优先检查：
+1. `GET /v1/models` 是否已经返回新模型
+2. `.env` 中 `NEW_API_TOKEN_MODEL_LIMITS_ENABLED` 是否仍为 `false`
+3. 若配置了 `LIBRECHAT_VISIBLE_MODELS`，确认新模型在白名单中
+
+推荐处理：
+```bash
+make sync-librechat-models
+```
 
 ## 运维侧建议
 

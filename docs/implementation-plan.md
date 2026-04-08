@@ -69,7 +69,7 @@
 - 自动创建或校正 LibreChat 服务 token。
 
 完成标准：
-- `NEW-API /v1/models` 能返回 `zhipu-primary`
+- `NEW-API /v1/models` 能返回当前授权模型集合，且至少包含 `zhipu-primary`
 - `NEW-API /v1/chat/completions` 可真实调用智谱成功
 
 ### Phase 4：LibreChat 联调
@@ -84,18 +84,22 @@
 关键细节：
 - 不能直接把带 `${...}` 的模板文件给容器使用。
 - 服务 token 变更后必须自动重渲染并重启 LibreChat。
-- LibreChat 只暴露 `zhipu-primary`，不暴露真实上游模型名。
+- LibreChat 默认从 `NEW-API /v1/models` 动态拉取模型。
+- 若配置前端白名单，则只展示白名单与 `NEW-API` 模型集合的交集。
+- LibreChat 不暴露真实上游模型名，只暴露平台批准的模型名或别名。
 
 完成标准：
 - LibreChat 可访问。
 - LibreChat 已识别 `NEW-API` 自定义端点。
-- 最终用户可以在 UI 中看到 `zhipu-primary`。
+- 最终用户可以在 UI 中看到 `NEW-API` 当前授权模型。
+- 管理员可通过 `make sync-librechat-models` 单独同步前端模型列表。
 
 ### Phase 5：治理、运维与验收
 目标：让平台从“能跑”变成“可交付、可验收、可接手”。
 
 主要工作：
 - 编写 `doctor`、`healthcheck`、`smoke-test`、`smoke-test-zhipu`
+- 编写 `sync-librechat-models`
 - 编写 `backup` 与 `restore`
 - 编写 `verify-no-secrets`
 - 记录真实自测报告
@@ -161,5 +165,5 @@
 - M1：文档和骨架完成。
 - M2：本地 Compose 启动完成。
 - M3：智谱主链路打通完成。
-- M4：LibreChat 接入完成。
+- M4：LibreChat 接入与动态模型同步完成。
 - M5：自测与验收资料完成。

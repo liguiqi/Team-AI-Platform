@@ -24,6 +24,7 @@
 ## Should 条件
 - 服务用户额度和服务 token 配额有效。
 - `NEW-API` 模型请求限流已生效。
+- LibreChat 模型动态同步或前端白名单筛选行为符合预期。
 - 备份恢复脚本可跑通。
 - 管理员手册可直接指导后续接手人。
 
@@ -31,7 +32,7 @@
 满足以下任一项，应判定为验收失败：
 - `NEW-API` 无法调用智谱。
 - LibreChat 无法通过 `NEW-API` 访问模型。
-- `zhipu-primary` 不可见或不可用。
+- `zhipu-primary` 不可用，或模型同步结果与预期明显不符。
 - 真实密钥进入 Git 跟踪范围。
 - 文档与脚本明显不一致。
 - 本地按文档无法复现启动。
@@ -67,8 +68,10 @@ make smoke-zhipu
 1. 打开 `http://localhost:3080`
 2. 注册或登录 LibreChat
 3. 确认端点中存在 `NEW-API`
-4. 确认模型列表中存在 `zhipu-primary`
-5. 发起至少一轮真实对话
+4. 确认模型列表符合当前策略：
+   - 未配置 `LIBRECHAT_VISIBLE_MODELS` 时，模型列表应与 `NEW-API /v1/models` 一致
+   - 配置了 `LIBRECHAT_VISIBLE_MODELS` 时，模型列表应与白名单交集一致
+5. 至少选择一个可用模型发起真实对话，建议优先验证 `zhipu-primary`
 
 ## 通过标准
 
@@ -77,21 +80,21 @@ make smoke-zhipu
 - `make smoke-zhipu` 输出成功
 
 ### API 层
-- `GET /v1/models` 返回 `zhipu-primary`
+- `GET /v1/models` 返回当前授权模型集合，且至少包含 `zhipu-primary`
 - `POST /v1/chat/completions` 返回 `HTTP 200`
 - 返回体中包含 `choices`
 
 ### UI 层
 - LibreChat 可访问
 - 自定义端点 `NEW-API` 已生效
-- 用户可在 UI 中选择 `zhipu-primary`
+- 用户可在 UI 中选择当前应暴露的模型
 - 用户实际发言后能够收到模型回复
 
 ## 建议保留的验收证据
 - `make health` 终端输出
 - `make smoke-zhipu` 终端输出
 - `NEW-API` 后台渠道页面截图
-- LibreChat 选择 `zhipu-primary` 的页面截图
+- LibreChat 模型列表页面截图
 - 一轮真实问答截图
 
 ## 上线前补充检查

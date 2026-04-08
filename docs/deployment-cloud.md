@@ -62,10 +62,19 @@ cp deploy/env/prod/.env.example deploy/env/prod/.env
 - `LIBRECHAT_JWT_REFRESH_SECRET`
 - `LIBRECHAT_CREDS_KEY`
 - `LIBRECHAT_CREDS_IV`
+- `NEW_API_TOKEN_MODEL_LIMITS_ENABLED`
+- `NEW_API_SYNC_CHANNEL_MODELS_FROM_ENV`
+- `LIBRECHAT_FETCH_MODELS`
+- `LIBRECHAT_VISIBLE_MODELS`
 
 建议：
 - 所有密码、secret、token 相关变量都使用高强度随机值。
 - 生产 `.env` 不要使用示例值。
+- 推荐默认保持：
+  - `NEW_API_TOKEN_MODEL_LIMITS_ENABLED=false`
+  - `NEW_API_SYNC_CHANNEL_MODELS_FROM_ENV=false`
+  - `LIBRECHAT_FETCH_MODELS=true`
+  - `LIBRECHAT_VISIBLE_MODELS=` 留空
 
 ## 生产持久化目录
 
@@ -121,6 +130,12 @@ MODE=prod bash scripts/smoke-test-zhipu.sh
 MODE=prod bash scripts/healthcheck.sh
 ```
 
+### 第五步：按需同步前端模型列表
+当你后续在 `NEW-API` 后台维护了模型矩阵，或修改了生产 `.env` 中的 `LIBRECHAT_VISIBLE_MODELS` 时，执行：
+```bash
+MODE=prod bash scripts/sync-librechat-models.sh
+```
+
 ## 对外入口
 
 ### 用户入口
@@ -157,6 +172,7 @@ MODE=prod bash scripts/healthcheck.sh
    ```bash
    MODE=prod bash scripts/up.sh
    MODE=prod bash scripts/bootstrap-new-api.sh
+   MODE=prod bash scripts/sync-librechat-models.sh
    MODE=prod bash scripts/healthcheck.sh
    ```
 
@@ -215,6 +231,10 @@ MODE=prod bash scripts/healthcheck.sh
 - `runtime/prod/librechat/librechat.yaml`
 
 不要直接把模板文件当作运行配置修改；应优先改 `.env` 并重新执行渲染或 bootstrap。
+
+### 关于模型同步
+- 若你只是调整 `NEW-API` 后台模型矩阵，通常执行 `MODE=prod bash scripts/sync-librechat-models.sh` 即可。
+- 若你同时调整了服务 token、渠道基础配置或 root 相关配置，仍应优先执行 `MODE=prod bash scripts/bootstrap-new-api.sh`。
 
 ## 建议配套阅读
 生产部署完成后，建议继续阅读：

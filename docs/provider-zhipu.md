@@ -8,7 +8,8 @@
 - 上游类型：原生 `ZhipuV4`
 - 渠道类型：`26`
 - 默认真实模型：`glm-4-flash`
-- 前端暴露模型别名：`zhipu-primary`
+- 默认主别名：`zhipu-primary`
+- 运行策略：允许 `NEW-API` 渠道维护多模型矩阵，由 LibreChat 动态同步或按白名单筛选展示
 
 ## 为什么使用 ZhipuV4
 - `NEW-API` 已内建智谱原生适配器，能够直接走兼容路由。
@@ -36,6 +37,11 @@ zhipu-primary -> glm-4-flash
 - 让 LibreChat 只展示平台批准暴露的模型名。
 - 后续如果上游从 `glm-4-flash` 切到别的智谱模型，只需改网关映射。
 - 平台管理员可以在不影响终端用户的前提下完成模型切换。
+
+### 可扩展方式
+- `zhipu-primary` 可以继续作为稳定默认模型别名。
+- 也可以在 `NEW-API` 渠道中加入 `glm-5`、`glm-4-plus` 等更多模型。
+- LibreChat 默认会根据 `NEW-API /v1/models` 动态展示这些模型，或按前端白名单展示指定子集。
 
 ## 关键环境变量
 
@@ -106,14 +112,13 @@ glm-4-flash
 5. 若不存在，则创建渠道。
 6. 若已存在，则按 `.env` 中的配置做校正：
    - `base_url`
-   - `models`
-   - `group`
-   - `test_model`
-   - `model_mapping`
+   - 当 `NEW_API_SYNC_CHANNEL_MODELS_FROM_ENV=true` 时，同步 `models`、`group`、`test_model`、`model_mapping`
+   - 当 `NEW_API_SYNC_CHANNEL_MODELS_FROM_ENV=false` 时，保留后台现有模型矩阵与映射
    - `priority`
    - `weight`
    - `remark`
 7. 将渠道状态强制设为启用。
+8. 当 `NEW_API_TOKEN_MODEL_LIMITS_ENABLED=false` 时，服务 token 不再额外收窄模型范围，`NEW-API /v1/models` 将直接反映当前授权模型集合。
 
 ## 如何验证智谱链路
 
@@ -130,7 +135,8 @@ curl -fsS "$NEW_API_PUBLIC_URL/v1/models" \
 ```
 
 成功时应能看到：
-- `zhipu-primary`
+- 至少包含 `zhipu-primary`
+- 如果你已在后台维护更多模型，返回中可能还包含 `glm-5`、`glm-4-plus` 等其它模型
 
 ### 方式三：手工发送聊天请求
 ```bash
@@ -186,7 +192,9 @@ curl -fsS "$NEW_API_PUBLIC_URL/v1/chat/completions" \
 - 区分是后台登录限流还是模型请求限流
 
 ## 运营建议
-- 前端始终只暴露一个稳定别名，例如 `zhipu-primary`
+- 推荐保留一个稳定默认别名，例如 `zhipu-primary`
+- 需要多模型展示时，优先在 `NEW-API` 后台维护模型矩阵
+- 只想让 LibreChat 展示部分模型时，使用 `LIBRECHAT_VISIBLE_MODELS` 而不是删除后台模型
 - 真实上游模型切换优先通过 `model_mapping` 完成
 - 改完智谱 key 后必须重新执行 bootstrap
 - 重要变更后必须至少执行一次 `make smoke-zhipu`

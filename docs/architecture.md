@@ -60,6 +60,16 @@ NEW-API OpenAI 兼容接口
   - 生产：`runtime/prod/librechat/librechat.yaml`
 - 这样可以避免容器内部读取到未替换的 `${...}` 占位符。
 
+### 前端模型展示模式
+- 模式 A：动态同步模式
+  - `LIBRECHAT_FETCH_MODELS=true`
+  - `LIBRECHAT_VISIBLE_MODELS=` 留空
+  - LibreChat 直接按 `NEW-API /v1/models` 展示当前授权模型
+- 模式 B：前端白名单模式
+  - 设置 `LIBRECHAT_VISIBLE_MODELS`
+  - 渲染脚本先拉取 `NEW-API /v1/models`，再按白名单做交集过滤
+  - 前端最终只显示指定模型子集
+
 ## 调用链路
 
 ### 主链路

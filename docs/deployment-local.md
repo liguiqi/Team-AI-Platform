@@ -60,12 +60,22 @@ ZHIPU_API_KEY=你的真实智谱密钥
 - `NEW_API_SETUP_PASSWORD`
 - `NEW_API_SERVICE_USER`
 - `NEW_API_SERVICE_PASSWORD`
+- `NEW_API_TOKEN_MODEL_LIMITS_ENABLED`
+- `NEW_API_SYNC_CHANNEL_MODELS_FROM_ENV`
 - `LIBRECHAT_PORT`
+- `LIBRECHAT_FETCH_MODELS`
+- `LIBRECHAT_VISIBLE_MODELS`
+- `LIBRECHAT_MONGODB_LOCAL_PORT`
 - `NEW_API_PORT`
 
 说明：
 - `NEW_API_SETUP_USERNAME` / `NEW_API_SETUP_PASSWORD` 决定 `NEW-API` 管理后台 root 登录账号。
 - `NEW_API_SERVICE_TOKEN` 不需要手工填写，bootstrap 会自动生成并回写。
+- 推荐默认保持：
+  - `NEW_API_TOKEN_MODEL_LIMITS_ENABLED=false`
+  - `NEW_API_SYNC_CHANNEL_MODELS_FROM_ENV=false`
+  - `LIBRECHAT_FETCH_MODELS=true`
+  - `LIBRECHAT_VISIBLE_MODELS=` 留空
 
 ## 初始化流程
 
@@ -126,6 +136,30 @@ make bootstrap
 ### 为什么 bootstrap 后还要重启 LibreChat
 因为 LibreChat 使用的是渲染后的 `runtime/local/librechat/librechat.yaml`。服务 token 一旦更新，必须重新渲染配置文件并重启容器，否则 UI 仍会使用旧 token。
 
+### bootstrap 与模型矩阵的当前默认关系
+- 默认不会把你在 `NEW-API` 后台维护的模型矩阵压回单模型。
+- 默认不会给服务 token 强行加单模型白名单。
+- 这使得 `NEW-API /v1/models` 可以直接作为 LibreChat 的模型源。
+
+## 前端模型同步
+
+### 执行命令
+```bash
+make sync-librechat-models
+```
+
+### 适用场景
+- 你在 `NEW-API` 后台新增或移除了模型
+- 你修改了 `.env` 中的 `LIBRECHAT_VISIBLE_MODELS`
+- 你调整了服务 token 或前端模型同步策略
+
+### 这一步会做什么
+- 读取当前 `.env`
+- 请求 `NEW-API /v1/models`
+- 按 `LIBRECHAT_VISIBLE_MODELS` 决定是否做前端白名单过滤
+- 重渲染 `runtime/local/librechat/librechat.yaml`
+- 重启 LibreChat
+
 ## 主链路联调
 
 ### 执行命令
@@ -136,7 +170,7 @@ make smoke-zhipu
 ### 这一步会做什么
 - 自动执行 bootstrap
 - 请求 `NEW-API /v1/models`
-- 检查返回中是否包含 `zhipu-primary`
+- 检查返回中至少包含 `zhipu-primary`
 - 发送一次最小 `chat/completions` 请求到智谱
 
 ### 成功标准
@@ -195,13 +229,15 @@ ss -ltn | grep 3080
 
 ### LibreChat 页面可打开但没有模型
 现象：
-- UI 空白或没有 `NEW-API` / `zhipu-primary`
+- UI 空白，或没有显示你预期的模型集合
 
 处理顺序：
-1. `make bootstrap`
-2. 确认 `.env` 中已有 `NEW_API_SERVICE_TOKEN`
-3. 检查 `runtime/local/librechat/librechat.yaml` 是否已渲染为真实值
-4. `docker compose --env-file .env -f deploy/docker-compose.local.yml logs -f librechat`
+1. `curl -fsS "$NEW_API_PUBLIC_URL/v1/models" -H "Authorization: Bearer $NEW_API_SERVICE_TOKEN" | jq -r '.data[].id'`
+2. 确认 `.env` 中 `NEW_API_TOKEN_MODEL_LIMITS_ENABLED=false`
+3. 若配置了 `LIBRECHAT_VISIBLE_MODELS`，确认目标模型确实包含在白名单中
+4. 执行 `make sync-librechat-models`
+5. 必要时再执行 `make bootstrap`
+6. `docker compose --env-file .env -f deploy/docker-compose.local.yml logs -f librechat`
 
 ### 智谱返回 404
 重点检查：
@@ -270,5 +306,5 @@ make smoke-zhipu
 1. 打开 `http://localhost:3080`
 2. 注册或登录 LibreChat
 3. 选择 `NEW-API`
-4. 选择 `zhipu-primary`
+4. 选择任一当前授权模型，建议先选 `zhipu-primary`
 5. 发起真实对话
