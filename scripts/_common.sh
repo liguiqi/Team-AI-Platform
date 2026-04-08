@@ -54,6 +54,22 @@ librechat_config_file() {
   fi
 }
 
+casdoor_config_file() {
+  if [[ "$MODE" == "local" ]]; then
+    printf '%s/runtime/local/casdoor/app.conf\n' "$ROOT_DIR"
+  else
+    printf '%s/runtime/prod/casdoor/app.conf\n' "$ROOT_DIR"
+  fi
+}
+
+casdoor_init_data_file() {
+  if [[ "$MODE" == "local" ]]; then
+    printf '%s/runtime/local/casdoor/init_data.json\n' "$ROOT_DIR"
+  else
+    printf '%s/runtime/prod/casdoor/init_data.json\n' "$ROOT_DIR"
+  fi
+}
+
 load_env() {
   local file
   file="$(env_file)"
@@ -66,6 +82,30 @@ load_env() {
 
 docker_compose() {
   docker compose --env-file "$(env_file)" -f "$(compose_file)" "$@"
+}
+
+host_new_api_url() {
+  if [[ "$MODE" == "local" ]]; then
+    printf 'http://127.0.0.1:%s' "${NEW_API_PORT}"
+  else
+    printf '%s' "${NEW_API_PUBLIC_URL}"
+  fi
+}
+
+host_casdoor_url() {
+  if [[ "$MODE" == "local" ]]; then
+    printf 'http://127.0.0.1:%s' "${CASDOOR_PORT}"
+  else
+    printf '%s' "${CASDOOR_PUBLIC_URL}"
+  fi
+}
+
+host_librechat_url() {
+  if [[ "$MODE" == "local" ]]; then
+    printf 'http://127.0.0.1:%s' "${LIBRECHAT_PORT}"
+  else
+    printf '%s' "${LIBRECHAT_PUBLIC_URL}"
+  fi
 }
 
 random_hex() {
@@ -107,9 +147,101 @@ current_env_value() {
   awk -F= -v key="$key" '$1 == key { sub(/^[^=]*=/, "", $0); print $0; exit }' "$file"
 }
 
+has_env_key() {
+  local key="$1"
+  local file="$2"
+  awk -F= -v key="$key" '$1 == key { found = 1; exit } END { exit(found ? 0 : 1) }' "$file"
+}
+
+append_missing_env_keys_from_example() {
+  local target_file="$1"
+  local example_file="$2"
+  local line key added_count
+  added_count=0
+
+  while IFS= read -r line; do
+    [[ "$line" =~ ^[A-Za-z_][A-Za-z0-9_]*= ]] || continue
+    key="${line%%=*}"
+    if ! has_env_key "$key" "$target_file"; then
+      printf '%s\n' "$line" >>"$target_file"
+      added_count=$((added_count + 1))
+    fi
+  done <"$example_file"
+
+  printf '%s' "$added_count"
+}
+
 is_placeholder() {
   local value="${1:-}"
   [[ -z "$value" || "$value" == __FILL_* || "$value" == __AUTO_* ]]
+}
+
+migrate_legacy_librechat_auth_flags() {
+  local file="$1"
+  local allow_email_login allow_registration allow_social_login
+
+  allow_email_login="$(current_env_value LIBRECHAT_ALLOW_EMAIL_LOGIN "$file")"
+  allow_registration="$(current_env_value LIBRECHAT_ALLOW_REGISTRATION "$file")"
+  allow_social_login="$(current_env_value LIBRECHAT_ALLOW_SOCIAL_LOGIN "$file")"
+
+  if [[ "$allow_email_login" == "true" && "$allow_registration" == "true" && "$allow_social_login" == "false" ]]; then
+    replace_or_append_env LIBRECHAT_ALLOW_EMAIL_LOGIN false "$file"
+    replace_or_append_env LIBRECHAT_ALLOW_REGISTRATION false "$file"
+    replace_or_append_env LIBRECHAT_ALLOW_SOCIAL_LOGIN true "$file"
+    replace_or_append_env LIBRECHAT_ALLOW_PASSWORD_RESET false "$file"
+    info "检测到旧版 LibreChat 登录开关，已迁移为 Casdoor OIDC 模式"
+  fi
+}
+
+detect_local_host_ip() {
+  local host_ip
+
+  if command -v ip >/dev/null 2>&1; then
+    host_ip="$(ip route get 1.1.1.1 2>/dev/null | awk '{for (i = 1; i <= NF; i++) if ($i == "src") { print $(i + 1); exit }}')"
+  fi
+
+  if [[ -z "$host_ip" ]]; then
+    host_ip="$(hostname -I 2>/dev/null | awk '{print $1}')"
+  fi
+
+  printf '%s' "$host_ip"
+}
+
+migrate_local_public_urls_for_oidc() {
+  local file="$1"
+  local allow_insecure_http host_ip current changed
+
+  [[ "$MODE" == "local" ]] || return 0
+
+  allow_insecure_http="$(current_env_value LIBRECHAT_OPENID_ALLOW_INSECURE_HTTP "$file")"
+  [[ "${allow_insecure_http,,}" == "true" ]] || return 0
+
+  host_ip="$(detect_local_host_ip)"
+  [[ -n "$host_ip" ]] || return 0
+
+  changed=0
+
+  current="$(current_env_value LIBRECHAT_PUBLIC_URL "$file")"
+  if [[ "$current" == "http://localhost:3080" || "$current" == "http://127.0.0.1:3080" ]]; then
+    replace_or_append_env LIBRECHAT_PUBLIC_URL "http://${host_ip}:3080" "$file"
+    changed=1
+  fi
+
+  current="$(current_env_value NEW_API_PUBLIC_URL "$file")"
+  if [[ "$current" == "http://localhost:13000" || "$current" == "http://127.0.0.1:13000" ]]; then
+    replace_or_append_env NEW_API_PUBLIC_URL "http://${host_ip}:13000" "$file"
+    changed=1
+  fi
+
+  current="$(current_env_value CASDOOR_PUBLIC_URL "$file")"
+  if [[ "$current" == "http://localhost:18000" || "$current" == "http://127.0.0.1:18000" ]]; then
+    replace_or_append_env CASDOOR_PUBLIC_URL "http://${host_ip}:18000" "$file"
+    changed=1
+  fi
+
+  if (( changed == 1 )); then
+    info "已将本地公开 URL 迁移为宿主机 IP (${host_ip})，确保 LibreChat 与 Casdoor OIDC 可互通"
+  fi
 }
 
 wait_for_http() {
@@ -131,6 +263,28 @@ wait_for_http() {
 sync_local_env_copy() {
   if [[ "$MODE" == "local" && -f "$ROOT_DIR/.env" ]]; then
     cp "$ROOT_DIR/.env" "$ROOT_DIR/deploy/env/local/.env"
+  fi
+}
+
+prepare_env_file() {
+  local file example_file added_count
+  file="$(env_file)"
+  example_file="$(example_env_file)"
+
+  [[ -f "$file" ]] || return 0
+
+  if [[ -f "$example_file" ]]; then
+    added_count="$(append_missing_env_keys_from_example "$file" "$example_file")"
+    if (( added_count > 0 )); then
+      info "已从模板补齐 ${added_count} 个缺失环境变量"
+    fi
+  fi
+
+  migrate_legacy_librechat_auth_flags "$file"
+  migrate_local_public_urls_for_oidc "$file"
+
+  if [[ "$MODE" == "local" ]]; then
+    sync_local_env_copy
   fi
 }
 

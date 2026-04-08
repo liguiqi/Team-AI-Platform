@@ -7,24 +7,34 @@
 
 ```text
 最终用户浏览器
-    ->
+    -> 统一认证
+Casdoor OIDC / 邮箱 SMTP / 阿里云 PNVS SMS
+    -> 登录回调
 LibreChat Web / API
-    ->
+    -> 模型访问
 NEW-API OpenAI 兼容接口
-    ->
+    -> 上游转发
 智谱 ZhipuV4 / 其他未来上游
 ```
 
-本项目的核心思想是：前端不直连上游，所有模型能力统一经过 `NEW-API` 进行治理，再由 LibreChat 提供最终用户体验。
+本项目的核心思想是：认证与模型治理分层。用户身份由 `Casdoor` 统一负责，模型能力统一经过 `NEW-API` 治理，再由 LibreChat 提供最终用户体验。
 
 ## 组件清单与职责
 
 ### LibreChat
 - 面向最终用户的聊天界面。
-- 负责用户注册、登录、会话管理、对话历史展示、模型选择和消息发送。
+- 通过 Casdoor OIDC 承接统一认证结果。
+- 负责会话管理、对话历史展示、模型选择和消息发送。
 - 不直接持有智谱采购密钥。
 - 通过自定义 OpenAI 兼容端点调用 `NEW-API /v1/*`。
 - 在当前方案中，模型列表由 `NEW-API /v1/models` 动态提供，而不是在前端静态写死。
+
+### Casdoor
+- 统一身份认证入口。
+- 负责用户注册、密码登录、邮箱验证码登录、手机号验证码登录。
+- 通过 SMTP Provider 发送邮件验证码。
+- 通过阿里云 `PNVS SMS` Provider 发送短信验证码。
+- 通过 OIDC 向 LibreChat 提供登录能力。
 
 ### NEW-API
 - 统一模型网关。
@@ -48,9 +58,10 @@ NEW-API OpenAI 兼容接口
 
 ### Caddy
 - 仅在生产方案中启用。
-- 对外暴露两个域名：
+- 对外暴露三个域名：
   - `PUBLIC_CHAT_DOMAIN` 对应 LibreChat
   - `NEW_API_ADMIN_DOMAIN` 对应 `NEW-API`
+  - `AUTH_PUBLIC_DOMAIN` 对应 Casdoor
 - 负责 TLS 证书申请和反向代理。
 
 ### 运行时渲染配置
@@ -71,6 +82,14 @@ NEW-API OpenAI 兼容接口
   - 前端最终只显示指定模型子集
 
 ## 调用链路
+
+### 认证链路
+1. 用户访问 LibreChat 登录页。
+2. LibreChat 仅展示 `openid` 统一认证入口。
+3. 用户跳转到 Casdoor。
+4. Casdoor 使用邮箱 SMTP 或阿里云 `PNVS SMS` 完成验证码发送。
+5. Casdoor 登录成功后，通过 OIDC 回调 `LibreChat /oauth/openid/callback`。
+6. LibreChat 建立自身会话，随后用户才能进入聊天界面。
 
 ### 主链路
 1. 用户在 LibreChat 页面发起对话。
@@ -125,6 +144,15 @@ NEW-API OpenAI 兼容接口
 - 作用：登录 `NEW-API` 管理后台与执行 bootstrap
 - 风险点：如果后台修改密码但 `.env` 未同步，后续 bootstrap 会失败
 
+### 统一认证配置
+- 变量名：`CASDOOR_CLIENT_ID` / `CASDOOR_CLIENT_SECRET`
+- 作用：LibreChat 连接 Casdoor 的 OIDC 客户端凭据
+- 存放位置：`.env` 或 `deploy/env/prod/.env`
+- 配套变量：
+  - `CASDOOR_EMAIL_*` 用于 SMTP 邮件验证码
+  - `CASDOOR_SMS_*` 用于阿里云 `PNVS SMS`
+  - `LIBRECHAT_OPENID_*` 用于 LibreChat OIDC 会话和按钮展示
+
 ## 持久化设计
 
 ### 本地
@@ -132,6 +160,9 @@ NEW-API OpenAI 兼容接口
 - `runtime/local/new-api/redis`
 - `runtime/local/new-api/data`
 - `runtime/local/new-api/logs`
+- `runtime/local/casdoor/app.conf`
+- `runtime/local/casdoor/init_data.json`
+- `runtime/local/casdoor/logs`
 - `runtime/local/librechat/mongodb`
 - `runtime/local/librechat/uploads`
 - `runtime/local/librechat/images`
@@ -146,11 +177,19 @@ NEW-API OpenAI 兼容接口
 
 ### 浏览器侧
 - 不直接持有 `ZHIPU_API_KEY`
-- 只与 LibreChat 交互
+- 不直接持有短信或邮件服务密钥
+- 只通过 LibreChat 和 Casdoor 页面交互
+
+### Casdoor
+- 持有 SMTP 和阿里云短信 Provider 配置
+- 是用户真实身份认证的唯一入口
+- 当前仓库默认会持续回放认证配置，因此不建议只在 UI 中手工改 Provider 后不回写环境变量
 
 ### LibreChat
 - 只知道 `NEW_API_SERVICE_TOKEN`
+- 只知道 Casdoor OIDC 客户端凭据
 - 不负责治理上游渠道
+- 默认关闭本地邮箱密码登录，避免绕过统一认证
 
 ### NEW-API
 - 是唯一面向上游供应商的统一出口
@@ -166,12 +205,14 @@ NEW-API OpenAI 兼容接口
 1. PostgreSQL
 2. Redis
 3. NEW-API
-4. MongoDB
-5. LibreChat
+4. Casdoor
+5. MongoDB
+6. LibreChat
 
 ### 原因
 - `NEW-API` 启动依赖 PostgreSQL 和 Redis。
-- LibreChat 启动依赖 MongoDB 和已经可访问的 `NEW-API`。
+- Casdoor 启动依赖 PostgreSQL，并在启动时回放认证初始化数据。
+- LibreChat 启动依赖 MongoDB、Casdoor 和已经可访问的 `NEW-API`。
 - bootstrap 只能在 `NEW-API /api/status` 可用后执行。
 
 ## 关键工程结论

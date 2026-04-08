@@ -27,7 +27,7 @@
 
 ### 面向最终用户
 - 提供聊天页面
-- 提供注册、登录和会话历史
+- 通过 Casdoor 统一认证后承接会话历史与聊天能力
 - 展示平台允许暴露的模型
 
 ### 面向平台维护人
@@ -82,12 +82,14 @@
 
 ### 本仓库的事实边界
 - 本仓库自动化会创建 `NEW-API` 管理员与服务用户。
-- 本仓库不会自动创建 LibreChat 独立管理员账号。
+- 本仓库不会维护 LibreChat 本地管理员账号体系。
 
 ### 这意味着什么
-- LibreChat 的业务用户注册、登录由其自身用户体系处理。
+- LibreChat 当前默认关闭本地邮箱登录与注册。
+- 用户注册、登录、验证码发送统一由 Casdoor 处理。
 - 平台维护人主要通过：
   - 浏览器访问 LibreChat
+  - 浏览器访问 Casdoor
   - 容器日志
   - 渲染配置文件
   - MongoDB 持久化目录
@@ -95,6 +97,19 @@
 
 ### 管理员视角建议
 把 LibreChat 当作“前台入口 + 应用容器”，不要把它当作治理后台。
+
+## 统一认证入口说明
+
+### 当前策略
+- LibreChat 登录页固定展示 `openid` 统一认证入口。
+- `ALLOW_EMAIL_LOGIN=false`
+- `ALLOW_REGISTRATION=false`
+- `ALLOW_SOCIAL_LOGIN=true`
+
+### 运维含义
+- 若用户无法登录，不要先查 LibreChat 本地用户库。
+- 应优先检查 Casdoor OIDC、SMTP、短信 Provider 与回调地址。
+- 认证配置的详细说明见 [admin-auth-sso.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/admin-auth-sso.md)
 
 ## 管理员日常检查项
 
@@ -184,6 +199,10 @@ make bootstrap
 make up
 ```
 或至少重新渲染配置并重启 LibreChat。
+
+补充说明：
+- 当前项目默认不建议重新开启 LibreChat 本地邮箱登录。
+- 若要改登录方式，应先从统一认证设计角度评估，而不是直接把本地登录开回去。
 
 ## 日志与排查
 

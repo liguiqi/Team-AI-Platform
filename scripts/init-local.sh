@@ -13,6 +13,8 @@ if [[ ! -f "$ROOT_DIR/.env" ]]; then
   info "已创建本地环境文件: $ROOT_DIR/.env"
 fi
 
+prepare_env_file
+
 ensure_random_if_placeholder() {
   local key="$1"
   local generator="$2"
@@ -27,17 +29,22 @@ ensure_random_if_placeholder() {
 ensure_random_if_placeholder NEW_API_DB_PASSWORD 'random_alnum 24'
 ensure_random_if_placeholder NEW_API_REDIS_PASSWORD 'random_alnum 24'
 ensure_random_if_placeholder NEW_API_SESSION_SECRET 'random_alnum 48'
+ensure_random_if_placeholder CASDOOR_CLIENT_SECRET 'random_alnum 48'
+ensure_random_if_placeholder CASDOOR_ADMIN_PASSWORD 'random_alnum 24'
 ensure_random_if_placeholder LIBRECHAT_MEILI_MASTER_KEY 'random_alnum 48'
 ensure_random_if_placeholder LIBRECHAT_CREDS_KEY 'random_hex 64'
 ensure_random_if_placeholder LIBRECHAT_CREDS_IV 'random_hex 32'
 ensure_random_if_placeholder LIBRECHAT_JWT_SECRET 'random_hex 64'
 ensure_random_if_placeholder LIBRECHAT_JWT_REFRESH_SECRET 'random_hex 64'
+ensure_random_if_placeholder LIBRECHAT_OPENID_SESSION_SECRET 'random_alnum 48'
 
 mkdir -p \
   "$ROOT_DIR/runtime/local/new-api/data" \
   "$ROOT_DIR/runtime/local/new-api/logs" \
   "$ROOT_DIR/runtime/local/new-api/postgres" \
   "$ROOT_DIR/runtime/local/new-api/redis" \
+  "$ROOT_DIR/runtime/local/casdoor" \
+  "$ROOT_DIR/runtime/local/casdoor/logs" \
   "$ROOT_DIR/runtime/local/librechat/images" \
   "$ROOT_DIR/runtime/local/librechat/uploads" \
   "$ROOT_DIR/runtime/local/librechat/logs" \
@@ -58,4 +65,3 @@ if is_placeholder "$(current_env_value ZHIPU_API_KEY "$ROOT_DIR/.env")"; then
 fi
 
 info "初始化完成"
-

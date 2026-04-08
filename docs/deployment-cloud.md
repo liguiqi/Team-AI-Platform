@@ -7,9 +7,10 @@
 - 单台 Linux 服务器。
 - 拥有 root 或 sudo 权限。
 - 可安装 Docker 与 Docker Compose。
-- 拥有两个可解析到服务器公网 IP 的域名：
+- 拥有三个可解析到服务器公网 IP 的域名：
   - 面向用户：`PUBLIC_CHAT_DOMAIN`
   - 面向管理员：`NEW_API_ADMIN_DOMAIN`
+  - 面向统一认证：`AUTH_PUBLIC_DOMAIN`
 
 ## 推荐目录规划
 
@@ -34,6 +35,7 @@
 ### DNS 准备
 - `PUBLIC_CHAT_DOMAIN` 解析到服务器公网 IP
 - `NEW_API_ADMIN_DOMAIN` 解析到服务器公网 IP
+- `AUTH_PUBLIC_DOMAIN` 解析到服务器公网 IP
 
 ### 证书准备
 - 本项目默认由 Caddy 自动申请 HTTPS 证书
@@ -55,6 +57,16 @@ cp deploy/env/prod/.env.example deploy/env/prod/.env
 - `NEW_API_SETUP_USERNAME`
 - `NEW_API_SETUP_PASSWORD`
 - `NEW_API_SERVICE_PASSWORD`
+- `CASDOOR_ADMIN_EMAIL`
+- `CASDOOR_ADMIN_PASSWORD`
+- `CASDOOR_CLIENT_SECRET`
+- `CASDOOR_EMAIL_SMTP_HOST`
+- `CASDOOR_EMAIL_SMTP_USERNAME`
+- `CASDOOR_EMAIL_SMTP_PASSWORD`
+- `CASDOOR_SMS_ACCESS_KEY_ID`
+- `CASDOOR_SMS_ACCESS_KEY_SECRET`
+- `CASDOOR_SMS_SIGN_NAME`
+- `CASDOOR_SMS_TEMPLATE_CODE`
 - `NEW_API_DB_PASSWORD`
 - `NEW_API_REDIS_PASSWORD`
 - `NEW_API_SESSION_SECRET`
@@ -70,6 +82,7 @@ cp deploy/env/prod/.env.example deploy/env/prod/.env
 建议：
 - 所有密码、secret、token 相关变量都使用高强度随机值。
 - 生产 `.env` 不要使用示例值。
+- 生产必须保持 `LIBRECHAT_OPENID_ALLOW_INSECURE_HTTP=false`，不要为了省事把 HTTP 调试开关带到公网环境。
 - 推荐默认保持：
   - `NEW_API_TOKEN_MODEL_LIMITS_ENABLED=false`
   - `NEW_API_SYNC_CHANNEL_MODELS_FROM_ENV=false`
@@ -83,6 +96,11 @@ cp deploy/env/prod/.env.example deploy/env/prod/.env
 - `runtime/prod/new-api/redis`
 - `runtime/prod/new-api/data`
 - `runtime/prod/new-api/logs`
+
+### Casdoor
+- `runtime/prod/casdoor/app.conf`
+- `runtime/prod/casdoor/init_data.json`
+- `runtime/prod/casdoor/logs`
 
 ### LibreChat
 - `runtime/prod/librechat/mongodb`
@@ -105,7 +123,9 @@ MODE=prod bash scripts/up.sh
 这一步会：
 - 读取 `deploy/env/prod/.env`
 - 渲染 `runtime/prod/librechat/librechat.yaml`
-- 启动 Caddy、NEW-API、LibreChat、PostgreSQL、Redis、MongoDB
+- 渲染 `runtime/prod/casdoor/app.conf`
+- 渲染 `runtime/prod/casdoor/init_data.json`
+- 启动 Caddy、NEW-API、Casdoor、LibreChat、PostgreSQL、Redis、MongoDB
 
 ### 第二步：初始化 NEW-API
 ```bash
@@ -144,6 +164,9 @@ MODE=prod bash scripts/sync-librechat-models.sh
 ### NEW-API 管理后台
 - `https://$NEW_API_ADMIN_DOMAIN`
 
+### Casdoor 统一认证
+- `https://$AUTH_PUBLIC_DOMAIN`
+
 ### 注意
 - `NEW-API` 后台与 OpenAI 兼容 API 共用同一个服务实例。
 - 若只允许内网或 VPN 管理，建议在 Caddy 之外再加防火墙白名单。
@@ -155,7 +178,7 @@ MODE=prod bash scripts/sync-librechat-models.sh
 4. 检查容器状态。
 5. 执行 `MODE=prod bash scripts/bootstrap-new-api.sh`。
 6. 执行 `MODE=prod bash scripts/smoke-test-zhipu.sh`。
-7. 浏览器验证 `PUBLIC_CHAT_DOMAIN` 与 `NEW_API_ADMIN_DOMAIN`。
+7. 浏览器验证 `PUBLIC_CHAT_DOMAIN`、`NEW_API_ADMIN_DOMAIN` 与 `AUTH_PUBLIC_DOMAIN`。
 8. 记录本次上线的镜像版本、env 校验人和联调结果。
 
 ## 升级流程
@@ -180,6 +203,7 @@ MODE=prod bash scripts/sync-librechat-models.sh
 - Compose 结构是否变更
 - PostgreSQL 版本是否变化
 - LibreChat 运行时配置路径是否变化
+- Casdoor OIDC 与 SMTP/SMS Provider 是否仍按仓库配置回放
 - `NEW-API` bootstrap 是否需要新配置项
 
 ## 回滚流程
@@ -223,6 +247,7 @@ MODE=prod bash scripts/sync-librechat-models.sh
 ### 关于日志
 - `runtime/prod/new-api/logs`
 - `runtime/prod/librechat/logs`
+- `runtime/prod/casdoor/logs`
 
 建议配合宿主机日志轮转与磁盘监控。
 
@@ -241,5 +266,6 @@ MODE=prod bash scripts/sync-librechat-models.sh
 
 1. [admin-new-api.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/admin-new-api.md)
 2. [admin-librechat.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/admin-librechat.md)
-3. [runbook.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/runbook.md)
-4. [acceptance-criteria.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/acceptance-criteria.md)
+3. [admin-auth-sso.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/admin-auth-sso.md)
+4. [runbook.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/runbook.md)
+5. [acceptance-criteria.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/acceptance-criteria.md)

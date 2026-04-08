@@ -12,3 +12,7 @@
   reverse_proxy new-api:3000
 }
 
+{$AUTH_PUBLIC_DOMAIN:auth.localhost} {
+  encode gzip zstd
+  reverse_proxy casdoor:8000
+}

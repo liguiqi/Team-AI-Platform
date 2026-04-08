@@ -19,6 +19,7 @@ trap 'rm -f "$tmp"' EXIT
 if git ls-files -z | xargs -0 rg -n --no-heading \
   -e 'BEGIN (RSA|EC|OPENSSH) PRIVATE KEY' \
   -e 'AKIA[0-9A-Z]{16}' \
+  -e 'LTAI[0-9A-Za-z]{12,}' \
   -e 'sk-[A-Za-z0-9_-]{20,}' \
   -e '[A-Za-z0-9]{32}\.[A-Za-z0-9]{10,}' >"$tmp"; then
   echo "[ERROR] 发现疑似敏感信息，请处理后再提交:" >&2
@@ -27,4 +28,3 @@ if git ls-files -z | xargs -0 rg -n --no-heading \
 fi
 
 echo "[INFO] 未在已纳入 Git 的文件中发现明显敏感信息"
-

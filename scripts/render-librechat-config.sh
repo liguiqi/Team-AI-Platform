@@ -3,11 +3,17 @@ set -euo pipefail
 
 source "$(cd "$(dirname "$0")" && pwd)/_common.sh"
 
+prepare_env_file
 load_env
 require_cmd sed
+new_api_url="$(host_new_api_url)"
 
 target_file="$(librechat_config_file)"
 mkdir -p "$(dirname "$target_file")"
+
+if is_placeholder "${CASDOOR_CLIENT_SECRET:-}" || is_placeholder "${LIBRECHAT_OPENID_SESSION_SECRET:-}" || is_placeholder "${CASDOOR_PUBLIC_URL:-}"; then
+  warn "Casdoor OIDC 变量仍为占位值，LibreChat 登录页将显示统一认证入口，但无法完成真实登录"
+fi
 
 librechat_fetch_models="$(normalize_bool "${LIBRECHAT_FETCH_MODELS:-true}")"
 default_models_raw="${LIBRECHAT_DEFAULT_MODELS:-${ZHIPU_EXPOSED_MODEL}}"
@@ -32,8 +38,8 @@ if [[ -n "$visible_models_raw" ]]; then
   fetched_models_tmp="$(mktemp)"
   trap 'rm -f "$fetched_models_tmp"' EXIT
 
-  if [[ -n "${NEW_API_SERVICE_TOKEN:-}" ]] && ! is_placeholder "${NEW_API_SERVICE_TOKEN}" && wait_for_http "${NEW_API_PUBLIC_URL}/api/status" 3; then
-    if curl -fsS "${NEW_API_PUBLIC_URL}/v1/models" -H "Authorization: Bearer ${NEW_API_SERVICE_TOKEN}" | jq -r '.data[].id' >"$fetched_models_tmp" 2>/dev/null; then
+  if [[ -n "${NEW_API_SERVICE_TOKEN:-}" ]] && ! is_placeholder "${NEW_API_SERVICE_TOKEN}" && wait_for_http "${new_api_url}/api/status" 3; then
+    if curl -fsS "${new_api_url}/v1/models" -H "Authorization: Bearer ${NEW_API_SERVICE_TOKEN}" | jq -r '.data[].id' >"$fetched_models_tmp" 2>/dev/null; then
       info "已从 NEW-API 拉取模型列表，准备按 LIBRECHAT_VISIBLE_MODELS 过滤"
     else
       warn "拉取 NEW-API 模型列表失败，将按 LIBRECHAT_VISIBLE_MODELS 原样渲染前端模型"
@@ -99,7 +105,8 @@ interface:
     public: false
 
 registration:
-  socialLogins: []
+  socialLogins:
+    - "openid"
 
 endpoints:
   custom:

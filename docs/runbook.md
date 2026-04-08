@@ -13,7 +13,7 @@ make smoke-zhipu
 
 ### 建议每日巡检项
 - 检查容器是否都在 `Up` 状态
-- 检查 `NEW-API` 和 LibreChat 首页是否可访问
+- 检查 `NEW-API`、LibreChat 和 Casdoor 是否可访问
 - 检查磁盘空间，尤其是 `runtime/` 与 `backups/`
 - 检查 `NEW-API` 是否还能成功调用智谱
 
@@ -27,6 +27,7 @@ make health
 检查内容：
 - Compose 服务状态
 - `NEW-API /api/status`
+- `Casdoor /.well-known/openid-configuration`
 - `LibreChat /health`
 
 ### 主链路联调
@@ -78,6 +79,11 @@ docker compose --env-file .env -f deploy/docker-compose.local.yml logs -f librec
 docker compose --env-file .env -f deploy/docker-compose.local.yml logs -f librechat-mongodb
 ```
 
+### Casdoor
+```bash
+docker compose --env-file .env -f deploy/docker-compose.local.yml logs -f casdoor
+```
+
 ## 标准排查顺序
 
 当用户反馈“平台不可用”时，按以下顺序处理：
@@ -86,13 +92,15 @@ docker compose --env-file .env -f deploy/docker-compose.local.yml logs -f librec
 2. `make health`
 3. 查看 compose 状态
 4. 看 `NEW-API` 日志
-5. 看 LibreChat 日志
-6. 视情况执行 `make bootstrap`
-7. 再执行 `make smoke-zhipu`
+5. 看 Casdoor 日志
+6. 看 LibreChat 日志
+7. 视情况执行 `make bootstrap`
+8. 再执行 `make smoke-zhipu`
 
 这个顺序的目的是先判断是：
 - 环境配置错误
 - 容器没起来
+- 统一认证故障
 - NEW-API 网关故障
 - LibreChat 配置故障
 - 智谱上游故障
@@ -118,7 +126,21 @@ docker compose --env-file .env -f deploy/docker-compose.local.yml logs -f librec
 4. 重新执行 `make bootstrap`
 5. 再看 LibreChat 日志
 
-### 场景 3：模型列表为空
+### 场景 3：统一认证跳转失败
+排查：
+1. `curl http://localhost:18000/.well-known/openid-configuration`
+2. 查看 `docker compose ... logs -f casdoor`
+3. 确认 `CASDOOR_PUBLIC_URL` 与实际入口一致
+4. 确认 `runtime/local/casdoor/init_data.json` 中的回调地址是 `http://localhost:3080/oauth/openid/callback`
+
+### 场景 4：邮箱或短信验证码收不到
+排查：
+1. 先登录 Casdoor 后台单独测试 Provider
+2. 邮件失败优先查 `CASDOOR_EMAIL_SMTP_*`
+3. 短信失败优先查 `CASDOOR_SMS_*`
+4. 当前短信 Provider 固定为 `Alibaba Cloud PNVS SMS`，不要误按普通 `Aliyun SMS` 排查
+
+### 场景 5：模型列表为空
 排查：
 1. 手工请求 `/v1/models`
 2. 检查 `.env` 中 `NEW_API_TOKEN_MODEL_LIMITS_ENABLED` 是否误设为 `true`
@@ -126,11 +148,11 @@ docker compose --env-file .env -f deploy/docker-compose.local.yml logs -f librec
 4. 执行 `make sync-librechat-models`
 5. 再检查 `NEW-API` 后台渠道是否启用、模型映射与组别是否正确
 
-### 场景 4：聊天请求返回 404
+### 场景 6：聊天请求返回 404
 重点检查：
 - `ZHIPU_API_BASE_URL` 是否误写为完整路径
 
-### 场景 5：聊天请求返回额度不足
+### 场景 7：聊天请求返回额度不足
 重点检查：
 - 服务用户额度
 - 服务 token 配额
@@ -141,8 +163,9 @@ docker compose --env-file .env -f deploy/docker-compose.local.yml logs -f librec
 ### 推荐重启顺序
 1. PostgreSQL / Redis / MongoDB
 2. NEW-API
-3. LibreChat
-4. Caddy（仅生产）
+3. Casdoor
+4. LibreChat
+5. Caddy（仅生产）
 
 ### 使用仓库脚本重启
 ```bash
@@ -228,4 +251,5 @@ make smoke-zhipu
 
 1. 前台页面、模型显示、上传与用户体验问题，优先看 [admin-librechat.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/admin-librechat.md)
 2. 渠道、token、额度、限流、上游模型映射问题，优先看 [admin-new-api.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/admin-new-api.md)
-3. 若需要回看整体设计，再看 [architecture.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture.md)
+3. 统一认证、短信、邮件验证码问题，优先看 [admin-auth-sso.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/admin-auth-sso.md)
+4. 若需要回看整体设计，再看 [architecture.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture.md)

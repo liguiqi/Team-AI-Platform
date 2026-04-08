@@ -6,7 +6,7 @@
 ## 本地部署适用范围
 - 单台开发机、测试机、验收机。
 - 使用 Docker Engine 与 Docker Compose v2。
-- 目标是启动 `NEW-API + LibreChat + PostgreSQL + Redis + MongoDB`。
+- 目标是启动 `NEW-API + Casdoor + LibreChat + PostgreSQL + Redis + MongoDB`。
 
 ## 前置依赖
 - Docker Engine 24+
@@ -35,6 +35,9 @@ curl --version
 - `runtime/local/new-api/redis`：`NEW-API` Redis 数据。
 - `runtime/local/new-api/data`：`NEW-API` 运行数据。
 - `runtime/local/new-api/logs`：`NEW-API` 日志。
+- `runtime/local/casdoor/app.conf`：Casdoor 运行时配置。
+- `runtime/local/casdoor/init_data.json`：Casdoor 初始化数据。
+- `runtime/local/casdoor/logs`：Casdoor 日志。
 - `runtime/local/librechat/mongodb`：LibreChat MongoDB 数据。
 - `runtime/local/librechat/uploads`：LibreChat 上传文件。
 - `runtime/local/librechat/images`：LibreChat 图片资源。
@@ -53,6 +56,13 @@ cp .env.example .env
 
 ```dotenv
 ZHIPU_API_KEY=你的真实智谱密钥
+CASDOOR_EMAIL_SMTP_HOST=你的 SMTP 主机
+CASDOOR_EMAIL_SMTP_USERNAME=你的 SMTP 账号
+CASDOOR_EMAIL_SMTP_PASSWORD=你的 SMTP 密码
+CASDOOR_SMS_ACCESS_KEY_ID=你的阿里云 AK
+CASDOOR_SMS_ACCESS_KEY_SECRET=你的阿里云 SK
+CASDOOR_SMS_SIGN_NAME=短信签名
+CASDOOR_SMS_TEMPLATE_CODE=短信模板编号
 ```
 
 ### 第三步：建议确认的变量
@@ -63,6 +73,7 @@ ZHIPU_API_KEY=你的真实智谱密钥
 - `NEW_API_TOKEN_MODEL_LIMITS_ENABLED`
 - `NEW_API_SYNC_CHANNEL_MODELS_FROM_ENV`
 - `LIBRECHAT_PORT`
+- `CASDOOR_PORT`
 - `LIBRECHAT_FETCH_MODELS`
 - `LIBRECHAT_VISIBLE_MODELS`
 - `LIBRECHAT_MONGODB_LOCAL_PORT`
@@ -71,6 +82,10 @@ ZHIPU_API_KEY=你的真实智谱密钥
 说明：
 - `NEW_API_SETUP_USERNAME` / `NEW_API_SETUP_PASSWORD` 决定 `NEW-API` 管理后台 root 登录账号。
 - `NEW_API_SERVICE_TOKEN` 不需要手工填写，bootstrap 会自动生成并回写。
+- `CASDOOR_ADMIN_PASSWORD` 与 `CASDOOR_CLIENT_SECRET` 在 `make init` 时会自动生成随机值。
+- 当前仓库默认关闭 LibreChat 本地邮箱注册与登录，统一走 Casdoor OIDC。
+- 本地模板默认 `LIBRECHAT_OPENID_ALLOW_INSECURE_HTTP=true`，用于允许 `http://localhost` 下的 OIDC 调试。
+- `make init` / `make up` 会把本地 `LIBRECHAT_PUBLIC_URL`、`NEW_API_PUBLIC_URL`、`CASDOOR_PUBLIC_URL` 从默认 `localhost` 自动迁移为宿主机 IP，避免容器内访问不到宿主机回调地址。
 - 推荐默认保持：
   - `NEW_API_TOKEN_MODEL_LIMITS_ENABLED=false`
   - `NEW_API_SYNC_CHANNEL_MODELS_FROM_ENV=false`
@@ -86,7 +101,9 @@ make init
 
 ### 这一步会做什么
 - 若 `.env` 不存在，则从 `.env.example` 复制生成。
-- 自动为数据库、Redis、LibreChat JWT 等生成随机值。
+- 若仓库升级后 `.env` 缺少新变量，会自动按最新模板补齐缺失项。
+- 若检测到旧版 LibreChat 直登开关组合，会自动迁移到 Casdoor OIDC 模式。
+- 自动为数据库、Redis、Casdoor 客户端密钥、Casdoor 管理员密码、LibreChat JWT 等生成随机值。
 - 创建 `runtime/local/` 所需目录。
 - 同步一份 `deploy/env/local/.env` 供 compose 使用。
 - 校验 `deploy/docker-compose.local.yml` 是否能被当前 `.env` 正确解析。
@@ -105,12 +122,15 @@ make up
 ### 这一步会做什么
 - 先读取 `.env`
 - 执行 `scripts/render-librechat-config.sh`
+- 执行 `scripts/render-casdoor-config.sh`
 - 生成 `runtime/local/librechat/librechat.yaml`
+- 生成 `runtime/local/casdoor/app.conf` 与 `runtime/local/casdoor/init_data.json`
 - 启动本地 compose 中的核心服务
 
 ### 正常启动后入口
 - LibreChat：`http://localhost:3080`
 - NEW-API：`http://localhost:13000`
+- Casdoor：`http://localhost:18000`
 
 ## 初始化网关配置
 
@@ -187,6 +207,7 @@ make health
 ### 检查内容
 - `docker compose ps`
 - `NEW-API /api/status`
+- `Casdoor /.well-known/openid-configuration`
 - `LibreChat /health`
 
 ### 成功标准
@@ -199,23 +220,31 @@ make health
 - 登录账号：读取 `.env` 中的 `NEW_API_SETUP_USERNAME`
 - 登录密码：读取 `.env` 中的 `NEW_API_SETUP_PASSWORD`
 
+### Casdoor 统一认证后台
+- 地址：`http://localhost:18000`
+- 管理员账号：`built-in/admin`
+- 管理员邮箱：读取 `.env` 中的 `CASDOOR_ADMIN_EMAIL`
+- 管理员密码：读取 `.env` 中的 `CASDOOR_ADMIN_PASSWORD`
+
 ### LibreChat
 - 地址：`http://localhost:3080`
-- 默认允许邮箱登录和注册
-- 是否有独立管理员角色由 LibreChat 自身用户体系决定，本仓库脚本不自动创建 LibreChat 管理员账号
+- 默认只保留 `统一认证登录`
+- 本地邮箱密码登录与注册已关闭
+- 是否有用户能登录，取决于 Casdoor OIDC、SMTP 与短信 Provider 是否可用
 
 ## 常见问题与处理
 
 ### 端口被占用
 现象：
 - `make up` 失败
-- 或 `make doctor` 提示 `13000` / `3080` 已被占用
+- 或 `make doctor` 提示 `13000` / `3080` / `18000` 已被占用
 
 处理：
 ```bash
 make doctor
 ss -ltn | grep 13000
 ss -ltn | grep 3080
+ss -ltn | grep 18000
 ```
 
 ### PostgreSQL 起不来
@@ -239,6 +268,18 @@ ss -ltn | grep 3080
 5. 必要时再执行 `make bootstrap`
 6. `docker compose --env-file .env -f deploy/docker-compose.local.yml logs -f librechat`
 
+### 统一认证按钮点击后失败
+重点检查：
+- `curl http://localhost:18000/.well-known/openid-configuration`
+- `runtime/local/casdoor/init_data.json` 中 `redirectUris` 是否包含 `http://localhost:3080/oauth/openid/callback`
+- `.env` 中 `CASDOOR_PUBLIC_URL` 是否与本地入口一致
+
+### 收不到邮箱或短信验证码
+重点检查：
+- 先登录 Casdoor 后台单独测试 Provider，不要直接先查 LibreChat。
+- 邮箱验证码失败：检查 `CASDOOR_EMAIL_SMTP_*`
+- 短信验证码失败：检查 `CASDOOR_SMS_*`，并确认当前使用的是 `Alibaba Cloud PNVS SMS`
+
 ### 智谱返回 404
 重点检查：
 - `ZHIPU_API_BASE_URL` 必须是 `https://open.bigmodel.cn`
@@ -259,6 +300,11 @@ docker compose --env-file .env -f deploy/docker-compose.local.yml ps
 ### 查看 NEW-API 日志
 ```bash
 docker compose --env-file .env -f deploy/docker-compose.local.yml logs -f new-api
+```
+
+### 查看 Casdoor 日志
+```bash
+docker compose --env-file .env -f deploy/docker-compose.local.yml logs -f casdoor
 ```
 
 ### 查看 LibreChat 日志
@@ -299,12 +345,13 @@ make smoke-zhipu
 
 1. [admin-new-api.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/admin-new-api.md)
 2. [admin-librechat.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/admin-librechat.md)
-3. [runbook.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/runbook.md)
-4. [acceptance-criteria.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/acceptance-criteria.md)
+3. [admin-auth-sso.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/admin-auth-sso.md)
+4. [runbook.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/runbook.md)
+5. [acceptance-criteria.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/acceptance-criteria.md)
 
 完成后再在浏览器中：
 1. 打开 `http://localhost:3080`
-2. 注册或登录 LibreChat
+2. 点击 `统一认证登录` 并跳转到 Casdoor
 3. 选择 `NEW-API`
 4. 选择任一当前授权模型，建议先选 `zhipu-primary`
 5. 发起真实对话

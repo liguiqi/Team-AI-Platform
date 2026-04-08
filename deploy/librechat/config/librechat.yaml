@@ -19,7 +19,7 @@ interface:
     public: false
 
 registration:
-  socialLogins: []
+  socialLogins: ['openid']
 
 endpoints:
   custom:

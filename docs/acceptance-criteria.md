@@ -13,9 +13,11 @@
 - 仓库结构完整，`docs/`、`deploy/`、`scripts/`、`tests/` 齐全。
 - 本地 compose 可正常解析。
 - `NEW-API` 管理后台可访问。
+- Casdoor 统一认证入口可访问。
 - LibreChat 页面可访问。
 - `NEW-API` 能通过智谱完成真实模型调用。
 - LibreChat 已接入 `NEW-API` 自定义端点。
+- LibreChat 已接入 Casdoor OIDC，且本地登录入口已关闭。
 - `.env.example` 与生产模板完整。
 - 健康检查与 smoke 脚本可执行。
 - 文档已填写到可直接操作的程度。
@@ -36,13 +38,15 @@
 - 真实密钥进入 Git 跟踪范围。
 - 文档与脚本明显不一致。
 - 本地按文档无法复现启动。
+- 手机或邮箱真实认证链路无法完成登录。
 
 ## 最终验收步骤
 
 ### 一、环境准备
 1. 确认 `.env` 已存在。
 2. 确认 `ZHIPU_API_KEY` 为真实可用值。
-3. 确认 Docker 与 Docker Compose 可用。
+3. 确认 Casdoor SMTP 与短信变量已填写。
+4. 确认 Docker 与 Docker Compose 可用。
 
 ### 二、脚本验收
 按顺序执行：
@@ -66,12 +70,15 @@ make smoke-zhipu
 
 ### 四、前台验收
 1. 打开 `http://localhost:3080`
-2. 注册或登录 LibreChat
-3. 确认端点中存在 `NEW-API`
-4. 确认模型列表符合当前策略：
+2. 确认页面只显示 `统一认证登录`
+3. 点击进入 Casdoor
+4. 至少验证一次邮箱真实登录
+5. 至少验证一次手机号真实登录
+6. 确认端点中存在 `NEW-API`
+7. 确认模型列表符合当前策略：
    - 未配置 `LIBRECHAT_VISIBLE_MODELS` 时，模型列表应与 `NEW-API /v1/models` 一致
    - 配置了 `LIBRECHAT_VISIBLE_MODELS` 时，模型列表应与白名单交集一致
-5. 至少选择一个可用模型发起真实对话，建议优先验证 `zhipu-primary`
+8. 至少选择一个可用模型发起真实对话，建议优先验证 `zhipu-primary`
 
 ## 通过标准
 
@@ -86,6 +93,8 @@ make smoke-zhipu
 
 ### UI 层
 - LibreChat 可访问
+- Casdoor 可访问
+- 用户可通过邮箱和手机号完成真实认证
 - 自定义端点 `NEW-API` 已生效
 - 用户可在 UI 中选择当前应暴露的模型
 - 用户实际发言后能够收到模型回复
@@ -94,6 +103,7 @@ make smoke-zhipu
 - `make health` 终端输出
 - `make smoke-zhipu` 终端输出
 - `NEW-API` 后台渠道页面截图
+- Casdoor 登录页与 Provider 测试截图
 - LibreChat 模型列表页面截图
 - 一轮真实问答截图
 
@@ -103,3 +113,4 @@ make smoke-zhipu
 - 已执行过至少一次真实智谱联调
 - 已阅读 `docs/admin-new-api.md`
 - 已阅读 `docs/admin-librechat.md`
+- 已阅读 `docs/admin-auth-sso.md`

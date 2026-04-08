@@ -6,6 +6,7 @@ services:
     depends_on:
       - librechat
       - new-api
+      - casdoor
     ports:
       - "80:80"
       - "443:443"
@@ -62,6 +63,22 @@ services:
     networks:
       - gateway
 
+  casdoor:
+    image: casbin/casdoor:${CASDOOR_VERSION}
+    container_name: ai-gateway-casdoor
+    restart: always
+    entrypoint: /bin/sh -c './server --createDatabase=true'
+    depends_on:
+      - new-api-postgres
+    environment:
+      RUNNING_IN_DOCKER: "true"
+    volumes:
+      - ../runtime/prod/casdoor/app.conf:/conf/app.conf:ro
+      - ../runtime/prod/casdoor/init_data.json:/init_data.json:ro
+      - ../runtime/prod/casdoor/logs:/logs
+    networks:
+      - gateway
+
   librechat:
     image: ghcr.io/danny-avila/librechat:${LIBRECHAT_VERSION}
     container_name: ai-gateway-librechat
@@ -69,6 +86,7 @@ services:
     depends_on:
       - librechat-mongodb
       - new-api
+      - casdoor
     environment:
       HOST: ${LIBRECHAT_HOST}
       PORT: "3080"
@@ -88,13 +106,28 @@ services:
       CREDS_IV: ${LIBRECHAT_CREDS_IV}
       SESSION_EXPIRY: ${LIBRECHAT_SESSION_EXPIRY}
       REFRESH_TOKEN_EXPIRY: ${LIBRECHAT_REFRESH_TOKEN_EXPIRY}
+      OPENID_CLIENT_ID: ${CASDOOR_CLIENT_ID}
+      OPENID_CLIENT_SECRET: ${CASDOOR_CLIENT_SECRET}
+      OPENID_ISSUER: ${CASDOOR_PUBLIC_URL}
+      OPENID_SESSION_SECRET: ${LIBRECHAT_OPENID_SESSION_SECRET}
+      OPENID_CALLBACK_URL: /oauth/openid/callback
+      OPENID_SCOPE: ${LIBRECHAT_OPENID_SCOPE}
+      OPENID_NAME_CLAIM: name
+      OPENID_EMAIL_CLAIM: email
+      OPENID_BUTTON_LABEL: ${LIBRECHAT_OPENID_BUTTON_LABEL}
+      OPENID_ALLOW_INSECURE_HTTP: ${LIBRECHAT_OPENID_ALLOW_INSECURE_HTTP}
+      OPENID_USE_PKCE: "true"
+      OPENID_USE_END_SESSION_ENDPOINT: "true"
+      OPENID_POST_LOGOUT_REDIRECT_URI: "${LIBRECHAT_PUBLIC_URL}/login"
       NO_INDEX: "true"
+      NODE_OPTIONS: "--require /app/librechat-patches/openid-insecure-http.js"
       TRUST_PROXY: "1"
     volumes:
       - ../runtime/prod/librechat/librechat.yaml:/app/librechat.yaml:ro
       - ../runtime/prod/librechat/images:/app/client/public/images
       - ../runtime/prod/librechat/uploads:/app/uploads
       - ../runtime/prod/librechat/logs:/app/logs
+      - ./librechat/patches:/app/librechat-patches:ro
     networks:
       - gateway
 
