@@ -1,0 +1,23 @@
+name: Validate Compose
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare env files
+        run: |
+          cp .env.example .env
+          cp deploy/env/prod/.env.example deploy/env/prod/.env
+
+      - name: Validate local compose
+        run: docker compose --env-file .env -f deploy/docker-compose.local.yml config >/dev/null
+
+      - name: Validate prod compose
+        run: docker compose --env-file deploy/env/prod/.env -f deploy/docker-compose.prod.yml config >/dev/null
+

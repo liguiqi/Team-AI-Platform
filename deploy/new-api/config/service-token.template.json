@@ -1,0 +1,11 @@
+{
+  "name": "${NEW_API_SERVICE_TOKEN_NAME}",
+  "remain_quota": ${NEW_API_SERVICE_TOKEN_QUOTA},
+  "expired_time": -1,
+  "unlimited_quota": ${NEW_API_SERVICE_TOKEN_UNLIMITED},
+  "model_limits_enabled": true,
+  "model_limits": "${NEW_API_TOKEN_ALLOWED_MODELS}",
+  "group": "${NEW_API_SERVICE_TOKEN_GROUP}",
+  "cross_group_retry": false
+}
+

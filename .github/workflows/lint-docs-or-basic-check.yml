@@ -1,0 +1,21 @@
+name: Basic Checks
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  basic:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify required docs exist
+        run: |
+          test -f README.md
+          test -f docs/requirements.md
+          test -f docs/provider-zhipu.md
+          test -f docs/self-test-report.md
+
+      - name: Verify no secrets in tracked files
+        run: bash scripts/verify-no-secrets.sh

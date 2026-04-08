@@ -1,0 +1,10 @@
+{
+  "model": "__MODEL__",
+  "stream": false,
+  "messages": [
+    {
+      "role": "user",
+      "content": "请回复 OK，并说明当前请求已经通过 NEW-API 转发。"
+    }
+  ]
+}

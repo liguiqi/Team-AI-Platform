@@ -1,0 +1,18 @@
+{
+  "mode": "single",
+  "multi_key_mode": "random",
+  "batch_add_set_key_prefix_2_name": false,
+  "channel": {
+    "name": "${ZHIPU_CHANNEL_NAME}",
+    "type": ${ZHIPU_CHANNEL_TYPE},
+    "key": "${ZHIPU_API_KEY}",
+    "base_url": "${ZHIPU_API_BASE_URL}",
+    "models": "${ZHIPU_EXPOSED_MODEL}",
+    "group": "${ZHIPU_CHANNEL_GROUP}",
+    "test_model": "${ZHIPU_TEST_MODEL}",
+    "model_mapping": "${ZHIPU_MODEL_MAPPING_JSON}",
+    "priority": ${ZHIPU_CHANNEL_PRIORITY},
+    "weight": ${ZHIPU_CHANNEL_WEIGHT},
+    "remark": "${ZHIPU_CHANNEL_REMARK}"
+  }
+}

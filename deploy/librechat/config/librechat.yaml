@@ -1,0 +1,35 @@
+version: 1.3.6
+cache: true
+
+interface:
+  customWelcome: '欢迎使用 Team AI Platform'
+  endpointsMenu: true
+  modelSelect: true
+  parameters: true
+  sidePanel: true
+  prompts:
+    use: true
+    create: true
+    share: false
+    public: false
+  agents:
+    use: true
+    create: true
+    share: false
+    public: false
+
+registration:
+  socialLogins: []
+
+endpoints:
+  custom:
+    - name: '${LIBRECHAT_ENDPOINT_NAME}'
+      apiKey: '${NEW_API_SERVICE_TOKEN}'
+      baseURL: '${NEW_API_INTERNAL_URL}/v1'
+      models:
+        default:
+          - '${LIBRECHAT_DEFAULT_MODELS}'
+        fetch: true
+      titleConvo: true
+      titleModel: '${LIBRECHAT_TITLE_MODEL}'
+      modelDisplayLabel: '${LIBRECHAT_MODEL_LABEL}'

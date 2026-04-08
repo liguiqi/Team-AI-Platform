@@ -1,0 +1,15 @@
+.env
+deploy/env/local/.env
+deploy/env/prod/.env
+PRD.md
+runtime/
+backups/
+*.log
+*.tar.gz
+*.tar
+.DS_Store
+.idea/
+.vscode/
+node_modules/
+dist/
+tmp/

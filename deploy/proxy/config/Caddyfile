@@ -1,0 +1,14 @@
+{
+  email {$ACME_EMAIL}
+}
+
+{$PUBLIC_CHAT_DOMAIN:chat.localhost} {
+  encode gzip zstd
+  reverse_proxy librechat:3080
+}
+
+{$NEW_API_ADMIN_DOMAIN:new-api.localhost} {
+  encode gzip zstd
+  reverse_proxy new-api:3000
+}
+

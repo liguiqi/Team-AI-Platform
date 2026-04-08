@@ -1,0 +1,8 @@
+{
+  "ModelRequestRateLimitEnabled": ${NEW_API_RATE_LIMIT_ENABLED},
+  "ModelRequestRateLimitDurationMinutes": ${NEW_API_RATE_LIMIT_WINDOW_MINUTES},
+  "ModelRequestRateLimitCount": ${NEW_API_RATE_LIMIT_TOTAL},
+  "ModelRequestRateLimitSuccessCount": ${NEW_API_RATE_LIMIT_SUCCESS},
+  "ModelRequestRateLimitGroup": "${NEW_API_RATE_LIMIT_GROUP_JSON}"
+}
+
