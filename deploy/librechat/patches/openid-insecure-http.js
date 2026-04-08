@@ -1,6 +1,534 @@
 const Module = require('module');
+const cookie = require('cookie');
 
 const originalLoad = Module._load;
+
+function escapeForInlineScript(value) {
+  return String(value)
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/</g, '\\x3C');
+}
+
+function getDomainClientPath() {
+  try {
+    const clientUrl = new URL(process.env.DOMAIN_CLIENT || '');
+    if (clientUrl.pathname === '/') {
+      return '';
+    }
+    return clientUrl.pathname.replace(/\/+$/, '');
+  } catch {
+    return '';
+  }
+}
+
+function buildPlatformBootstrapScript() {
+  const serverDomain = String(process.env.DOMAIN_SERVER || process.env.DOMAIN_CLIENT || '').replace(
+    /\/+$/,
+    '',
+  );
+  const loginPath = `${getDomainClientPath()}/login` || '/login';
+  const themeMode = ['dark', 'light', 'system'].includes(process.env.PLATFORM_THEME_MODE)
+    ? process.env.PLATFORM_THEME_MODE
+    : 'dark';
+  const themeLock = process.env.PLATFORM_THEME_LOCK !== 'false';
+  const hideThemeSelector = process.env.PLATFORM_HIDE_THEME_SELECTOR !== 'false';
+  const shouldAutoRedirect = process.env.OPENID_AUTO_REDIRECT === 'true' && !!serverDomain;
+  const oauthTarget = shouldAutoRedirect ? `${serverDomain}/oauth/openid` : '';
+  const platformCss = [
+    ':root { color-scheme: dark; }',
+    'html, body { background: #0d0d0d !important; }',
+    hideThemeSelector ? '[aria-keyshortcuts="Ctrl+Shift+T"] { display: none !important; }' : '',
+    hideThemeSelector ? '#theme-selector-label { display: none !important; }' : '',
+    hideThemeSelector ? '[aria-labelledby="theme-selector-label"] { display: none !important; }' : '',
+  ]
+    .filter(Boolean)
+    .join('\n');
+
+  return [
+    '<script id="team-ai-platform-bootstrap">',
+    '(function(){',
+    'try{',
+    `var lockedTheme=${JSON.stringify(themeMode)};`,
+    `var themeLock=${themeLock};`,
+    `var hideThemeSelector=${hideThemeSelector};`,
+    `var shouldAutoRedirect=${shouldAutoRedirect};`,
+    `var loginPath=${JSON.stringify(loginPath)};`,
+    `var oauthTarget=${JSON.stringify(oauthTarget)};`,
+    `var platformCss=${JSON.stringify(platformCss)};`,
+    'if(themeLock && lockedTheme){',
+    '  try {',
+    '    localStorage.setItem("color-theme", lockedTheme);',
+    '    window.__TEAMAI_THEME_LOCK__ = lockedTheme;',
+    '  } catch (storageError) {',
+    '    console.error("[TeamAI Theme Patch] Failed to persist locked theme", storageError);',
+    '  }',
+    '  if(typeof Storage !== "undefined" && Storage.prototype && !window.__TEAMAI_STORAGE_PATCHED__){',
+    '    window.__TEAMAI_STORAGE_PATCHED__ = true;',
+    '    var originalSetItem = Storage.prototype.setItem;',
+    '    Storage.prototype.setItem = function(key, value){',
+    '      if(key === "color-theme"){',
+    '        return originalSetItem.call(this, key, lockedTheme);',
+    '      }',
+    '      return originalSetItem.call(this, key, value);',
+    '    };',
+    '  }',
+    '}',
+    'if(platformCss && !document.getElementById("team-ai-platform-style")){',
+    '  var style=document.createElement("style");',
+    '  style.id="team-ai-platform-style";',
+    '  style.textContent=platformCss;',
+    '  document.head.appendChild(style);',
+    '}',
+    'var hideThemeControls = function(){',
+    '  if(!hideThemeSelector){ return; }',
+    '  document.querySelectorAll("[aria-keyshortcuts=\\"Ctrl+Shift+T\\"]").forEach(function(node){',
+    '    node.style.display="none";',
+    '    if(node.parentElement && node.parentElement.childElementCount === 1){',
+    '      node.parentElement.style.display="none";',
+    '    }',
+    '  });',
+    '  document.querySelectorAll("[aria-labelledby=\\"theme-selector-label\\"]").forEach(function(node){',
+    '    var row = node.closest("div.flex.items-center.justify-between");',
+    '    if(row && row.parentElement){',
+    '      row.parentElement.style.display="none";',
+    '      return;',
+    '    }',
+    '    node.style.display="none";',
+    '  });',
+    '  var label = document.getElementById("theme-selector-label");',
+    '  if(label){',
+    '    var labelRow = label.closest("div.flex.items-center.justify-between");',
+    '    if(labelRow && labelRow.parentElement){',
+    '      labelRow.parentElement.style.display="none";',
+    '    } else {',
+    '      label.style.display="none";',
+    '    }',
+    '  }',
+    '};',
+    'hideThemeControls();',
+    'if(hideThemeSelector && typeof MutationObserver !== "undefined"){',
+    '  var observer = new MutationObserver(hideThemeControls);',
+    '  observer.observe(document.documentElement, { childList: true, subtree: true });',
+    '}',
+    'document.addEventListener("click", function(event){',
+    '  if(!themeLock){ return; }',
+    '  var target = event.target && event.target.closest ? event.target.closest("[aria-keyshortcuts=\\"Ctrl+Shift+T\\"]") : null;',
+    '  if(target){',
+    '    event.preventDefault();',
+    '    event.stopImmediatePropagation();',
+    '  }',
+    '}, true);',
+    'window.addEventListener("keydown", function(event){',
+    '  if(!themeLock){ return; }',
+    '  if(event.ctrlKey && event.shiftKey && String(event.key || "").toLowerCase() === "t"){',
+    '    event.preventDefault();',
+    '    event.stopImmediatePropagation();',
+    '  }',
+    '}, true);',
+    "var currentPath=(window.location.pathname||'/').replace(/\\/+$/,'')||'/';",
+    'var params=new URLSearchParams(window.location.search||"");',
+    'if(shouldAutoRedirect && currentPath===loginPath && !params.toString()){',
+    '  window.location.replace(oauthTarget);',
+    '}',
+    '}catch(error){',
+    'console.error("[TeamAI Platform Patch] Bootstrap failed", error);',
+    '}',
+    '})();',
+    '</script>',
+  ].join('');
+}
+
+function patchFs(fsModule) {
+  if (!fsModule || typeof fsModule.readFileSync !== 'function' || fsModule.__teamAiPatchedFs === true) {
+    return fsModule;
+  }
+
+  const originalReadFileSync = fsModule.readFileSync;
+  const bootstrapScript = buildPlatformBootstrapScript();
+
+  fsModule.readFileSync = function patchedReadFileSync(filePath, options) {
+    const content = originalReadFileSync.apply(this, [filePath, options]);
+
+    if (!bootstrapScript) {
+      return content;
+    }
+
+    const resolvedPath =
+      typeof filePath === 'string' ? filePath : Buffer.isBuffer(filePath) ? filePath.toString('utf8') : '';
+
+    if (!resolvedPath.endsWith('/app/client/dist/index.html')) {
+      return content;
+    }
+
+    const html = Buffer.isBuffer(content) ? content.toString('utf8') : content;
+    if (typeof html !== 'string' || html.includes('team-ai-platform-bootstrap')) {
+      return content;
+    }
+
+    const themeScriptMarker = "<script>\n      const theme = localStorage.getItem('color-theme');";
+    const patchedHtml = html.includes(themeScriptMarker)
+      ? html.replace(themeScriptMarker, `${bootstrapScript}${themeScriptMarker}`)
+      : html.replace('</head>', `${bootstrapScript}</head>`);
+
+    if (patchedHtml === html) {
+      return content;
+    }
+
+    console.info('[TeamAI Platform Patch] Injected theme lock and auth bootstrap into index.html');
+    return Buffer.isBuffer(content) ? Buffer.from(patchedHtml, 'utf8') : patchedHtml;
+  };
+
+  Object.defineProperty(fsModule, '__teamAiPatchedFs', {
+    value: true,
+    enumerable: false,
+    configurable: false,
+    writable: false,
+  });
+
+  return fsModule;
+}
+
+function patchLibreChatApi(api) {
+  if (!api || typeof api.findOpenIDUser !== 'function' || api.__teamAiPatchedApi === true) {
+    return api;
+  }
+
+  const originalFindOpenIDUser = api.findOpenIDUser;
+
+  api.findOpenIDUser = async function patchedFindOpenIDUser(args) {
+    const allowLocalAccountLinking = process.env.OPENID_ALLOW_LOCAL_ACCOUNT_LINKING === 'true';
+
+    if (!allowLocalAccountLinking || !args?.email || typeof args?.findUser !== 'function') {
+      return originalFindOpenIDUser(args);
+    }
+
+    const result = await originalFindOpenIDUser(args);
+    if (result?.user || !result?.error) {
+      return result;
+    }
+
+    const user = await args.findUser({ email: args.email });
+    if (!user || !user.provider || user.provider === 'openid') {
+      return result;
+    }
+
+    if (user.openidId && user.openidId !== args.openidId) {
+      return result;
+    }
+
+    if (user.provider === 'local') {
+      console.info(
+        `[TeamAI OpenID Patch] Linking local LibreChat account ${user.email} to OpenID subject ${args.openidId}`,
+      );
+      user.provider = 'openid';
+      user.openidId = args.openidId;
+      if (args.idOnTheSource) {
+        user.idOnTheSource = args.idOnTheSource;
+      }
+      return { user, error: null, migration: true };
+    }
+
+    return result;
+  };
+
+  const originalShouldUseSecureCookie = api.shouldUseSecureCookie;
+  if (typeof originalShouldUseSecureCookie === 'function') {
+    api.shouldUseSecureCookie = function patchedShouldUseSecureCookie() {
+      const allowInsecureHttp = process.env.OPENID_ALLOW_INSECURE_HTTP === 'true';
+      const domainServer = String(process.env.DOMAIN_SERVER || '');
+      if (allowInsecureHttp || domainServer.startsWith('http://')) {
+        return false;
+      }
+      return originalShouldUseSecureCookie();
+    };
+  }
+
+  Object.defineProperty(api, '__teamAiPatchedApi', {
+    value: true,
+    enumerable: false,
+    configurable: false,
+    writable: false,
+  });
+
+  return api;
+}
+
+function patchAuthService(authService) {
+  if (
+    !authService ||
+    typeof authService.setOpenIDAuthTokens !== 'function' ||
+    authService.__teamAiPatchedAuthService === true
+  ) {
+    return authService;
+  }
+
+  const originalSetOpenIDAuthTokens = authService.setOpenIDAuthTokens;
+
+  authService.setOpenIDAuthTokens = function patchedSetOpenIDAuthTokens(
+    tokenset,
+    req,
+    res,
+    userId,
+    existingRefreshToken,
+  ) {
+    const result = originalSetOpenIDAuthTokens(tokenset, req, res, userId, existingRefreshToken);
+
+    if (!tokenset?.id_token || !res || typeof res.cookie !== 'function') {
+      return result;
+    }
+
+    const refreshTokenExpiry = Number(process.env.REFRESH_TOKEN_EXPIRY || 604800000);
+    const expirationDate = new Date(Date.now() + refreshTokenExpiry);
+    const allowInsecureHttp =
+      process.env.OPENID_ALLOW_INSECURE_HTTP === 'true' ||
+      String(process.env.DOMAIN_SERVER || '').startsWith('http://');
+
+    res.cookie('openid_id_token', tokenset.id_token, {
+      expires: expirationDate,
+      httpOnly: true,
+      secure: !allowInsecureHttp,
+      sameSite: 'strict',
+    });
+
+    console.info('[TeamAI OpenID Patch] Persisted openid_id_token cookie for logout fallback');
+
+    return result;
+  };
+
+  Object.defineProperty(authService, '__teamAiPatchedAuthService', {
+    value: true,
+    enumerable: false,
+    configurable: false,
+    writable: false,
+  });
+
+  return authService;
+}
+
+function patchLogoutController(controllerModule) {
+  if (
+    !controllerModule ||
+    typeof controllerModule.logoutController !== 'function' ||
+    controllerModule.__teamAiPatchedLogoutController === true
+  ) {
+    return controllerModule;
+  }
+
+  const originalLogoutController = controllerModule.logoutController;
+
+  controllerModule.logoutController = async function patchedLogoutController(req, res, next) {
+    const parsedCookies = req?.headers?.cookie ? cookie.parse(req.headers.cookie) : {};
+    const authHeader = String(req?.headers?.authorization || '');
+    const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+    const sessionTokens = req?.session?.openidTokens || {};
+    const resolvedIdToken =
+      sessionTokens.idToken || parsedCookies.openid_id_token || bearerToken || undefined;
+    const resolvedRefreshToken =
+      sessionTokens.refreshToken || parsedCookies.refreshToken || undefined;
+
+    if (req?.user?.provider === 'openid') {
+      req.session = req.session || {};
+      req.session.openidTokens = {
+        ...sessionTokens,
+        ...(resolvedIdToken ? { idToken: resolvedIdToken } : {}),
+        ...(resolvedRefreshToken ? { refreshToken: resolvedRefreshToken } : {}),
+      };
+
+      if (!process.env.OPENID_MAX_LOGOUT_URL_LENGTH) {
+        process.env.OPENID_MAX_LOGOUT_URL_LENGTH = '8192';
+      }
+
+      console.info('[TeamAI OpenID Patch] Logout diagnostics', {
+        hasSession: !!req.session,
+        hasSessionIdToken: !!sessionTokens.idToken,
+        hasCookieIdToken: !!parsedCookies.openid_id_token,
+        hasBearerToken: !!bearerToken,
+        resolvedIdTokenLength: resolvedIdToken ? resolvedIdToken.length : 0,
+        maxLogoutUrlLength: process.env.OPENID_MAX_LOGOUT_URL_LENGTH,
+      });
+    }
+
+    return originalLogoutController(req, res, next);
+  };
+
+  Object.defineProperty(controllerModule, '__teamAiPatchedLogoutController', {
+    value: true,
+    enumerable: false,
+    configurable: false,
+    writable: false,
+  });
+
+  return controllerModule;
+}
+
+function patchExpressResponse(response) {
+  if (!response || typeof response.cookie !== 'function' || response.__teamAiPatchedResponse === true) {
+    return response;
+  }
+
+  const originalCookie = response.cookie;
+  const authCookieNames = new Set([
+    'refreshToken',
+    'token_provider',
+    'openid_access_token',
+    'openid_id_token',
+    'openid_user_id',
+  ]);
+
+  response.cookie = function patchedCookie(name, value, options = {}) {
+    const allowInsecureHttp =
+      process.env.OPENID_ALLOW_INSECURE_HTTP === 'true' ||
+      String(process.env.DOMAIN_SERVER || '').startsWith('http://');
+
+    if (!allowInsecureHttp || !authCookieNames.has(name)) {
+      return originalCookie.call(this, name, value, options);
+    }
+
+    const patchedOptions = {
+      ...options,
+      secure: false,
+      sameSite: 'lax',
+    };
+
+    console.info('[TeamAI OpenID Patch] Rewriting auth cookie options', {
+      name,
+      secure: patchedOptions.secure,
+      sameSite: patchedOptions.sameSite,
+    });
+
+    return originalCookie.call(this, name, value, patchedOptions);
+  };
+
+  Object.defineProperty(response, '__teamAiPatchedResponse', {
+    value: true,
+    enumerable: false,
+    configurable: false,
+    writable: false,
+  });
+
+  return response;
+}
+
+function patchExpressSession(sessionFactory) {
+  if (
+    typeof sessionFactory !== 'function' ||
+    sessionFactory.__teamAiPatchedSessionFactory === true
+  ) {
+    return sessionFactory;
+  }
+
+  function wrappedSessionFactory(options = {}) {
+    const isOpenIdSession =
+      options?.secret &&
+      process.env.OPENID_SESSION_SECRET &&
+      options.secret === process.env.OPENID_SESSION_SECRET;
+
+    if (!isOpenIdSession) {
+      return sessionFactory(options);
+    }
+
+    console.info('[TeamAI OpenID Patch] Patching express-session options for OpenID flow');
+
+    const shouldForceInsecureCookie =
+      process.env.OPENID_ALLOW_INSECURE_HTTP === 'true' ||
+      String(process.env.DOMAIN_SERVER || '').startsWith('http://');
+
+    const patchedOptions = {
+      ...options,
+      saveUninitialized: true,
+      store: undefined,
+      cookie: {
+        ...(options.cookie ?? {}),
+        secure: shouldForceInsecureCookie ? false : options?.cookie?.secure,
+        sameSite: 'lax',
+      },
+    };
+
+    return sessionFactory(patchedOptions);
+  }
+
+  for (const key of Object.getOwnPropertyNames(sessionFactory)) {
+    if (key === 'length' || key === 'name' || key === 'prototype') {
+      continue;
+    }
+    const descriptor = Object.getOwnPropertyDescriptor(sessionFactory, key);
+    if (descriptor) {
+      Object.defineProperty(wrappedSessionFactory, key, descriptor);
+    }
+  }
+
+  Object.setPrototypeOf(wrappedSessionFactory, Object.getPrototypeOf(sessionFactory));
+  wrappedSessionFactory.prototype = sessionFactory.prototype;
+
+  Object.defineProperty(wrappedSessionFactory, '__teamAiPatchedSessionFactory', {
+    value: true,
+    enumerable: false,
+    configurable: false,
+    writable: false,
+  });
+
+  return wrappedSessionFactory;
+}
+
+function patchOpenIdPassport(passportModule) {
+  const Strategy = passportModule?.Strategy;
+  if (!Strategy?.prototype || Strategy.__teamAiPatchedStrategy === true) {
+    return passportModule;
+  }
+
+  const originalError = Strategy.prototype.error;
+  const originalFail = Strategy.prototype.fail;
+  const originalAuthenticate = Strategy.prototype.authenticate;
+
+  Strategy.prototype.authenticate = function patchedAuthenticate(req, options) {
+    const url = req?.originalUrl || req?.url;
+    const beforeSessionKeys = req?.session ? Object.keys(req.session) : [];
+    console.info('[TeamAI OpenID Patch] Strategy authenticate begin', {
+      url,
+      query: req?.query,
+      beforeSessionKeys,
+      sessionId: req?.sessionID,
+    });
+    const result = originalAuthenticate.call(this, req, options);
+    Promise.resolve(result)
+      .then(() => {
+        const afterSessionKeys = req?.session ? Object.keys(req.session) : [];
+        console.info('[TeamAI OpenID Patch] Strategy authenticate end', {
+          url,
+          afterSessionKeys,
+          sessionId: req?.sessionID,
+          sessionData: req?.session,
+        });
+      })
+      .catch((err) => {
+        console.error(
+          '[TeamAI OpenID Patch] Strategy authenticate rejected',
+          err && (err.stack || err.message || err),
+        );
+      });
+    return result;
+  };
+
+  Strategy.prototype.error = function patchedError(err) {
+    console.error('[TeamAI OpenID Patch] Strategy error', err && (err.stack || err.message || err));
+    return originalError.call(this, err);
+  };
+
+  Strategy.prototype.fail = function patchedFail(challenge, status) {
+    console.error('[TeamAI OpenID Patch] Strategy fail', { challenge, status });
+    return originalFail.call(this, challenge, status);
+  };
+
+  Object.defineProperty(Strategy, '__teamAiPatchedStrategy', {
+    value: true,
+    enumerable: false,
+    configurable: false,
+    writable: false,
+  });
+
+  return passportModule;
+}
 
 function wrapOpenIdClient(client) {
   if (
@@ -55,6 +583,44 @@ function wrapOpenIdClient(client) {
 
 Module._load = function patchedModuleLoad(request, parent, isMain) {
   const loaded = originalLoad.apply(this, [request, parent, isMain]);
+
+  if (
+    request === '@librechat/api' ||
+    request === '/app/packages/api' ||
+    request === '/app/packages/api/dist/index.js'
+  ) {
+    return patchLibreChatApi(loaded);
+  }
+
+  if (request === 'express-session') {
+    return patchExpressSession(loaded);
+  }
+
+  if (request === 'fs') {
+    return patchFs(loaded);
+  }
+
+  if (request === 'express/lib/response') {
+    return patchExpressResponse(loaded);
+  }
+
+  if (
+    request === '~/server/services/AuthService' ||
+    request === '/app/api/server/services/AuthService.js'
+  ) {
+    return patchAuthService(loaded);
+  }
+
+  if (
+    request === '~/server/controllers/auth/LogoutController' ||
+    request === '/app/api/server/controllers/auth/LogoutController.js'
+  ) {
+    return patchLogoutController(loaded);
+  }
+
+  if (request === 'openid-client/passport' || request === '/app/api/node_modules/openid-client/passport') {
+    return patchOpenIdPassport(loaded);
+  }
 
   if (request === 'openid-client' || request === '/app/api/node_modules/openid-client') {
     return wrapOpenIdClient(loaded);

@@ -133,12 +133,23 @@ docker compose --env-file .env -f deploy/docker-compose.local.yml logs -f casdoo
 3. 确认 `CASDOOR_PUBLIC_URL` 与实际入口一致
 4. 确认 `runtime/local/casdoor/init_data.json` 中的回调地址是 `http://localhost:3080/oauth/openid/callback`
 
+### 场景 3.1：注册时报 built-in 组织禁止新增用户
+排查：
+1. 确认 `.env` 中 `CASDOOR_USER_ORGANIZATION_NAME` 不是 `built-in`
+2. 执行 `make restart`
+3. 检查 `application.organization` 是否已经切到业务组织
+4. 不要用开启 `built-in.hasPrivilegeConsent` 的方式规避，这会把业务用户放进 Casdoor 全局管理员组织
+
 ### 场景 4：邮箱或短信验证码收不到
 排查：
 1. 先登录 Casdoor 后台单独测试 Provider
 2. 邮件失败优先查 `CASDOOR_EMAIL_SMTP_*`
-3. 短信失败优先查 `CASDOOR_SMS_*`
-4. 当前短信 Provider 固定为 `Alibaba Cloud PNVS SMS`，不要误按普通 `Aliyun SMS` 排查
+3. 若使用 163 企业邮，确认当前为 `465 + Enable`，不要继续用 `25 + Disable`
+4. 修改 `.env` 后执行 `make up`，仓库会自动把 Provider 配置同步进 Casdoor PostgreSQL
+5. 若宿主机 SMTP 正常但容器内直连被 reset，启用 `LOCAL_SMTP_RELAY_ENABLED=true`
+6. 短信失败优先查 `CASDOOR_SMS_*`
+7. 当前短信 Provider 固定为 `Alibaba Cloud PNVS SMS`，不要误按普通 `Aliyun SMS` 排查
+8. 若报 `unsupported provider: Alibaba Cloud PNVS SMS`，先检查 `CASDOOR_VERSION` 是否至少为 `2.396.1`
 
 ### 场景 5：模型列表为空
 排查：
