@@ -78,6 +78,7 @@
 
 说明：
 - Casdoor 的 `theme_data`、`logo`、`favicon`、`form_css` 现在都由仓库脚本统一下发。
+- Casdoor 的 `form_css` 字段本质上是“插入登录页的 HTML 片段”，如果要写样式，必须用 `<style>...</style>` 包裹，不能直接写裸 CSS 文本。
 - LibreChat 登录前和登录后主题不再依赖用户浏览器“跟随系统”，而是由平台配置锁定。
 - 管理员不应再单独在 Casdoor UI 或 LibreChat 前端里手工改主题，否则下次重启会被仓库配置覆盖。
 

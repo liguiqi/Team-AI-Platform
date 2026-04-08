@@ -136,7 +136,7 @@ invitation_content=$(cat <<EOF
 EOF
 )
 
-casdoor_form_css=$(cat <<EOF
+casdoor_form_css_content=$(cat <<EOF
 :root {
   color-scheme: dark;
 }
@@ -239,6 +239,13 @@ body {
 .login-content .ant-form-item {
   border-color: rgba(255, 255, 255, 0.08) !important;
 }
+EOF
+)
+
+casdoor_form_css=$(cat <<EOF
+<style id="team-ai-platform-auth-style">
+${casdoor_form_css_content}
+</style>
 EOF
 )
 
