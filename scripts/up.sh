@@ -8,9 +8,14 @@ require_cmd docker
 prepare_env_file
 
 load_env
+if [[ "$MODE" == "local" ]]; then
+  bash "$ROOT_DIR/scripts/start-local-smtp-relay.sh"
+fi
 bash "$ROOT_DIR/scripts/render-librechat-config.sh"
 bash "$ROOT_DIR/scripts/render-casdoor-config.sh"
 docker_compose up -d
+bash "$ROOT_DIR/scripts/sync-casdoor-auth-config.sh"
+bash "$ROOT_DIR/scripts/sync-casdoor-providers.sh"
 
 info "服务已启动"
 if [[ "$MODE" == "local" ]]; then

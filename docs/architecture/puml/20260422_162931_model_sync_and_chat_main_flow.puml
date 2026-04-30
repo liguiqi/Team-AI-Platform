@@ -1,0 +1,67 @@
+@startuml
+title Team AI Platform 模型同步与聊天主链路\nNEW-API 作为治理平面
+
+autonumber
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+skinparam wrapWidth 240
+skinparam maxMessageSize 180
+
+actor "平台管理员" as Admin
+actor "最终用户" as User
+participant "render-librechat-config.sh" as RenderLibre
+participant "LibreChat" as Libre
+participant "NEW-API" as NewAPI
+database "NEW-API PostgreSQL" as PG
+database "Redis" as Redis
+participant "上游模型供应商\n智谱 / Future Providers" as LLM
+database "MongoDB" as Mongo
+
+group 部署或变更时的模型配置生成
+  alt LIBRECHAT_VISIBLE_MODELS 为空
+    Admin -> RenderLibre : make up / make bootstrap / make restart
+    RenderLibre -> Libre : 渲染 models.fetch=true\n运行时按 NEW-API 动态拉取
+  else 配置了 LIBRECHAT_VISIBLE_MODELS
+    Admin -> RenderLibre : 触发渲染
+    RenderLibre -> NewAPI : GET /v1/models\nBearer NEW_API_SERVICE_TOKEN
+    NewAPI -> PG : 校验服务 token / 服务用户 / 渠道
+    NewAPI --> RenderLibre : 返回当前可访问模型矩阵
+    RenderLibre -> RenderLibre : 与 LIBRECHAT_VISIBLE_MODELS 求交集
+    RenderLibre -> Libre : 渲染 models.fetch=false\nmodels.default=白名单交集结果
+  end
+end
+
+group 用户打开模型下拉框
+  User -> Libre : 查看当前可用模型
+  alt 当前为动态模式 models.fetch=true
+    Libre -> NewAPI : GET /v1/models\nBearer NEW_API_SERVICE_TOKEN
+    NewAPI -> Redis : 读取缓存 / 限流辅助信息
+    NewAPI -> PG : 读取 token / 用户 / 渠道 / options
+    NewAPI --> Libre : 返回当前授权模型列表
+  else 当前为前端白名单模式
+    Libre -> Libre : 直接显示预渲染模型子集
+  end
+end
+
+group 聊天请求主链路
+  User -> Libre : 发送消息 + 选择外部模型别名
+  Libre -> NewAPI : POST /v1/chat/completions
+  NewAPI -> Redis : 处理请求计数 / 缓存辅助
+  NewAPI -> PG : 校验 token 状态 / 用户额度 /\n渠道状态 / 模型映射 / 系统选项
+  NewAPI -> NewAPI : 外部别名 -> 实际模型\n例如 zhipu-primary -> glm-4-flash
+  NewAPI -> LLM : 转发到真实供应商 API
+  LLM --> NewAPI : 返回标准响应或错误
+  NewAPI --> Libre : OpenAI-compatible 响应
+  Libre -> Mongo : 持久化 conversation / message /\nagent / prompt refs / uploads
+  Libre --> User : 流式展示回答
+end
+
+note right of NewAPI
+当前分支的关键治理策略:
+- LibreChat 不直接接触 ZHIPU_API_KEY
+- 服务 token 是 LibreChat 调用 NEW-API 的唯一内部凭证
+- 真实模型矩阵以 NEW-API 后台维护结果为准
+- 前端若只展示部分模型, 只做“显示过滤”, 不改变 NEW-API 真正权限边界
+end note
+
+@enduml

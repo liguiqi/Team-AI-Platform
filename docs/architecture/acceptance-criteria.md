@@ -111,6 +111,6 @@ make smoke-zhipu
 - 生产 `.env` 已准备好强随机密码和 secret
 - 域名解析与 HTTPS 证书条件已满足
 - 已执行过至少一次真实智谱联调
-- 已阅读 `docs/admin-new-api.md`
-- 已阅读 `docs/admin-librechat.md`
-- 已阅读 `docs/admin-auth-sso.md`
+- 已阅读 `docs/architecture/admin-new-api.md`
+- 已阅读 `docs/architecture/admin-librechat.md`
+- 已阅读 `docs/architecture/admin-auth-sso.md`

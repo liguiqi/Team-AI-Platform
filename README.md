@@ -137,25 +137,25 @@ ZHIPU_EXPOSED_MODEL=zhipu-primary
   ```
 
 ## 常见入口
-- 需求说明：[docs/requirements.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/requirements.md)
-- 架构说明：[docs/architecture.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture.md)
-- 实施计划：[docs/implementation-plan.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/implementation-plan.md)
-- 本地部署说明：[docs/deployment-local.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/deployment-local.md)
-- 云端部署说明：[docs/deployment-cloud.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/deployment-cloud.md)
-- 智谱接入说明：[docs/provider-zhipu.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/provider-zhipu.md)
-- NEW-API 管理员手册：[docs/admin-new-api.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/admin-new-api.md)
-- LibreChat 管理员手册：[docs/admin-librechat.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/admin-librechat.md)
-- 运行手册：[docs/runbook.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/runbook.md)
-- 验收标准：[docs/acceptance-criteria.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/acceptance-criteria.md)
-- 自测报告：[docs/self-test-report.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/self-test-report.md)
+- 需求说明：[docs/architecture/requirements.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/requirements.md)
+- 架构说明：[docs/architecture/architecture.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/architecture.md)
+- 实施计划：[docs/architecture/implementation-plan.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/implementation-plan.md)
+- 本地部署说明：[docs/architecture/deployment-local.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/deployment-local.md)
+- 云端部署说明：[docs/architecture/deployment-cloud.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/deployment-cloud.md)
+- 智谱接入说明：[docs/architecture/provider-zhipu.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/provider-zhipu.md)
+- NEW-API 管理员手册：[docs/architecture/admin-new-api.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/admin-new-api.md)
+- LibreChat 管理员手册：[docs/architecture/admin-librechat.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/admin-librechat.md)
+- 运行手册：[docs/architecture/runbook.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/runbook.md)
+- 验收标准：[docs/architecture/acceptance-criteria.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/acceptance-criteria.md)
+- 自测报告：[docs/architecture/self-test-report.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/self-test-report.md)
 
 ## 建议阅读顺序
 如果你是第一次接手本项目，建议按下面顺序阅读：
 
-1. [docs/requirements.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/requirements.md)
-2. [docs/architecture.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture.md)
-3. [docs/implementation-plan.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/implementation-plan.md)
-4. [docs/deployment-local.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/deployment-local.md) 或 [docs/deployment-cloud.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/deployment-cloud.md)
-5. [docs/admin-new-api.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/admin-new-api.md) 与 [docs/admin-librechat.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/admin-librechat.md)
-6. [docs/runbook.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/runbook.md)
-7. [docs/acceptance-criteria.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/acceptance-criteria.md)
+1. [docs/architecture/requirements.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/requirements.md)
+2. [docs/architecture/architecture.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/architecture.md)
+3. [docs/architecture/implementation-plan.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/implementation-plan.md)
+4. [docs/architecture/deployment-local.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/deployment-local.md) 或 [docs/architecture/deployment-cloud.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/deployment-cloud.md)
+5. [docs/architecture/admin-new-api.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/admin-new-api.md) 与 [docs/architecture/admin-librechat.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/admin-librechat.md)
+6. [docs/architecture/runbook.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/runbook.md)
+7. [docs/architecture/acceptance-criteria.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/acceptance-criteria.md)
