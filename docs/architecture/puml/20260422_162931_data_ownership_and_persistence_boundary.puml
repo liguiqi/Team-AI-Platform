@@ -1,0 +1,94 @@
+@startuml
+title Team AI Platform 数据主权与持久化边界图
+
+left to right direction
+skinparam shadowing false
+skinparam componentStyle rectangle
+skinparam wrapWidth 220
+skinparam maxMessageSize 180
+
+package "身份与认证域" {
+  database "Casdoor DB\nPostgreSQL:CASDOOR_DB_NAME" as CasDB2
+  rectangle "主数据归属: Casdoor" as CasOwner
+}
+
+package "模型治理域" {
+  database "NEW-API DB\nPostgreSQL:NEW_API_DB_NAME" as NewApiDB2
+  database "Redis\n缓存 / 限流辅助" as Redis2
+  rectangle "主数据归属: NEW-API" as NewApiOwner
+}
+
+package "聊天体验域" {
+  database "LibreChat MongoDB\n数据库名: LibreChat" as Mongo2
+  rectangle "主数据归属: LibreChat" as LibreOwner
+}
+
+artifact "runtime/local/new-api/postgres\nruntime/prod/new-api/postgres" as PgVolume
+artifact "runtime/local/new-api/redis\nruntime/prod/new-api/redis" as RedisVolume
+artifact "runtime/local/librechat/mongodb\nruntime/prod/librechat/mongodb" as MongoVolume
+artifact "runtime/local/librechat/uploads\nruntime/prod/librechat/uploads" as UploadVolume
+artifact "runtime/local/casdoor/logs\nruntime/prod/casdoor/logs" as CasLogs
+artifact "runtime/local/new-api/logs\nruntime/prod/new-api/logs" as NewApiLogs
+artifact "runtime/local/librechat/logs\nruntime/prod/librechat/logs" as LibreLogs
+
+CasOwner --> CasDB2 : 保存
+CasOwner --> CasLogs : 写日志
+
+NewApiOwner --> NewApiDB2 : 保存
+NewApiOwner --> Redis2 : 缓存
+NewApiOwner --> NewApiLogs : 写日志
+
+LibreOwner --> Mongo2 : 保存
+LibreOwner --> UploadVolume : 文件上传
+LibreOwner --> LibreLogs : 写日志
+
+CasDB2 --> PgVolume : 持久化
+NewApiDB2 --> PgVolume : 持久化
+Redis2 --> RedisVolume : 持久化
+Mongo2 --> MongoVolume : 持久化
+
+note bottom of CasOwner
+Casdoor 负责:
+- 用户账号
+- 手机号 / 邮箱
+- 密码
+- 组织 / 应用
+- Provider
+- OIDC 配置
+
+对 OpenID 用户而言:
+- 删除 / 禁用 / 改密码应优先在 Casdoor
+end note
+
+note bottom of NewApiOwner
+NEW-API 负责:
+- 渠道
+- 模型矩阵
+- model_mapping
+- 服务 token
+- 服务用户额度
+- 限流配置
+- 请求日志 / 审计
+end note
+
+note bottom of LibreOwner
+LibreChat 负责:
+- 本地用户镜像
+- 对话 / 消息
+- 智能体
+- Prompt
+- 文件与上传引用
+
+OpenID 登录用户首次成功登录后
+才会在 Mongo 中生成本地用户镜像
+end note
+
+legend right
+= 审计结论 =
+1. 身份主权与模型治理被明确拆分
+2. LibreChat 不持有上游模型供应商密钥
+3. PostgreSQL 是共享实例, 但不是共享同一逻辑库
+4. MongoDB 仅负责聊天体验数据, 不应作为认证事实源
+endlegend
+
+@enduml

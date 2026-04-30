@@ -260,7 +260,7 @@ make smoke-zhipu
 ## 建议搭配文档
 遇到具体问题时，建议按职责边界补充阅读：
 
-1. 前台页面、模型显示、上传与用户体验问题，优先看 [admin-librechat.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/admin-librechat.md)
-2. 渠道、token、额度、限流、上游模型映射问题，优先看 [admin-new-api.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/admin-new-api.md)
-3. 统一认证、短信、邮件验证码问题，优先看 [admin-auth-sso.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/admin-auth-sso.md)
-4. 若需要回看整体设计，再看 [architecture.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture.md)
+1. 前台页面、模型显示、上传与用户体验问题，优先看 [admin-librechat.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/admin-librechat.md)
+2. 渠道、token、额度、限流、上游模型映射问题，优先看 [admin-new-api.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/admin-new-api.md)
+3. 统一认证、短信、邮件验证码问题，优先看 [admin-auth-sso.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/admin-auth-sso.md)
+4. 若需要回看整体设计，再看 [architecture.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/architecture.md)

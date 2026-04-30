@@ -244,7 +244,7 @@ docker compose -f deploy/docker-compose.prod.yml --env-file deploy/env/prod/.env
 - 你本轮提供过真实云凭据，建议在验收完成后尽快轮换一遍。
 
 ## 建议联读
-1. [architecture.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture.md)
-2. [deployment-local.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/deployment-local.md)
-3. [deployment-cloud.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/deployment-cloud.md)
-4. [admin-librechat.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/admin-librechat.md)
+1. [architecture.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/architecture.md)
+2. [deployment-local.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/deployment-local.md)
+3. [deployment-cloud.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/deployment-cloud.md)
+4. [admin-librechat.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/admin-librechat.md)
