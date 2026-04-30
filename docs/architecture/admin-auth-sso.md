@@ -67,6 +67,25 @@
 - `LIBRECHAT_OPENID_SCOPE`
 - `LIBRECHAT_OPENID_BUTTON_LABEL`
 - `LIBRECHAT_OPENID_ALLOW_INSECURE_HTTP`：仅本地 `http://localhost` 调试时设为 `true`，生产必须保持 `false`。
+- `LIBRECHAT_OPENID_PATCH_INSECURE_HTTP`：仅本地调试允许为 `true`，生产必须为 `false`。
+- `LIBRECHAT_NODE_OPTIONS`：本地可加载 `/app/librechat-patches/openid-insecure-http.js`；生产必须留空。
+
+### 认证策略开关
+- `CASDOOR_ENABLE_SIGNUP`：是否允许用户自助注册。
+- `CASDOOR_ENABLE_PASSWORD_LOGIN`：是否允许密码登录。
+- `CASDOOR_ENABLE_VERIFICATION_CODE_LOGIN`：是否允许邮箱/手机验证码登录。
+- `CASDOOR_ENABLE_PASSWORD_GRANT`：是否允许 OIDC password grant，默认必须保持 `false`。
+- `CASDOOR_OIDC_GRANT_TYPES`：默认 `authorization_code,refresh_token`。
+- `CASDOOR_OIDC_EXPIRE_IN_HOURS` / `CASDOOR_OIDC_COOKIE_EXPIRE_IN_HOURS`：控制 token 与 Casdoor cookie 有效期。
+- `CASDOOR_EXTRA_REDIRECT_URIS` / `CASDOOR_EXTRA_POST_LOGOUT_REDIRECT_URIS`：用于额外平台回调或登出回跳地址，多个值用英文逗号分隔。
+- `AUTH_CLIENTS_JSON`：预留多平台客户端配置，脚本会读取其中的 `redirectUris` 与 `postLogoutRedirectUris` 并合并到 Casdoor 应用许可跳转列表。
+
+### 统一品牌别名
+- `AUTH_BRAND_NAME`：认证体系统一品牌名。
+- `AUTH_BRAND_LOGO_URL`：认证页外部 Logo URL，留空时使用 LibreChat 静态资源路径。
+- `AUTH_BRAND_PRIMARY_COLOR`：认证页主色。
+- `AUTH_LOGIN_BUTTON_LABEL`：统一登录按钮文案。
+- `AUTH_EMAIL_SUBJECT` / `AUTH_EMAIL_FROM_NAME`：验证码邮件标题与发件人展示名。
 
 ### 平台主题与品牌统一
 - `PLATFORM_THEME_MODE`：平台统一主题，建议固定为 `dark`。
@@ -89,14 +108,18 @@
 cp .env.example .env
 make init
 make up
+make doctor
 make health
+make smoke-auth
 ```
 
 ### 生产
 ```bash
 cp deploy/env/prod/.env.example deploy/env/prod/.env
 MODE=prod bash scripts/up.sh
+MODE=prod bash scripts/doctor.sh
 MODE=prod bash scripts/healthcheck.sh
+MODE=prod bash scripts/auth/smoke-auth.sh
 ```
 
 ### 启动后会自动完成的事情
@@ -112,7 +135,8 @@ MODE=prod bash scripts/healthcheck.sh
 - 本地模式下可选启动宿主机 SMTP relay，规避容器直连企业邮箱的兼容问题
 
 说明：
-- 当前默认 `CASDOOR_INIT_DATA_NEW_ONLY=false`，表示仓库中的认证配置会在服务启动时持续回放。
+- 本地默认 `CASDOOR_INIT_DATA_NEW_ONLY=false`，表示仓库中的认证配置会在服务启动时持续回放，便于调试。
+- 生产默认 `CASDOOR_INIT_DATA_NEW_ONLY=true`，避免重启反复覆盖线上人工校正后的 Casdoor UI 配置。
 - 业务用户默认进入 `CASDOOR_USER_ORGANIZATION_NAME` 对应组织，不会进入 `built-in`。
 - `make up` 和 `make restart` 现在会把 `.env` 渲染后的 Provider 配置回写到 Casdoor 持久化库。
 - `make up` 和 `make restart` 也会同步 Casdoor 组织和应用配置，防止应用重新挂回 `built-in`。
@@ -241,6 +265,8 @@ docker compose -f deploy/docker-compose.prod.yml --env-file deploy/env/prod/.env
 ## 安全建议
 - 不要把 `.env` 与生产密钥放进 Git。
 - 不要重新开启 LibreChat 本地邮箱登录，避免绕过统一认证。
+- 生产环境必须使用 HTTPS，并保持 `LIBRECHAT_OPENID_ALLOW_INSECURE_HTTP=false`、`LIBRECHAT_OPENID_PATCH_INSECURE_HTTP=false`、`LIBRECHAT_NODE_OPTIONS=`。
+- 若必须开放管理后台，建议通过防火墙、VPN、堡垒机或反向代理 IP 白名单限制 `Casdoor` 与 `NEW-API` 管理入口。
 - 你本轮提供过真实云凭据，建议在验收完成后尽快轮换一遍。
 
 ## 建议联读

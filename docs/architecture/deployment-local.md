@@ -93,6 +93,10 @@ CASDOOR_SMS_TEMPLATE_CODE=短信模板编号
 - 当前仓库默认关闭 LibreChat 本地邮箱注册与登录，统一走 Casdoor OIDC。
 - 当前仓库默认把注册用户放到独立业务组织 `CASDOOR_USER_ORGANIZATION_NAME`，不会放到 `built-in`。
 - 本地模板默认 `LIBRECHAT_OPENID_ALLOW_INSECURE_HTTP=true`，用于允许 `http://localhost` 下的 OIDC 调试。
+- 本地模板默认 `LIBRECHAT_OPENID_PATCH_INSECURE_HTTP=true`，并通过 `LIBRECHAT_NODE_OPTIONS` 加载 LibreChat HTTP OIDC patch；该配置不能带入生产。
+- Casdoor 登录策略由 `CASDOOR_ENABLE_SIGNUP`、`CASDOOR_ENABLE_PASSWORD_LOGIN`、`CASDOOR_ENABLE_VERIFICATION_CODE_LOGIN` 和 `CASDOOR_ENABLE_PASSWORD_GRANT` 控制。
+- OIDC grant 默认收敛为 `authorization_code,refresh_token`，不再默认启用 `password` grant。
+- 后续接入新平台时，可通过 `CASDOOR_EXTRA_REDIRECT_URIS`、`CASDOOR_EXTRA_POST_LOGOUT_REDIRECT_URIS` 或 `AUTH_CLIENTS_JSON` 扩展回调地址。
 - `make init` / `make up` 会把本地 `LIBRECHAT_PUBLIC_URL`、`NEW_API_PUBLIC_URL`、`CASDOOR_PUBLIC_URL` 从默认 `localhost` 自动迁移为宿主机 IP，避免容器内访问不到宿主机回调地址。
 - 推荐默认保持：
   - `NEW_API_TOKEN_MODEL_LIMITS_ENABLED=false`
@@ -212,17 +216,22 @@ make smoke-zhipu
 
 ### 执行命令
 ```bash
+make doctor
 make health
+make smoke-auth
 ```
 
 ### 检查内容
+- `make doctor`：校验 Docker、Compose、端口、认证环境变量、生产安全约束和占位密钥风险。
 - `docker compose ps`
 - `NEW-API /api/status`
 - `Casdoor /.well-known/openid-configuration`
 - `LibreChat /health`
+- `make smoke-auth`：校验 Casdoor discovery、issuer、OIDC endpoint、LibreChat 登录页和 Casdoor callback 白名单。
 
 ### 成功标准
 - 输出“应用层健康检查通过”
+- 输出“认证链路 smoke 检查通过”
 
 ## 常见入口
 

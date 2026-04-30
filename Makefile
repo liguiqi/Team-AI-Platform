@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: init up down restart bootstrap render-auth sync-casdoor-auth sync-casdoor-providers sync-librechat-models health smoke smoke-zhipu backup restore doctor verify-no-secrets
+.PHONY: init up down restart bootstrap render-auth sync-casdoor-auth sync-casdoor-providers sync-librechat-models health smoke smoke-auth smoke-zhipu backup restore doctor verify-no-secrets
 
 init:
 	bash scripts/init-local.sh
@@ -34,6 +34,9 @@ health:
 
 smoke:
 	bash scripts/smoke-test.sh
+
+smoke-auth:
+	bash scripts/auth/smoke-auth.sh
 
 smoke-zhipu:
 	bash scripts/smoke-test-zhipu.sh

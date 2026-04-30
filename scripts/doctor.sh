@@ -11,6 +11,8 @@ docker compose version >/dev/null 2>&1 || die "缺少 docker compose"
 prepare_env_file
 load_env
 
+bash "$ROOT_DIR/scripts/auth/validate-auth-env.sh"
+
 if docker compose --env-file "$(env_file)" -f "$(compose_file)" config >/dev/null; then
   info "compose 配置校验通过"
 else

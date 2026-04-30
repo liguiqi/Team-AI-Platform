@@ -128,7 +128,7 @@ services:
       PLATFORM_THEME_LOCK: ${PLATFORM_THEME_LOCK:-true}
       PLATFORM_HIDE_THEME_SELECTOR: ${PLATFORM_HIDE_THEME_SELECTOR:-true}
       NO_INDEX: "true"
-      NODE_OPTIONS: "--require /app/librechat-patches/openid-insecure-http.js"
+      NODE_OPTIONS: ${LIBRECHAT_NODE_OPTIONS:-}
       TRUST_PROXY: "1"
     volumes:
       - ../runtime/prod/librechat/librechat.yaml:/app/librechat.yaml:ro
