@@ -1,7 +1,5 @@
-.env
-deploy/env/local/.env
-deploy/env/prod/.env
-PRD.md
+# POC 项目：env 和配置文件纳入版本控制
+# runtime 数据目录不入库（数据库文件、日志、上传文件等）
 runtime/
 backups/
 *.log

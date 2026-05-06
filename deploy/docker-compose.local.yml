@@ -60,6 +60,12 @@ services:
       RUNNING_IN_DOCKER: "true"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8000/.well-known/openid-configuration"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 10s
     volumes:
       - ../runtime/local/casdoor/app.conf:/conf/app.conf:ro
       - ../runtime/local/casdoor/init_data.json:/init_data.json:ro
@@ -72,9 +78,12 @@ services:
     container_name: ai-gateway-librechat
     restart: always
     depends_on:
-      - librechat-mongodb
-      - new-api
-      - casdoor
+      librechat-mongodb:
+        condition: service_started
+      new-api:
+        condition: service_started
+      casdoor:
+        condition: service_healthy
     ports:
       - "${LIBRECHAT_PORT}:3080"
     environment:
@@ -85,6 +94,12 @@ services:
       DOMAIN_CLIENT: ${LIBRECHAT_PUBLIC_URL}
       DOMAIN_SERVER: ${LIBRECHAT_PUBLIC_URL}
       SEARCH: ${LIBRECHAT_SEARCH_ENABLED}
+      SEARCH_PROVIDER: ${LIBRECHAT_SEARCH_PROVIDER:-serper}
+      SERPER_API_KEY: ${LIBRECHAT_SERPER_API_KEY:-}
+      SCRAPER: ${LIBRECHAT_SCRAPER:-firecrawl}
+      FIRECRAWL_API_KEY: ${LIBRECHAT_FIRECRAWL_API_KEY:-}
+      RERANKER: ${LIBRECHAT_RERANKER:-jina}
+      JINA_API_KEY: ${LIBRECHAT_JINA_API_KEY:-}
       ALLOW_EMAIL_LOGIN: ${LIBRECHAT_ALLOW_EMAIL_LOGIN}
       ALLOW_REGISTRATION: ${LIBRECHAT_ALLOW_REGISTRATION}
       ALLOW_SOCIAL_LOGIN: ${LIBRECHAT_ALLOW_SOCIAL_LOGIN}
