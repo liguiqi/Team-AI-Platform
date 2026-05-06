@@ -70,9 +70,17 @@ sql_escape() {
 
 psql_exec() {
   local sql="$1"
-  docker_compose exec -T new-api-postgres \
-    env PGPASSWORD="${NEW_API_DB_PASSWORD}" \
-    psql -U "${NEW_API_DB_USER}" -d "${NEW_API_DB_NAME}" -v ON_ERROR_STOP=1 -At -F $'\t' -c "$sql"
+  local tmp
+  tmp="$(mktemp --suffix=.sql)"
+  # 用单引号 heredoc 避免 bash 展开双引号
+  cat > "$tmp" <<PSQLEOF
+$sql
+PSQLEOF
+  docker cp "$tmp" ai-gateway-new-api-postgres:/tmp/_psql_cmd.sql >/dev/null
+  docker exec ai-gateway-new-api-postgres env PGPASSWORD="${NEW_API_DB_PASSWORD}" \
+    psql -U "${NEW_API_DB_USER}" -d "${NEW_API_DB_NAME}" -v ON_ERROR_STOP=1 -At -F $'\t' -f /tmp/_psql_cmd.sql
+  docker exec ai-gateway-new-api-postgres rm -f /tmp/_psql_cmd.sql >/dev/null
+  rm -f "$tmp"
 }
 
 api_setup_resp="$(curl -fsS "${new_api_url}/api/setup")"
@@ -94,7 +102,7 @@ root_login_resp="$(post_json_retry_429 "${new_api_url}/api/user/login" "$root_lo
 printf '%s' "$root_login_resp" | json_has_true success || die "root 登录失败: $root_login_resp"
 ROOT_ID="$(printf '%s' "$root_login_resp" | json_get_number id)"
 [[ -n "$ROOT_ID" ]] || die "无法从 root 登录响应中解析用户 ID"
-info "root 登录成功，准备写入限流配置"
+info "root 登录成功，准备写入系统配置"
 
 put_option() {
   local key="$1"
@@ -110,6 +118,10 @@ EOF
     -H "New-Api-User: ${ROOT_ID}" \
     -d "$payload" >/dev/null
 }
+
+put_option SelfUseModeEnabled "${NEW_API_SELF_USE_MODE_ENABLED}"
+put_option DemoSiteEnabled "${NEW_API_DEMO_SITE_ENABLED}"
+info "系统配置已写入（SelfUseMode / DemoSite）"
 
 put_option ModelRequestRateLimitEnabled "${NEW_API_RATE_LIMIT_ENABLED}"
 put_option ModelRequestRateLimitDurationMinutes "${NEW_API_RATE_LIMIT_WINDOW_MINUTES}"
@@ -201,23 +213,46 @@ fi
 
 if [[ -z "${TOKEN_ID:-}" ]]; then
   info "创建 LibreChat 服务 token"
-  TOKEN_KEY="$(random_alnum 48)"
-  token_key_sql="$(sql_escape "${TOKEN_KEY}")"
+  TOKEN_KEY="$(random_alnum 48)" || { warn "random_alnum failed"; TOKEN_KEY="fallback$(date +%s)"; }
+  token_key_sql="$(sql_escape "${TOKEN_KEY}")" || { warn "sql_escape failed"; token_key_sql="${TOKEN_KEY}"; }
   created_time="$(date +%s)"
-  insert_token_sql="$(cat <<EOF
-INSERT INTO tokens (user_id, key, status, name, created_time, accessed_time, expired_time, remain_quota, unlimited_quota, model_limits_enabled, model_limits, used_quota, "group", cross_group_retry)
-VALUES (${SERVICE_ID}, '${token_key_sql}', 1, '${token_name_sql}', ${created_time}, ${created_time}, -1, ${NEW_API_SERVICE_TOKEN_QUOTA}, ${NEW_API_SERVICE_TOKEN_UNLIMITED}, ${token_model_limits_enabled_sql}, ${token_model_limits_sql}, 0, '${token_group_sql}', false)
-RETURNING id, key;
-EOF
-)"
-  token_row="$(psql_exec "$insert_token_sql")"
+  info "token_key_sql=[${token_key_sql}] token_name=[${token_name_sql}]"
+  # INSERT 不含 "group" 列
+  docker exec \
+    -e PGPASSWORD="${NEW_API_DB_PASSWORD}" \
+    -e _UID="${NEW_API_DB_USER}" \
+    -e _DB="${NEW_API_DB_NAME}" \
+    -e _SID="${SERVICE_ID}" \
+    -e _KEY="${token_key_sql}" \
+    -e _NAME="${token_name_sql}" \
+    -e _CT="${created_time}" \
+    -e _QUOTA="${NEW_API_SERVICE_TOKEN_QUOTA}" \
+    -e _UNL="${NEW_API_SERVICE_TOKEN_UNLIMITED}" \
+    -e _MLE="${token_model_limits_enabled_sql}" \
+    -e _ML="${token_model_limits_sql}" \
+    -e _GRP="${token_group_sql}" \
+    ai-gateway-new-api-postgres \
+    bash -c 'psql -U "$_UID" -d "$_DB" -v ON_ERROR_STOP=1 -c "INSERT INTO tokens (user_id, key, status, name, created_time, accessed_time, expired_time, remain_quota, unlimited_quota, model_limits_enabled, model_limits, used_quota, cross_group_retry) VALUES ($_SID, '\''$_KEY'\'', 1, '\''$_NAME'\'', $_CT, $_CT, -1, $_QUOTA, $_UNL, $_MLE, '\''$_ML'\'', 0, false);"
+psql -U "$_UID" -d "$_DB" -c "UPDATE tokens SET \"group\" = '\''$_GRP'\'' WHERE user_id = $_SID AND name = '\''$_NAME'\'';"'
+  # 反查 token
+  token_row="$(psql_exec "SELECT id, key FROM tokens WHERE user_id = ${SERVICE_ID} AND name = '${token_name_sql}' ORDER BY id DESC LIMIT 1;" 2>/dev/null || true)"
   TOKEN_ID="$(printf '%s' "$token_row" | cut -f1)"
   TOKEN_KEY="$(printf '%s' "$token_row" | cut -f2)"
 else
   info "更新 LibreChat 服务 token（ID: ${TOKEN_ID}）"
-  psql_exec "UPDATE tokens SET status = 1, expired_time = -1, remain_quota = ${NEW_API_SERVICE_TOKEN_QUOTA}, unlimited_quota = ${NEW_API_SERVICE_TOKEN_UNLIMITED}, model_limits_enabled = ${token_model_limits_enabled_sql}, model_limits = ${token_model_limits_sql}, \"group\" = '${token_group_sql}', cross_group_retry = false WHERE id = ${TOKEN_ID};" >/dev/null
+  docker exec ai-gateway-new-api-postgres \
+    env PGPASSWORD="${NEW_API_DB_PASSWORD}" \
+    psql -U "${NEW_API_DB_USER}" -d "${NEW_API_DB_NAME}" -c \
+    "UPDATE tokens SET status = 1, expired_time = -1, remain_quota = ${NEW_API_SERVICE_TOKEN_QUOTA}, unlimited_quota = ${NEW_API_SERVICE_TOKEN_UNLIMITED}, model_limits_enabled = ${token_model_limits_enabled_sql}, model_limits = ${token_model_limits_sql}, cross_group_retry = false WHERE id = ${TOKEN_ID};"
+  # 单独更新 group 列
+  docker exec ai-gateway-new-api-postgres \
+    env PGPASSWORD="${NEW_API_DB_PASSWORD}" \
+    psql -U "${NEW_API_DB_USER}" -d "${NEW_API_DB_NAME}" -c \
+    'UPDATE tokens SET "group" = '"'"''${token_group_sql}''"'"' WHERE id = '${TOKEN_ID}';'
 fi
 
+[[ -n "${TOKEN_ID:-}" ]] || { info "反查 token ID 失败，尝试从数据库重新获取"; TOKEN_ID="$(docker exec ai-gateway-new-api-postgres psql -U "${NEW_API_DB_USER}" -d "${NEW_API_DB_NAME}" -At -c "SELECT id FROM tokens WHERE user_id = ${SERVICE_ID} AND name = '${token_name_sql}' ORDER BY id DESC LIMIT 1;" 2>/dev/null)"; }
+[[ -n "${TOKEN_KEY:-}" ]] || { info "反查 token key 失败，尝试从数据库重新获取"; TOKEN_KEY="$(docker exec ai-gateway-new-api-postgres psql -U "${NEW_API_DB_USER}" -d "${NEW_API_DB_NAME}" -At -c "SELECT key FROM tokens WHERE user_id = ${SERVICE_ID} AND name = '${token_name_sql}' ORDER BY id DESC LIMIT 1;" 2>/dev/null)"; }
 [[ -n "${TOKEN_ID:-}" ]] || die "无法获取服务 token ID"
 [[ -n "${TOKEN_KEY:-}" ]] || die "无法获取服务 token 明文"
 

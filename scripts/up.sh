@@ -30,5 +30,5 @@ fi
 
 if [[ "${BOOTSTRAP_AUTOCONFIGURE:-false}" == "true" ]]; then
   info "检测到 BOOTSTRAP_AUTOCONFIGURE=true，开始自动 bootstrap"
-  bash "$ROOT_DIR/scripts/bootstrap-new-api.sh"
+  bash "$ROOT_DIR/scripts/bootstrap-new-api.sh" || true
 fi

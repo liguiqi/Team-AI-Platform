@@ -74,10 +74,10 @@ services:
       - "host.docker.internal:host-gateway"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8000/.well-known/openid-configuration"]
-      interval: 5s
+      interval: 3s
       timeout: 3s
-      retries: 30
-      start_period: 10s
+      retries: 40
+      start_period: 60s
     volumes:
       - ../runtime/local/casdoor/app.conf:/conf/app.conf:ro
       - ../runtime/local/casdoor/init_data.json:/init_data.json:ro
