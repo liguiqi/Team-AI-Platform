@@ -193,17 +193,6 @@ migrate_legacy_librechat_auth_flags() {
   fi
 }
 
-migrate_legacy_casdoor_version() {
-  local file="$1"
-  local casdoor_version
-
-  casdoor_version="$(current_env_value CASDOOR_VERSION "$file")"
-  if [[ "$casdoor_version" == "v2.99.0" ]]; then
-    replace_or_append_env CASDOOR_VERSION 2.396.1 "$file"
-    info "检测到旧版 Casdoor 镜像标签 v2.99.0，已迁移到支持 PNVS 的 2.396.1"
-  fi
-}
-
 detect_local_host_ip() {
   local host_ip
 
@@ -292,7 +281,6 @@ prepare_env_file() {
   fi
 
   migrate_legacy_librechat_auth_flags "$file"
-  migrate_legacy_casdoor_version "$file"
   migrate_local_public_urls_for_oidc "$file"
 
   if [[ "$MODE" == "local" ]]; then

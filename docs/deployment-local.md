@@ -65,18 +65,11 @@ CASDOOR_SMS_SIGN_NAME=短信签名
 CASDOOR_SMS_TEMPLATE_CODE=短信模板编号
 ```
 
-同时确认：
-- `CASDOOR_VERSION=2.396.1`
-- 若使用 163 企业邮，推荐 `CASDOOR_EMAIL_SMTP_PORT=465`
-- 若使用 163 企业邮，推荐 `CASDOOR_EMAIL_SSL_MODE=Enable`
-- 若容器直连企业邮箱 SMTP 报连接重置，可启用 `LOCAL_SMTP_RELAY_ENABLED=true`
-
 ### 第三步：建议确认的变量
 - `NEW_API_SETUP_USERNAME`
 - `NEW_API_SETUP_PASSWORD`
 - `NEW_API_SERVICE_USER`
 - `NEW_API_SERVICE_PASSWORD`
-- `CASDOOR_USER_ORGANIZATION_NAME`
 - `NEW_API_TOKEN_MODEL_LIMITS_ENABLED`
 - `NEW_API_SYNC_CHANNEL_MODELS_FROM_ENV`
 - `LIBRECHAT_PORT`
@@ -91,12 +84,7 @@ CASDOOR_SMS_TEMPLATE_CODE=短信模板编号
 - `NEW_API_SERVICE_TOKEN` 不需要手工填写，bootstrap 会自动生成并回写。
 - `CASDOOR_ADMIN_PASSWORD` 与 `CASDOOR_CLIENT_SECRET` 在 `make init` 时会自动生成随机值。
 - 当前仓库默认关闭 LibreChat 本地邮箱注册与登录，统一走 Casdoor OIDC。
-- 当前仓库默认把注册用户放到独立业务组织 `CASDOOR_USER_ORGANIZATION_NAME`，不会放到 `built-in`。
 - 本地模板默认 `LIBRECHAT_OPENID_ALLOW_INSECURE_HTTP=true`，用于允许 `http://localhost` 下的 OIDC 调试。
-- 本地模板默认 `LIBRECHAT_OPENID_PATCH_INSECURE_HTTP=true`，并通过 `LIBRECHAT_NODE_OPTIONS` 加载 LibreChat HTTP OIDC patch；该配置不能带入生产。
-- Casdoor 登录策略由 `CASDOOR_ENABLE_SIGNUP`、`CASDOOR_ENABLE_PASSWORD_LOGIN`、`CASDOOR_ENABLE_VERIFICATION_CODE_LOGIN` 和 `CASDOOR_ENABLE_PASSWORD_GRANT` 控制。
-- OIDC grant 默认收敛为 `authorization_code,refresh_token`，不再默认启用 `password` grant。
-- 后续接入新平台时，可通过 `CASDOOR_EXTRA_REDIRECT_URIS`、`CASDOOR_EXTRA_POST_LOGOUT_REDIRECT_URIS` 或 `AUTH_CLIENTS_JSON` 扩展回调地址。
 - `make init` / `make up` 会把本地 `LIBRECHAT_PUBLIC_URL`、`NEW_API_PUBLIC_URL`、`CASDOOR_PUBLIC_URL` 从默认 `localhost` 自动迁移为宿主机 IP，避免容器内访问不到宿主机回调地址。
 - 推荐默认保持：
   - `NEW_API_TOKEN_MODEL_LIMITS_ENABLED=false`
@@ -138,9 +126,6 @@ make up
 - 生成 `runtime/local/librechat/librechat.yaml`
 - 生成 `runtime/local/casdoor/app.conf` 与 `runtime/local/casdoor/init_data.json`
 - 启动本地 compose 中的核心服务
-- 将 Casdoor 业务组织与应用配置同步到 PostgreSQL 持久化表
-- 将 Casdoor 邮件与短信 Provider 同步到 PostgreSQL 持久化表
-- 若启用 `LOCAL_SMTP_RELAY_ENABLED=true`，同时启动宿主机 SMTP relay
 
 ### 正常启动后入口
 - LibreChat：`http://localhost:3080`
@@ -216,22 +201,17 @@ make smoke-zhipu
 
 ### 执行命令
 ```bash
-make doctor
 make health
-make smoke-auth
 ```
 
 ### 检查内容
-- `make doctor`：校验 Docker、Compose、端口、认证环境变量、生产安全约束和占位密钥风险。
 - `docker compose ps`
 - `NEW-API /api/status`
 - `Casdoor /.well-known/openid-configuration`
 - `LibreChat /health`
-- `make smoke-auth`：校验 Casdoor discovery、issuer、OIDC endpoint、LibreChat 登录页和 Casdoor callback 白名单。
 
 ### 成功标准
 - 输出“应用层健康检查通过”
-- 输出“认证链路 smoke 检查通过”
 
 ## 常见入口
 
@@ -298,9 +278,6 @@ ss -ltn | grep 18000
 重点检查：
 - 先登录 Casdoor 后台单独测试 Provider，不要直接先查 LibreChat。
 - 邮箱验证码失败：检查 `CASDOOR_EMAIL_SMTP_*`
-- 若使用 163 企业邮，确认当前不是 `25 + Disable`，推荐 `465 + Enable`
-- 修改 `.env` 后重新执行 `make up`，它会自动把 Provider 配置同步进 Casdoor 数据库
-- 若容器直连 SMTP 仍然被服务端 reset，启用 `LOCAL_SMTP_RELAY_ENABLED=true`
 - 短信验证码失败：检查 `CASDOOR_SMS_*`，并确认当前使用的是 `Alibaba Cloud PNVS SMS`
 
 ### 智谱返回 404
@@ -366,11 +343,11 @@ make smoke-zhipu
 ## 建议配套阅读
 如果你已经完成本地部署，下一步建议阅读：
 
-1. [admin-new-api.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/admin-new-api.md)
-2. [admin-librechat.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/admin-librechat.md)
-3. [admin-auth-sso.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/admin-auth-sso.md)
-4. [runbook.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/runbook.md)
-5. [acceptance-criteria.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/acceptance-criteria.md)
+1. [admin-new-api.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/admin-new-api.md)
+2. [admin-librechat.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/admin-librechat.md)
+3. [admin-auth-sso.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/admin-auth-sso.md)
+4. [runbook.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/runbook.md)
+5. [acceptance-criteria.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/acceptance-criteria.md)
 
 完成后再在浏览器中：
 1. 打开 `http://localhost:3080`

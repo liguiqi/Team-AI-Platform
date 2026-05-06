@@ -2,29 +2,17 @@
   email {$ACME_EMAIL}
 }
 
-(security_headers) {
-  header {
-    X-Content-Type-Options nosniff
-    X-Frame-Options DENY
-    Referrer-Policy strict-origin-when-cross-origin
-    Permissions-Policy "camera=(), microphone=(), geolocation=()"
-  }
-}
-
 {$PUBLIC_CHAT_DOMAIN:chat.localhost} {
   encode gzip zstd
-  import security_headers
   reverse_proxy librechat:3080
 }
 
 {$NEW_API_ADMIN_DOMAIN:new-api.localhost} {
   encode gzip zstd
-  import security_headers
   reverse_proxy new-api:3000
 }
 
 {$AUTH_PUBLIC_DOMAIN:auth.localhost} {
   encode gzip zstd
-  import security_headers
   reverse_proxy casdoor:8000
 }
