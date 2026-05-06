@@ -1,0 +1,19 @@
+[Unit]
+Description=AI Gateway Chat - NEW-API + LibreChat + Casdoor SSO
+After=docker.service
+Requires=docker.service
+StartLimitIntervalSec=120
+StartLimitBurst=5
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/TeamAIPlatform
+ExecStart=/bin/bash -lc 'make up'
+ExecStop=/bin/bash -lc 'make down'
+ExecReload=/bin/bash -lc 'make restart'
+TimeoutStartSec=300
+TimeoutStopSec=120
+
+[Install]
+WantedBy=multi-user.target
