@@ -34,11 +34,6 @@ services:
       POSTGRES_PASSWORD: ${NEW_API_DB_PASSWORD}
     volumes:
       - ../runtime/local/new-api/postgres:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${NEW_API_DB_USER} -d ${NEW_API_DB_NAME}"]
-      interval: 5s
-      timeout: 5s
-      retries: 20
     networks:
       - gateway
 
@@ -58,8 +53,7 @@ services:
     restart: always
     entrypoint: /bin/sh -c './server --createDatabase=true'
     depends_on:
-      new-api-postgres:
-        condition: service_healthy
+      - new-api-postgres
     ports:
       - "${CASDOOR_PORT}:8000"
     environment:
@@ -70,12 +64,6 @@ services:
       - ../runtime/local/casdoor/app.conf:/conf/app.conf:ro
       - ../runtime/local/casdoor/init_data.json:/init_data.json:ro
       - ../runtime/local/casdoor/logs:/logs
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8000/.well-known/openid-configuration >/dev/null 2>&1"]
-      interval: 5s
-      timeout: 5s
-      retries: 30
-      start_period: 10s
     networks:
       - gateway
 
@@ -84,12 +72,9 @@ services:
     container_name: ai-gateway-librechat
     restart: always
     depends_on:
-      librechat-mongodb:
-        condition: service_started
-      new-api:
-        condition: service_started
-      casdoor:
-        condition: service_healthy
+      - librechat-mongodb
+      - new-api
+      - casdoor
     ports:
       - "${LIBRECHAT_PORT}:3080"
     environment:
