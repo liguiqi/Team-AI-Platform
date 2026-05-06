@@ -17,10 +17,10 @@
 目标：先把“做什么、不做什么、为什么这样做”写清楚，避免后续边写边改架构。
 
 主要产出：
-- `docs/requirements.md`
-- `docs/architecture.md`
-- `docs/acceptance-criteria.md`
-- `docs/adr/0001-use-new-api-as-gateway.md`
+- `docs/architecture/requirements.md`
+- `docs/architecture/architecture.md`
+- `docs/architecture/acceptance-criteria.md`
+- `docs/architecture/adr/0001-use-new-api-as-gateway.md`
 
 完成标准：
 - 确认首期验收通道为智谱。

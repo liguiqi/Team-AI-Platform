@@ -109,7 +109,7 @@
 ### 运维含义
 - 若用户无法登录，不要先查 LibreChat 本地用户库。
 - 应优先检查 Casdoor OIDC、SMTP、短信 Provider 与回调地址。
-- 认证配置的详细说明见 [admin-auth-sso.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/admin-auth-sso.md)
+- 认证配置的详细说明见 [admin-auth-sso.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/admin-auth-sso.md)
 
 ## 管理员日常检查项
 
@@ -354,6 +354,6 @@ make sync-librechat-models
 这些都应优先回到 `NEW-API` 管理员手册和 runbook 排查。
 
 ## 推荐搭配阅读
-1. [admin-new-api.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/admin-new-api.md)
-2. [deployment-local.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/deployment-local.md)
-3. [runbook.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/runbook.md)
+1. [admin-new-api.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/admin-new-api.md)
+2. [deployment-local.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/deployment-local.md)
+3. [runbook.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/runbook.md)

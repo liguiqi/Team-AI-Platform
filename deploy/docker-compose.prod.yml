@@ -50,6 +50,11 @@ services:
       POSTGRES_PASSWORD: ${NEW_API_DB_PASSWORD}
     volumes:
       - ../runtime/prod/new-api/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${NEW_API_DB_USER} -d ${NEW_API_DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
     networks:
       - gateway
 
@@ -69,13 +74,20 @@ services:
     restart: always
     entrypoint: /bin/sh -c './server --createDatabase=true'
     depends_on:
-      - new-api-postgres
+      new-api-postgres:
+        condition: service_healthy
     environment:
       RUNNING_IN_DOCKER: "true"
     volumes:
       - ../runtime/prod/casdoor/app.conf:/conf/app.conf:ro
       - ../runtime/prod/casdoor/init_data.json:/init_data.json:ro
       - ../runtime/prod/casdoor/logs:/logs
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8000/.well-known/openid-configuration >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
     networks:
       - gateway
 
@@ -84,9 +96,12 @@ services:
     container_name: ai-gateway-librechat
     restart: always
     depends_on:
-      - librechat-mongodb
-      - new-api
-      - casdoor
+      librechat-mongodb:
+        condition: service_started
+      new-api:
+        condition: service_started
+      casdoor:
+        condition: service_healthy
     environment:
       HOST: ${LIBRECHAT_HOST}
       PORT: "3080"
@@ -112,19 +127,29 @@ services:
       OPENID_SESSION_SECRET: ${LIBRECHAT_OPENID_SESSION_SECRET}
       OPENID_CALLBACK_URL: /oauth/openid/callback
       OPENID_SCOPE: ${LIBRECHAT_OPENID_SCOPE}
-      OPENID_NAME_CLAIM: name
+      OPENID_NAME_CLAIM: displayName
+      OPENID_USERNAME_CLAIM: displayName
       OPENID_EMAIL_CLAIM: email
+      OPENID_ALLOW_LOCAL_ACCOUNT_LINKING: "true"
+      OPENID_REUSE_TOKENS: ${LIBRECHAT_OPENID_REUSE_TOKENS:-true}
+      OPENID_AUTO_REDIRECT: ${LIBRECHAT_OPENID_AUTO_REDIRECT:-true}
+      OPENID_MAX_LOGOUT_URL_LENGTH: ${LIBRECHAT_OPENID_MAX_LOGOUT_URL_LENGTH:-8192}
       OPENID_BUTTON_LABEL: ${LIBRECHAT_OPENID_BUTTON_LABEL}
       OPENID_ALLOW_INSECURE_HTTP: ${LIBRECHAT_OPENID_ALLOW_INSECURE_HTTP}
       OPENID_USE_PKCE: "true"
       OPENID_USE_END_SESSION_ENDPOINT: "true"
-      OPENID_POST_LOGOUT_REDIRECT_URI: "${LIBRECHAT_PUBLIC_URL}/login"
+      OPENID_POST_LOGOUT_REDIRECT_URI: "${LIBRECHAT_PUBLIC_URL}/login?redirect=false"
+      PLATFORM_THEME_MODE: ${PLATFORM_THEME_MODE:-dark}
+      PLATFORM_THEME_LOCK: ${PLATFORM_THEME_LOCK:-true}
+      PLATFORM_HIDE_THEME_SELECTOR: ${PLATFORM_HIDE_THEME_SELECTOR:-true}
       NO_INDEX: "true"
-      NODE_OPTIONS: "--require /app/librechat-patches/openid-insecure-http.js"
+      NODE_OPTIONS: ${LIBRECHAT_NODE_OPTIONS:-}
       TRUST_PROXY: "1"
     volumes:
       - ../runtime/prod/librechat/librechat.yaml:/app/librechat.yaml:ro
       - ../runtime/prod/librechat/images:/app/client/public/images
+      - ./branding/team-ai-platform-logo.svg:/app/client/public/images/team-ai-platform-logo.svg:ro
+      - ./branding/team-ai-platform-mark.svg:/app/client/public/images/team-ai-platform-mark.svg:ro
       - ../runtime/prod/librechat/uploads:/app/uploads
       - ../runtime/prod/librechat/logs:/app/logs
       - ./librechat/patches:/app/librechat-patches:ro

@@ -83,6 +83,9 @@ cp deploy/env/prod/.env.example deploy/env/prod/.env
 - 所有密码、secret、token 相关变量都使用高强度随机值。
 - 生产 `.env` 不要使用示例值。
 - 生产必须保持 `LIBRECHAT_OPENID_ALLOW_INSECURE_HTTP=false`，不要为了省事把 HTTP 调试开关带到公网环境。
+- 生产必须保持 `LIBRECHAT_OPENID_PATCH_INSECURE_HTTP=false` 且 `LIBRECHAT_NODE_OPTIONS=`，不要加载本地 HTTP OIDC patch。
+- 生产建议保持 `CASDOOR_INIT_DATA_NEW_ONLY=true`，避免服务重启后持续覆盖线上 Casdoor UI 配置。
+- 生产 OIDC grant 默认使用 `CASDOOR_OIDC_GRANT_TYPES=authorization_code,refresh_token`，不要启用 `CASDOOR_ENABLE_PASSWORD_GRANT`。
 - 推荐默认保持：
   - `NEW_API_TOKEN_MODEL_LIMITS_ENABLED=false`
   - `NEW_API_SYNC_CHANNEL_MODELS_FROM_ENV=false`
@@ -147,7 +150,9 @@ MODE=prod bash scripts/smoke-test-zhipu.sh
 
 ### 第四步：健康检查
 ```bash
+MODE=prod bash scripts/doctor.sh
 MODE=prod bash scripts/healthcheck.sh
+MODE=prod bash scripts/auth/smoke-auth.sh
 ```
 
 ### 第五步：按需同步前端模型列表
@@ -177,9 +182,10 @@ MODE=prod bash scripts/sync-librechat-models.sh
 3. 执行 `MODE=prod bash scripts/up.sh`。
 4. 检查容器状态。
 5. 执行 `MODE=prod bash scripts/bootstrap-new-api.sh`。
-6. 执行 `MODE=prod bash scripts/smoke-test-zhipu.sh`。
-7. 浏览器验证 `PUBLIC_CHAT_DOMAIN`、`NEW_API_ADMIN_DOMAIN` 与 `AUTH_PUBLIC_DOMAIN`。
-8. 记录本次上线的镜像版本、env 校验人和联调结果。
+6. 执行 `MODE=prod bash scripts/doctor.sh` 与 `MODE=prod bash scripts/auth/smoke-auth.sh`。
+7. 执行 `MODE=prod bash scripts/smoke-test-zhipu.sh`。
+8. 浏览器验证 `PUBLIC_CHAT_DOMAIN`、`NEW_API_ADMIN_DOMAIN` 与 `AUTH_PUBLIC_DOMAIN`。
+9. 记录本次上线的镜像版本、env 校验人和联调结果。
 
 ## 升级流程
 
@@ -264,8 +270,8 @@ MODE=prod bash scripts/sync-librechat-models.sh
 ## 建议配套阅读
 生产部署完成后，建议继续阅读：
 
-1. [admin-new-api.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/admin-new-api.md)
-2. [admin-librechat.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/admin-librechat.md)
-3. [admin-auth-sso.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/admin-auth-sso.md)
-4. [runbook.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/runbook.md)
-5. [acceptance-criteria.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/acceptance-criteria.md)
+1. [admin-new-api.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/admin-new-api.md)
+2. [admin-librechat.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/admin-librechat.md)
+3. [admin-auth-sso.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/admin-auth-sso.md)
+4. [runbook.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/runbook.md)
+5. [acceptance-criteria.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/acceptance-criteria.md)

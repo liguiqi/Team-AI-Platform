@@ -1,0 +1,84 @@
+@startuml
+title Team AI Platform 认证 / 注册 / 登录时序图\nCasdoor + LibreChat OIDC
+
+autonumber
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+skinparam wrapWidth 240
+skinparam maxMessageSize 180
+
+actor "最终用户" as User
+participant "LibreChat 浏览器页" as LCUI
+participant "LibreChat 前端注入补丁\nopenid-insecure-http.js" as LCPatch
+participant "LibreChat 服务端" as LCApi
+participant "Casdoor" as Casdoor
+participant "Casdoor PostgreSQL\n逻辑库: CASDOOR_DB_NAME" as CasDB
+participant "SMTP Relay / SMTP" as Mail
+participant "Alibaba Cloud PNVS SMS" as Sms
+database "LibreChat MongoDB" as Mongo
+
+User -> LCUI : 打开 /login
+LCUI -> LCPatch : 加载 index.html 注入脚本
+
+alt OPENID_AUTO_REDIRECT=true 且当前路径=/login 且无 query
+  LCPatch -> LCUI : 自动跳转 /oauth/openid
+else 手工点击
+  User -> LCUI : 点击“统一认证登录”
+end
+
+LCUI -> LCApi : 发起 OpenID 登录
+LCApi -> Casdoor : /oauth/authorize\nclient_id + redirect_uri + scope + PKCE
+Casdoor -> User : 展示登录/注册页\n(themeData + formCss + logo + favicon 已仓库化)
+
+alt 邮箱注册/邮箱验证码登录
+  User -> Casdoor : 输入邮箱 / 请求验证码
+  Casdoor -> Mail : 发送验证码
+else 手机号注册/手机号验证码登录
+  User -> Casdoor : 输入手机号 / 请求验证码
+  Casdoor -> Sms : 发送短信验证码
+else 账号密码登录
+  User -> Casdoor : 输入既有账号密码
+end
+
+Casdoor -> CasDB : 校验或创建业务用户\n组织 = CASDOOR_USER_ORGANIZATION_NAME\n不是 built-in
+Casdoor --> User : 认证成功\n302 redirect 到 LibreChat callback
+
+User -> LCApi : GET /oauth/openid/callback?code=...&state=...
+LCApi -> Casdoor : /token\ncode + code_verifier
+Casdoor --> LCApi : access_token + id_token + refresh_token
+LCApi -> Casdoor : /userinfo
+Casdoor -> CasDB : 读取 claims / profile / phone / email
+Casdoor --> LCApi : userinfo + claims
+
+alt 首次 OpenID 登录且 Mongo 中无用户
+  LCApi -> LCApi : 解析 displayName / email / phone / sub
+  alt claim 中 email 合法
+    LCApi -> Mongo : 按 openidId / email 查找并创建用户
+  else 仅手机号或 email 非法
+    LCApi -> LCApi : 生成 synthetic email\n避免 LibreChat "email is invalid"
+    LCApi -> Mongo : 创建 OpenID 用户
+  end
+else Mongo 已有本地同邮箱账号且允许关联
+  LCApi -> Mongo : 查找 local provider 用户
+  LCApi -> Mongo : provider=openid + openidId 迁移关联
+else 已有 OpenID 用户
+  LCApi -> Mongo : 读取并更新 OpenID 用户资料
+end
+
+LCApi -> LCApi : 写入 JWT / refresh token /\nopenid_id_token cookie
+note right of LCApi
+openid_id_token cookie 的作用:
+- 供 logout 时生成 id_token_hint
+- 规避浏览器 / session 丢失时注销失败
+end note
+
+LCApi --> User : 建立 LibreChat 会话并跳转聊天页
+
+opt 用户点击“注销”
+  User -> LCUI : 触发 Logout
+  LCUI -> LCApi : /api/logout
+  LCApi -> Casdoor : end_session_endpoint\n附带 id_token_hint
+  Casdoor --> User : 回到登录入口或统一认证页
+end
+
+@enduml
