@@ -6,10 +6,10 @@
 ## 自测环境
 - 操作系统：Linux 开发环境（Ubuntu）
 - 部署模式：`MODE=local`
-- 测试日期：2026-05-07
+- 测试日期：2026-05-07（v0.8.5 升级后自测）
 - 运行组件：
   - `calciumion/new-api:v0.12.1`
-  - `ghcr.io/danny-avila/librechat:v0.8.4`
+  - `ghcr.io/danny-avila/librechat:v0.8.5`
   - `casbin/casdoor:2.396.1`
   - `postgres:16-alpine`
   - `redis:7.4.2-alpine`
@@ -35,12 +35,12 @@
 
 所有 6 个容器正常运行：
 ```
-ai-gateway-librechat         Up    0.0.0.0:3080->3080/tcp
-ai-gateway-new-api           Up    0.0.0.0:13000->3000/tcp
-ai-gateway-casdoor           Up (healthy)  0.0.0.0:18000->8000/tcp
-ai-gateway-new-api-postgres  Up    5432/tcp
-ai-gateway-new-api-redis     Up    6379/tcp
-ai-gateway-librechat-mongodb Up    127.0.0.1:27017->27017/tcp
+ai-gateway-librechat         Up 5 minutes             0.0.0.0:3080->3080/tcp
+ai-gateway-new-api           Up 23 hours              0.0.0.0:13000->3000/tcp
+ai-gateway-casdoor           Up 23 hours (healthy)    0.0.0.0:18000->8000/tcp
+ai-gateway-new-api-postgres  Up 23 hours              5432/tcp
+ai-gateway-new-api-redis     Up 23 hours              6379/tcp
+ai-gateway-librechat-mongodb Up 23 hours              127.0.0.1:27017->27017/tcp
 ```
 
 ### 2. Casdoor SSO
@@ -76,13 +76,7 @@ GET http://localhost:13000/v1/models
 
 ```
 POST /v1/chat/completions (model: glm-4-flash-250414)
-- Response: OK
-- HTTP 200
-```
-
-```
-POST /v1/chat/completions (model: glm-5)
-- Response: 正常回复
+- Response: "Hello 👋! I'm ChatGLM"
 - HTTP 200
 ```
 
@@ -114,13 +108,13 @@ JINA_API_KEY=jina_72ce...（已配置）
 
 各容器实际内存占用在限制内：
 ```
-librechat        274.9MiB / 512MiB (53.7%)
+librechat        257.4MiB / 512MiB (50.3%)
 new-api           21.4MiB / 128MiB (16.7%)
-casdoor           88.9MiB / 128MiB (69.5%)
+casdoor           92.8MiB / 128MiB (72.5%)
 new-api-postgres  68.0MiB / 128MiB (53.1%)
 new-api-redis      3.9MiB /  64MiB (6.1%)
-librechat-mongodb 142.9MiB / 256MiB (55.8%)
-总计约 600MiB
+librechat-mongodb 137.4MiB / 256MiB (53.7%)
+总计约 581MiB
 ```
 
 ### 9. Auto-bootstrap
@@ -176,8 +170,10 @@ BOOTSTRAP_AUTOCONFIGURE=true
 
 ## 当前已知结论
 - 平台主链路已完全打通
+- LibreChat 已升级到 v0.8.5（支持 Admin Panel、自定义角色、分级权限等）
 - 19 个智谱模型全部可用
 - 自动 bootstrap 一次部署即可使用
 - 搜索功能（Serper/Firecrawl/Jina）已配置
-- 内存使用适合 2C2G ECS 部署
+- 内存使用适合 2C2G ECS 部署（总计约 581MiB）
 - 统一认证通过 Casdoor OIDC 正常工作
+- Admin Panel 使用文档已就绪（待按需部署独立容器）
