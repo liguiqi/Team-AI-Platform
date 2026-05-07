@@ -115,7 +115,19 @@ random_hex() {
 
 random_alnum() {
   local length="$1"
-  LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c "$length"
+  local result="" attempt
+  for attempt in 1 2 3; do
+    result="$(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom 2>/dev/null | head -c "$length" 2>/dev/null)" || true
+    if [[ ${#result} -eq "$length" ]]; then
+      printf '%s' "$result"
+      return 0
+    fi
+  done
+  # Fallback: use $RANDOM concatenation
+  while (( ${#result} < length )); do
+    result="${result}$(printf '%05d' "$(( RANDOM % 100000 ))")"
+  done
+  printf '%s' "${result:0:$length}"
 }
 
 replace_or_append_env() {

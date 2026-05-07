@@ -145,32 +145,29 @@ make up
 
 ## 初始化网关配置
 
-### 执行命令
+### 自动 Bootstrap（推荐）
+当 `.env` 中 `BOOTSTRAP_AUTOCONFIGURE=true` 时，`make up` 会自动执行 bootstrap，无需手动操作。
+
+### 手动 Bootstrap
+如需单独执行：
 ```bash
-make bootstrap
+bash scripts/bootstrap-new-api.sh
 ```
 
 ### bootstrap 实际行为
 `scripts/bootstrap-new-api.sh` 会自动完成：
 
-1. 检查 `NEW-API /api/status`
+1. 等待 `NEW-API /api/status` 就绪
 2. 若尚未初始化 root，则完成 root 初始化
 3. 使用 root 账号登录后台
-4. 写入模型请求限流参数
-5. 创建或校正服务用户 `NEW_API_SERVICE_USER`
-6. 确保服务用户额度足够
-7. 创建或校正智谱渠道
-8. 通过 PostgreSQL 创建或校正服务 token
-9. 把 `NEW_API_SERVICE_TOKEN` 回写 `.env`
-10. 重新渲染 LibreChat 配置并重启 LibreChat
-
-### 为什么 bootstrap 后还要重启 LibreChat
-因为 LibreChat 使用的是渲染后的 `runtime/local/librechat/librechat.yaml`。服务 token 一旦更新，必须重新渲染配置文件并重启容器，否则 UI 仍会使用旧 token。
-
-### bootstrap 与模型矩阵的当前默认关系
-- 默认不会把你在 `NEW-API` 后台维护的模型矩阵压回单模型。
-- 默认不会给服务 token 强行加单模型白名单。
-- 这使得 `NEW-API /v1/models` 可以直接作为 LibreChat 的模型源。
+4. 写入系统配置（SelfUseMode、DemoSite）
+5. 写入模型请求限流参数
+6. 创建或校正服务用户 `NEW_API_SERVICE_USER`
+7. 确保服务用户额度足够
+8. 创建或校正智谱渠道（19 个模型）
+9. 通过 PostgreSQL 创建或校正服务 token（48 字符强随机）
+10. 把 `NEW_API_SERVICE_TOKEN` 回写 `.env`
+11. 重新渲染 LibreChat 配置并重启 LibreChat
 
 ## 前端模型同步
 
@@ -350,8 +347,47 @@ make restart
 ```bash
 make init
 make up
+```
+
+当 `BOOTSTRAP_AUTOCONFIGURE=true` 时，以上两步即完成全部部署。
+
+若未启用自动 bootstrap，需额外执行：
+```bash
+make bootstrap
 make health
 make smoke-zhipu
+```
+
+## 搜索功能
+
+### 已配置的搜索能力
+- **Serper**：网络搜索，通过 `LIBRECHAT_SERPER_API_KEY` 配置
+- **Firecrawl**：网页抓取，通过 `LIBRECHAT_FIRECRAWL_API_KEY` 配置
+- **Jina**：语义重排序，通过 `LIBRECHAT_JINA_API_KEY` 配置
+
+### 使用方式
+用户在 LibreChat 对话中可启用搜索功能，由平台统一提供搜索能力。
+
+## 内存限制
+
+本地开发环境已配置容器内存限制：
+- LibreChat: 512M
+- MongoDB: 256M（WiredTiger 缓存 0.25GB）
+- NEW-API: 128M
+- PostgreSQL: 128M
+- Casdoor: 128M
+- Redis: 64M（LRU 淘汰策略）
+
+## 开机自启动（可选）
+
+如需开机自动启动服务：
+```bash
+bash scripts/install-service.sh
+```
+
+卸载：
+```bash
+bash scripts/uninstall-service.sh
 ```
 
 ## 建议配套阅读
@@ -367,5 +403,5 @@ make smoke-zhipu
 1. 打开 `http://localhost:3080`
 2. 点击 `统一认证登录` 并跳转到 Casdoor
 3. 选择 `NEW-API`
-4. 选择任一当前授权模型，建议先选 `zhipu-primary`
+4. 在模型列表中选择任一智谱模型（共 19 个可用）
 5. 发起真实对话

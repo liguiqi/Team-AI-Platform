@@ -18,17 +18,24 @@
 - `NEW-API` 能通过智谱完成真实模型调用。
 - LibreChat 已接入 `NEW-API` 自定义端点。
 - LibreChat 已接入 Casdoor OIDC，且本地登录入口已关闭。
+- 19 个智谱模型全部可访问（14 chat + 5 vision + 1 chat 总计）。
+- 自动 bootstrap 在 `make up` 时正确执行。
+- 网络搜索功能已配置（Serper + Firecrawl + Jina）。
+- 所有容器配置了内存限制。
 - `.env.example` 与生产模板完整。
-- 健康检查与 smoke 脚本可执行。
+- 健康检查脚本可执行。
 - 文档已填写到可直接操作的程度。
 - 真实密钥未进入 Git 跟踪文件。
 
 ## Should 条件
 - 服务用户额度和服务 token 配额有效。
+- 服务 token 使用 48 字符强随机值。
 - `NEW-API` 模型请求限流已生效。
-- LibreChat 模型动态同步或前端白名单筛选行为符合预期。
+- LibreChat 模型动态同步行为符合预期。
 - 备份恢复脚本可跑通。
 - 管理员手册可直接指导后续接手人。
+- systemd 开机自启动服务可正常安装和运行。
+- 容器内存使用在限制范围内。
 
 ## 阻塞性失败
 满足以下任一项，应判定为验收失败：
@@ -54,8 +61,13 @@
 ```bash
 make init
 make up
-make health
-make smoke-zhipu
+```
+
+当 `BOOTSTRAP_AUTOCONFIGURE=true` 时，以上两步即完成全部部署。
+
+若未启用自动 bootstrap，额外执行：
+```bash
+bash scripts/bootstrap-new-api.sh
 ```
 
 ### 三、后台验收
@@ -75,10 +87,8 @@ make smoke-zhipu
 4. 至少验证一次邮箱真实登录
 5. 至少验证一次手机号真实登录
 6. 确认端点中存在 `NEW-API`
-7. 确认模型列表符合当前策略：
-   - 未配置 `LIBRECHAT_VISIBLE_MODELS` 时，模型列表应与 `NEW-API /v1/models` 一致
-   - 配置了 `LIBRECHAT_VISIBLE_MODELS` 时，模型列表应与白名单交集一致
-8. 至少选择一个可用模型发起真实对话，建议优先验证 `zhipu-primary`
+7. 确认模型列表包含 19 个智谱模型
+8. 至少选择一个可用模型发起真实对话，建议优先验证 `glm-4-flash-250414`
 
 ## 通过标准
 
@@ -87,7 +97,7 @@ make smoke-zhipu
 - `make smoke-zhipu` 输出成功
 
 ### API 层
-- `GET /v1/models` 返回当前授权模型集合，且至少包含 `zhipu-primary`
+- `GET /v1/models` 返回 19 个智谱模型
 - `POST /v1/chat/completions` 返回 `HTTP 200`
 - 返回体中包含 `choices`
 

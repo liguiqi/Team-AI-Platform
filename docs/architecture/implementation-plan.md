@@ -140,7 +140,47 @@
 - bootstrap 自动校正服务用户总额度
 - 同时保证服务 token 配额与用户额度一致
 
-### 问题 4：bootstrap 二次登录受限
+### 问题 4：LibreChat "Unknown authentication strategy 'openid'"
+表现：
+- LibreChat 启动后日志报错，无法加载 OIDC 策略
+
+根因：
+- LibreChat 启动时 Casdoor 尚未就绪，OIDC 配置未加载
+
+处理：
+- 添加 Casdoor 健康检查（`/.well-known/openid-configuration`）
+- LibreChat 依赖 Casdoor `condition: service_healthy`
+- 增加 start_period 到 60s，首次启动给 Casdoor 足够时间初始化
+
+### 问题 5：NEW-API 只返回 1 个模型
+表现：
+- `/v1/models` 只返回 `glm-4-long` 等单个模型
+
+根因：
+- 未启用 SelfUseMode，模型比率/价格未配置
+
+处理：
+- bootstrap 自动写入 `SelfUseModeEnabled=true`
+
+### 问题 6：bootstrap token 创建 SIGPIPE
+表现：
+- `docker exec` 管道在 make 上下文中被 SIGPIPE 中断（exit 141）
+
+处理：
+- 使用 `docker exec -e` 环境变量注入替代管道
+- INSERT 不含 group 列，单独 UPDATE group 列（避免 bash 引号问题）
+- `random_alnum` 添加重试和降级机制
+
+### 问题 7：Casdoor 首次启动 panic
+表现：
+- Casdoor panic: "Fail to delete application"
+
+根因：
+- 已有数据库数据与 init_data.json 冲突
+
+处理：
+- 清空 Casdoor 数据库后重新启动
+- `DROP SCHEMA public CASCADE; CREATE SCHEMA public;`
 表现：
 - `NEW-API /api/user/login` 触发限流
 
@@ -167,3 +207,9 @@
 - M3：智谱主链路打通完成。
 - M4：LibreChat 接入与动态模型同步完成。
 - M5：自测与验收资料完成。
+- M6：网络搜索配置完成（Serper + Firecrawl + Jina）。
+- M7：智谱全量 19 模型矩阵接入完成。
+- M8：自动 bootstrap 完成（一键部署）。
+- M9：systemd 开机自启动完成。
+- M10：2C2G ECS 内存优化完成。
+- M11：多供应商可扩展文档完成。

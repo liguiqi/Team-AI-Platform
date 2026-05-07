@@ -173,13 +173,42 @@ MODE=prod bash scripts/sync-librechat-models.sh
 
 ## 首次上线建议流程
 1. 准备服务器与域名。
-2. 填写生产 `.env`。
+2. 填写生产 `.env`（设置 `BOOTSTRAP_AUTOCONFIGURE=true`）。
 3. 执行 `MODE=prod bash scripts/up.sh`。
 4. 检查容器状态。
-5. 执行 `MODE=prod bash scripts/bootstrap-new-api.sh`。
-6. 执行 `MODE=prod bash scripts/smoke-test-zhipu.sh`。
-7. 浏览器验证 `PUBLIC_CHAT_DOMAIN`、`NEW_API_ADMIN_DOMAIN` 与 `AUTH_PUBLIC_DOMAIN`。
-8. 记录本次上线的镜像版本、env 校验人和联调结果。
+5. 若未启用自动 bootstrap，执行 `MODE=prod bash scripts/bootstrap-new-api.sh`。
+6. 浏览器验证 `PUBLIC_CHAT_DOMAIN`、`NEW_API_ADMIN_DOMAIN` 与 `AUTH_PUBLIC_DOMAIN`。
+7. 记录本次上线的镜像版本、env 校验人和联调结果。
+
+## 生产环境内存优化
+
+### 容器内存限制
+已为所有服务配置内存限制，适合 2C2G ECS：
+- LibreChat: 512M
+- MongoDB: 256M（WiredTiger 缓存 0.25GB）
+- NEW-API: 128M
+- PostgreSQL: 128M
+- Casdoor: 128M
+- Redis: 64M（LRU 淘汰策略）
+- Caddy: 64M
+
+### 搜索功能配置
+生产环境需配置搜索 API Key：
+- `LIBRECHAT_SERPER_API_KEY`：Serper 网络搜索
+- `LIBRECHAT_FIRECRAWL_API_KEY`：Firecrawl 网页抓取
+- `LIBRECHAT_JINA_API_KEY`：Jina 语义重排序
+
+## 生产环境开机自启动
+
+安装 systemd 服务：
+```bash
+bash scripts/install-service.sh
+```
+
+卸载：
+```bash
+bash scripts/uninstall-service.sh
+```
 
 ## 升级流程
 

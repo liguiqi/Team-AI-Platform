@@ -86,9 +86,9 @@
 关键字段：
 - `type=26`
 - `group` 由后台现状决定，可按你的实际分组维护
-- `models` 可以是多模型矩阵，不必只保留 `zhipu-primary`
-- `test_model=glm-4-flash`
-- `model_mapping={"zhipu-primary":"glm-4-flash"}`
+- `models` 包含 19 个智谱模型（由 `ZHIPU_EXPOSED_MODEL` 控制）
+- `test_model=glm-4-flash-250414`
+- `model_mapping={}`（直通模式）
 
 ## 后台主要管理区域
 

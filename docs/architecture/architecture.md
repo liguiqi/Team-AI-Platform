@@ -96,8 +96,8 @@ NEW-API OpenAI 兼容接口
 2. LibreChat 使用 `NEW_API_SERVICE_TOKEN` 请求 `NEW-API /v1/models`，动态获取当前可见模型列表。
 3. 用户选择某个模型后，LibreChat 再调用 `NEW-API /v1/chat/completions`。
 4. `NEW-API` 根据服务 token 的分组、模型限制和渠道配置做鉴权。
-5. `NEW-API` 根据模型映射把外部暴露名解析为真实上游模型，例如 `zhipu-primary -> glm-4-flash`。
-6. `NEW-API` 使用智谱渠道配置，把请求转发到智谱 `ZhipuV4` 接口。
+5. `NEW-API` 根据智谱渠道配置，把请求转发到智谱 `ZhipuV4` 接口。
+6. 智谱返回响应，`NEW-API` 做兼容格式转换后返回给 LibreChat。
 7. 智谱返回响应，`NEW-API` 做兼容格式转换后返回给 LibreChat。
 8. LibreChat 将结果展示给用户。
 
@@ -107,22 +107,19 @@ NEW-API OpenAI 兼容接口
 3. 在后台查看渠道、token、日志、用户和系统配置。
 4. 必要时通过 UI 或脚本进行限流、模型映射、渠道启停或密钥更换。
 
-## 模型命名策略
+## 模型策略
 
-### 外部暴露名
-- `zhipu-primary`
+### 当前方案：直通模式
+当前使用直通模式（passthrough），`ZHIPU_MODEL_MAPPING_JSON='{}'`，即 LibreChat 中展示的模型名与智谱上游真实模型名一致。
 
-### 实际上游名
-- `glm-4-flash`
-
-### 映射方式
-- `NEW-API` 渠道配置中的 `model_mapping` 字段实现别名映射。
-- LibreChat 从 `NEW-API` 动态获取模型后，默认仍只展示平台批准暴露的别名，不直接展示真实上游模型名。
+### 已接入模型
+- **Chat 模型（13 个）**：glm-5.1, glm-5, glm-5-turbo, glm-4.7, glm-4.7-flash, glm-4.7-flashx, glm-4.6, glm-4.5-air, glm-4.5-airx, glm-4.5-flash, glm-4-long, glm-4-flashx-250414, glm-4-flash-250414
+- **Vision 模型（6 个）**：glm-5v-turbo, glm-4.6v, glm-4.6v-flash, glm-4.1v-thinking-flashx, glm-4.1v-thinking-flash, glm-4v-flash
 
 ### 好处
-- 前端只面向平台批准的模型名。
-- 后续替换上游模型时，前端和终端用户无需改动。
-- 平台可以逐步收敛不同供应商的模型命名方式。
+- 用户可以直接选择具体模型，精确控制使用哪个模型。
+- 新模型上线时只需在 `ZHIPU_EXPOSED_MODEL` 中追加即可。
+- `NEW-API` 的 `ZhipuV4` 适配器直接处理模型名匹配。
 
 ## 配置与密钥流转
 
@@ -215,7 +212,49 @@ NEW-API OpenAI 兼容接口
 - LibreChat 启动依赖 MongoDB、Casdoor 和已经可访问的 `NEW-API`。
 - bootstrap 只能在 `NEW-API /api/status` 可用后执行。
 
+## 搜索能力
+
+LibreChat 集成了网络搜索与内容抓取能力：
+
+### 搜索 Provider
+- **Serper**：网页搜索，`LIBRECHAT_SERPER_API_KEY`
+- **Firecrawl**：网页内容抓取，`LIBRECHAT_FIRECRAWL_API_KEY`
+- **Jina**：重排序/语义搜索，`LIBRECHAT_JINA_API_KEY`
+
+### 配置方式
+所有搜索相关变量通过 `.env` 注入到 LibreChat 容器环境变量，由 LibreChat 原生支持。
+
+## 资源限制
+
+### 容器内存限制
+| 容器 | 内存限制 |
+|------|---------|
+| LibreChat | 512M |
+| MongoDB | 256M |
+| NEW-API | 128M |
+| PostgreSQL | 128M |
+| Casdoor | 128M |
+| Redis | 64M |
+| Caddy（生产） | 64M |
+
+### 数据库缓存优化
+- MongoDB：`--wiredTigerCacheSizeGB=0.25`，适合 2C2G ECS
+- Redis：`--maxmemory 32mb --maxmemory-policy allkeys-lru`
+
+## 自动 Bootstrap
+- 当 `BOOTSTRAP_AUTOCONFIGURE=true` 时，`make up` 会自动执行 bootstrap
+- 完成 NEW-API 初始化、渠道创建、服务用户/token 管理
+- 实现一键部署，无需手动操作
+
+## systemd 开机自启动
+- 提供 `deploy/systemd/ai-gateway-chat.service` 服务单元
+- 安装脚本：`bash scripts/install-service.sh`
+- 卸载脚本：`bash scripts/uninstall-service.sh`
+- 适用于生产环境 VPS 开机自动拉起服务
+
 ## 关键工程结论
 - 本项目的核心治理平面在 `NEW-API`，而不是 LibreChat。
 - LibreChat 负责用户体验，`NEW-API` 负责安全边界与运维治理。
 - 平台的稳定性高度依赖 PostgreSQL 数据目录一致性、服务 token 可用性以及 LibreChat 配置渲染正确。
+- 自动 bootstrap 确保部署后立即可用，无需手动操作后台。
+- 资源限制配置使平台可在 2C2G ECS 上稳定运行。

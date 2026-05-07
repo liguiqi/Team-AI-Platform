@@ -216,6 +216,7 @@ docker compose -f deploy/docker-compose.prod.yml --env-file deploy/env/prod/.env
 - `docker compose ... ps`
 - `docker compose ... logs -f casdoor`
 - `curl $CASDOOR_PUBLIC_URL/.well-known/openid-configuration`
+- 检查 Casdoor 健康检查状态：`docker inspect ai-gateway-casdoor | jq '.[0].State.Health'`
 
 ### LibreChat 点击统一认证后报错
 排查：

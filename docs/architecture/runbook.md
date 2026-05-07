@@ -8,7 +8,6 @@
 ### 每次上线后必须执行
 ```bash
 make health
-make smoke-zhipu
 ```
 
 ### 建议每日巡检项
@@ -16,6 +15,7 @@ make smoke-zhipu
 - 检查 `NEW-API`、LibreChat 和 Casdoor 是否可访问
 - 检查磁盘空间，尤其是 `runtime/` 与 `backups/`
 - 检查 `NEW-API` 是否还能成功调用智谱
+- 检查容器内存使用是否在限制内
 
 ## 快速健康检查
 
@@ -39,6 +39,36 @@ make smoke-zhipu
 - bootstrap
 - 模型可见性
 - 一次真实聊天调用
+
+## systemd 服务管理（生产环境）
+
+### 检查服务状态
+```bash
+sudo systemctl status ai-gateway-chat.service
+```
+
+### 手动启动/停止
+```bash
+sudo systemctl start ai-gateway-chat.service
+sudo systemctl stop ai-gateway-chat.service
+```
+
+### 查看服务日志
+```bash
+sudo journalctl -u ai-gateway-chat.service -f
+```
+
+## 内存监控
+
+### 查看容器内存使用
+```bash
+docker stats --no-stream --format "table {{.Name}}\t{{.MemUsage}}\t{{.MemPerc}}" | grep ai-gateway
+```
+
+### 内存告警阈值
+- LibreChat > 450MiB：关注
+- MongoDB > 220MiB：关注
+- Casdoor > 110MiB：关注
 
 ## 服务状态查看
 
@@ -150,6 +180,12 @@ docker compose --env-file .env -f deploy/docker-compose.local.yml logs -f casdoo
 6. 短信失败优先查 `CASDOOR_SMS_*`
 7. 当前短信 Provider 固定为 `Alibaba Cloud PNVS SMS`，不要误按普通 `Aliyun SMS` 排查
 8. 若报 `unsupported provider: Alibaba Cloud PNVS SMS`，先检查 `CASDOOR_VERSION` 是否至少为 `2.396.1`
+
+### 场景 4.5：模型列表只有 1 个模型
+排查：
+1. 确认 `NEW-API` 后台是否启用了 `SelfUseModeEnabled`
+2. 若未启用，bootstrap 会自动写入
+3. 重新执行 `bash scripts/bootstrap-new-api.sh`
 
 ### 场景 5：模型列表为空
 排查：

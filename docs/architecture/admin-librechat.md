@@ -144,11 +144,16 @@ curl -fsS "$NEW_API_PUBLIC_URL/v1/models" \
   -H "Authorization: Bearer $NEW_API_SERVICE_TOKEN" | jq -r '.data[].id'
 ```
 
+应返回 19 个智谱模型。
+
 ### 4. 配置文件已渲染为真实值
 检查：
 - `runtime/local/librechat/librechat.yaml`
 
 确认其中不再是 `${NEW_API_SERVICE_TOKEN}` 这类占位符，而是实际值。
+
+### 5. 搜索功能可用
+在 LibreChat 对话中启用搜索，确认 Serper/Firecrawl/Jina 正常工作。
 
 ## 常见维护动作
 
