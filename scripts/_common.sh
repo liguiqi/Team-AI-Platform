@@ -436,11 +436,162 @@ append_csv_values() {
   printf '%s' "$combined"
 }
 
+provider_prefixes() {
+  printf '%s\n' ZHIPU DEEPSEEK
+}
+
+provider_slug() {
+  printf '%s' "$1" | tr '[:upper:]' '[:lower:]'
+}
+
+provider_display_label() {
+  case "$1" in
+    ZHIPU) printf '智谱' ;;
+    DEEPSEEK) printf 'DeepSeek' ;;
+    *) provider_slug "$1" ;;
+  esac
+}
+
+provider_is_enabled_env() {
+  local prefix="$1"
+  local enabled_var="${prefix}_ENABLED"
+  normalize_bool "${!enabled_var:-false}"
+}
+
+provider_endpoint_name() {
+  local prefix="$1"
+  local endpoint_name_var="${prefix}_LIBRECHAT_ENDPOINT_NAME"
+  local legacy_endpoint_name_var="${prefix}_ENDPOINT_NAME"
+  local endpoint_name="${!endpoint_name_var-}"
+
+  if [[ -z "$endpoint_name" ]]; then
+    endpoint_name="${!legacy_endpoint_name_var-}"
+  fi
+
+  if [[ -n "$endpoint_name" ]]; then
+    printf '%s' "$endpoint_name"
+  else
+    printf 'API-%s' "$(provider_slug "$prefix")"
+  fi
+}
+
+provider_model_label() {
+  local prefix="$1"
+  local label_var="${prefix}_MODEL_LABEL"
+  local label="${!label_var:-}"
+
+  if [[ -n "$label" ]]; then
+    printf '%s' "$label"
+  else
+    provider_endpoint_name "$prefix"
+  fi
+}
+
+csv_to_lines() {
+  tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | sed '/^$/d' | awk '!seen[$0]++'
+}
+
+csv_contains_value() {
+  local csv="$1"
+  local value="$2"
+  printf '%s' "$csv" | csv_to_lines | grep -Fxq "$value"
+}
+
+filter_csv_by_allowlist() {
+  local models_csv="${1:-}"
+  local allow_csv="${2:-}"
+  local result="" model
+
+  if [[ -z "$allow_csv" ]]; then
+    printf '%s' "$models_csv"
+    return 0
+  fi
+
+  while IFS= read -r model; do
+    if csv_contains_value "$allow_csv" "$model"; then
+      result="$(append_csv_values "$result" "$model")"
+    fi
+  done < <(printf '%s' "$models_csv" | csv_to_lines)
+
+  printf '%s' "$result"
+}
+
+sort_models_by_priority() {
+  local models_csv="${1:-}"
+  local order_csv="${2:-}"
+  local result="" model tmp_models tmp_used tmp_remaining
+
+  tmp_models="$(mktemp)"
+  tmp_used="$(mktemp)"
+  tmp_remaining="$(mktemp)"
+
+  printf '%s' "$models_csv" | csv_to_lines >"$tmp_models"
+  : >"$tmp_used"
+
+  while IFS= read -r model; do
+    [[ -n "$model" ]] || continue
+    if grep -Fxq "$model" "$tmp_models" && ! grep -Fxq "$model" "$tmp_used"; then
+      result="$(append_csv_values "$result" "$model")"
+      printf '%s\n' "$model" >>"$tmp_used"
+    fi
+  done < <(printf '%s' "$order_csv" | csv_to_lines)
+
+  while IFS= read -r model; do
+    [[ -n "$model" ]] || continue
+    if ! grep -Fxq "$model" "$tmp_used"; then
+      printf '%s\n' "$model" >>"$tmp_remaining"
+    fi
+  done <"$tmp_models"
+
+  while IFS= read -r model; do
+    [[ -n "$model" ]] || continue
+    result="$(append_csv_values "$result" "$model")"
+  done < <(sort -Vr "$tmp_remaining")
+
+  rm -f "$tmp_models" "$tmp_used" "$tmp_remaining"
+  printf '%s' "$result"
+}
+
+provider_sorted_exposed_models() {
+  local prefix="$1"
+  local exposed_var="${prefix}_EXPOSED_MODEL"
+  local order_var="${prefix}_MODEL_ORDER"
+  local visible_models="${LIBRECHAT_VISIBLE_MODELS:-}"
+  local exposed_models sorted_models
+
+  exposed_models="${!exposed_var:-}"
+  sorted_models="$(sort_models_by_priority "$exposed_models" "${!order_var:-}")"
+  filter_csv_by_allowlist "$sorted_models" "$visible_models"
+}
+
+provider_title_model() {
+  local prefix="$1"
+  local title_var="${prefix}_TITLE_MODEL"
+  local default_var="${prefix}_DEFAULT_MODEL"
+  local sorted_models="${2:-}"
+  local title_model="${!title_var-}"
+
+  if [[ -z "$title_model" ]]; then
+    title_model="${!default_var-}"
+  fi
+
+  if [[ -n "$title_model" ]]; then
+    if [[ -z "$sorted_models" ]] || csv_contains_value "$sorted_models" "$title_model"; then
+      printf '%s' "$title_model"
+      return 0
+    fi
+  fi
+
+  if [[ -n "$sorted_models" ]]; then
+    printf '%s' "$sorted_models" | csv_to_lines | head -n 1
+  fi
+}
+
 enabled_provider_exposed_models() {
   local combined=""
   local prefix enabled_var exposed_var enabled_value exposed_value
 
-  for prefix in ZHIPU DEEPSEEK; do
+  while IFS= read -r prefix; do
     enabled_var="${prefix}_ENABLED"
     exposed_var="${prefix}_EXPOSED_MODEL"
     enabled_value="$(normalize_bool "${!enabled_var:-false}")"
@@ -449,7 +600,7 @@ enabled_provider_exposed_models() {
     if [[ "$enabled_value" == "true" && -n "$exposed_value" ]]; then
       combined="$(append_csv_values "$combined" "$exposed_value")"
     fi
-  done
+  done < <(provider_prefixes)
 
   printf '%s' "$combined"
 }

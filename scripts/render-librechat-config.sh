@@ -16,84 +16,89 @@ if is_placeholder "${CASDOOR_CLIENT_SECRET:-}" || is_placeholder "${LIBRECHAT_OP
 fi
 
 librechat_fetch_models="$(normalize_bool "${LIBRECHAT_FETCH_MODELS:-true}")"
-default_models_fallback="$(enabled_provider_exposed_models)"
-if [[ -z "$default_models_fallback" ]]; then
-  default_models_fallback="${LIBRECHAT_TITLE_MODEL:-}"
-fi
-default_models_raw="${LIBRECHAT_DEFAULT_MODELS:-${default_models_fallback}}"
-visible_models_raw="${LIBRECHAT_VISIBLE_MODELS:-}"
-default_models_yaml=""
+librechat_split_provider_endpoints="$(normalize_bool "${LIBRECHAT_SPLIT_PROVIDER_ENDPOINTS:-true}")"
 
-IFS=',' read -r -a default_models_array <<<"$default_models_raw"
-for raw_model in "${default_models_array[@]}"; do
-  model="$(printf '%s' "$raw_model" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
-  [[ -n "$model" ]] || continue
-  default_models_yaml="${default_models_yaml}"$'\n'"          - \"$(json_escape "$model")\""
-done
+models_default_yaml() {
+  local models_csv="${1:-}"
+  local indent="${2:-10}"
+  local spaces model yaml=""
 
-if [[ -z "$default_models_yaml" ]]; then
-  if [[ -n "$default_models_fallback" ]]; then
-    IFS=',' read -r -a fallback_models_array <<<"$default_models_fallback"
-    for raw_model in "${fallback_models_array[@]}"; do
-      model="$(printf '%s' "$raw_model" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
-      [[ -n "$model" ]] || continue
-      default_models_yaml="${default_models_yaml}"$'\n'"          - \"$(json_escape "$model")\""
-    done
-  else
-    default_models_yaml=" []"
-  fi
-fi
-
-if [[ -n "$visible_models_raw" ]]; then
-  require_cmd curl
-  require_cmd jq
-  filtered_models_yaml=""
-  fetched_models_tmp="$(mktemp)"
-  trap 'rm -f "$fetched_models_tmp"' EXIT
-
-  if [[ -n "${NEW_API_SERVICE_TOKEN:-}" ]] && ! is_placeholder "${NEW_API_SERVICE_TOKEN}" && wait_for_http "${new_api_url}/api/status" 3; then
-    if curl -fsS "${new_api_url}/v1/models" -H "Authorization: Bearer ${NEW_API_SERVICE_TOKEN}" | jq -r '.data[].id' >"$fetched_models_tmp" 2>/dev/null; then
-      info "已从 NEW-API 拉取模型列表，准备按 LIBRECHAT_VISIBLE_MODELS 过滤"
-    else
-      warn "拉取 NEW-API 模型列表失败，将按 LIBRECHAT_VISIBLE_MODELS 原样渲染前端模型"
-      : >"$fetched_models_tmp"
-    fi
-  else
-    warn "NEW-API 尚未就绪或缺少可用 token，将按 LIBRECHAT_VISIBLE_MODELS 原样渲染前端模型"
-    : >"$fetched_models_tmp"
-  fi
-
-  IFS=',' read -r -a visible_models_array <<<"$visible_models_raw"
-  for raw_model in "${visible_models_array[@]}"; do
-    model="$(printf '%s' "$raw_model" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+  spaces="$(printf '%*s' "$indent" '')"
+  while IFS= read -r model; do
     [[ -n "$model" ]] || continue
+    yaml="${yaml}"$'\n'"${spaces}- \"$(json_escape "$model")\""
+  done < <(printf '%s' "$models_csv" | csv_to_lines)
 
-    if [[ -s "$fetched_models_tmp" ]] && ! grep -Fxq "$model" "$fetched_models_tmp"; then
-      warn "模型未出现在 NEW-API /v1/models 中，已跳过: $model"
+  if [[ -n "$yaml" ]]; then
+    printf '%s' "$yaml"
+  else
+    printf ' []'
+  fi
+}
+
+render_provider_endpoints() {
+  local endpoints_yaml="" prefix enabled models_csv endpoint_name title_model model_label models_yaml
+
+  while IFS= read -r prefix; do
+    enabled="$(provider_is_enabled_env "$prefix")"
+    [[ "$enabled" == "true" ]] || continue
+
+    models_csv="$(provider_sorted_exposed_models "$prefix")"
+    if [[ -z "$models_csv" ]]; then
+      warn "已跳过 ${prefix} LibreChat endpoint：模型列表为空"
       continue
     fi
 
-    filtered_models_yaml="${filtered_models_yaml}"$'\n'"          - \"$(json_escape "$model")\""
-  done
+    endpoint_name="$(provider_endpoint_name "$prefix")"
+    title_model="$(provider_title_model "$prefix" "$models_csv")"
+    model_label="$(provider_model_label "$prefix")"
+    models_yaml="$(models_default_yaml "$models_csv" 10)"
 
-  if [[ -n "$filtered_models_yaml" ]]; then
-    default_models_yaml="$filtered_models_yaml"
-    librechat_fetch_models="false"
-    info "已启用 LibreChat 前端模型白名单过滤"
-  elif [[ -s "$fetched_models_tmp" ]]; then
-    warn "白名单过滤后模型列表为空，LibreChat 将显示空模型列表"
-    default_models_yaml=" []"
-    librechat_fetch_models="false"
-  else
-    warn "未能从 NEW-API 校验白名单模型，暂按 LIBRECHAT_VISIBLE_MODELS 原样渲染"
-    default_models_yaml=""
-    for raw_model in "${visible_models_array[@]}"; do
-      model="$(printf '%s' "$raw_model" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
-      [[ -n "$model" ]] || continue
-      default_models_yaml="${default_models_yaml}"$'\n'"          - \"$(json_escape "$model")\""
-    done
-    librechat_fetch_models="false"
+    endpoints_yaml="${endpoints_yaml}"$'\n'"    - name: \"$(json_escape "$endpoint_name")\""
+    endpoints_yaml="${endpoints_yaml}"$'\n'"      apiKey: \"$(json_escape "${NEW_API_SERVICE_TOKEN}")\""
+    endpoints_yaml="${endpoints_yaml}"$'\n'"      baseURL: \"$(json_escape "${NEW_API_INTERNAL_URL}")/v1\""
+    endpoints_yaml="${endpoints_yaml}"$'\n'"      models:"
+    endpoints_yaml="${endpoints_yaml}"$'\n'"        default:${models_yaml}"
+    endpoints_yaml="${endpoints_yaml}"$'\n'"        fetch: false"
+    endpoints_yaml="${endpoints_yaml}"$'\n'"      titleConvo: true"
+    endpoints_yaml="${endpoints_yaml}"$'\n'"      titleModel: \"$(json_escape "$title_model")\""
+    endpoints_yaml="${endpoints_yaml}"$'\n'"      modelDisplayLabel: \"$(json_escape "$model_label")\""
+  done < <(provider_prefixes)
+
+  printf '%s' "$endpoints_yaml"
+}
+
+render_single_endpoint() {
+  local default_models_fallback default_models_raw default_models_yaml
+
+  default_models_fallback="$(enabled_provider_exposed_models)"
+  if [[ -z "$default_models_fallback" ]]; then
+    default_models_fallback="${LIBRECHAT_TITLE_MODEL:-}"
   fi
+  default_models_raw="${LIBRECHAT_DEFAULT_MODELS:-${default_models_fallback}}"
+  default_models_yaml="$(models_default_yaml "$(sort_models_by_priority "$default_models_raw" "")" 10)"
+
+  cat <<EOF
+    - name: "$(json_escape "${LIBRECHAT_ENDPOINT_NAME}")"
+      apiKey: "$(json_escape "${NEW_API_SERVICE_TOKEN}")"
+      baseURL: "$(json_escape "${NEW_API_INTERNAL_URL}")/v1"
+      models:
+        default:${default_models_yaml}
+        fetch: ${librechat_fetch_models}
+      titleConvo: true
+      titleModel: "$(json_escape "${LIBRECHAT_TITLE_MODEL}")"
+      modelDisplayLabel: "$(json_escape "${LIBRECHAT_MODEL_LABEL}")"
+EOF
+}
+
+if [[ "$librechat_split_provider_endpoints" == "true" ]]; then
+  endpoints_yaml="$(render_provider_endpoints)"
+  if [[ -z "$endpoints_yaml" ]]; then
+    warn "没有可渲染的供应商 endpoint，回退到单一 ${LIBRECHAT_ENDPOINT_NAME} endpoint"
+    endpoints_yaml="$(render_single_endpoint)"
+  fi
+else
+  endpoints_yaml="$(render_single_endpoint)"
 fi
 
 cat >"$target_file" <<EOF
@@ -123,15 +128,7 @@ registration:
 
 endpoints:
   custom:
-    - name: "$(json_escape "${LIBRECHAT_ENDPOINT_NAME}")"
-      apiKey: "$(json_escape "${NEW_API_SERVICE_TOKEN}")"
-      baseURL: "$(json_escape "${NEW_API_INTERNAL_URL}")/v1"
-      models:
-        default:${default_models_yaml}
-        fetch: ${librechat_fetch_models}
-      titleConvo: true
-      titleModel: "$(json_escape "${LIBRECHAT_TITLE_MODEL}")"
-      modelDisplayLabel: "$(json_escape "${LIBRECHAT_MODEL_LABEL}")"
+${endpoints_yaml}
 EOF
 
 info "LibreChat 配置已渲染: ${target_file}"

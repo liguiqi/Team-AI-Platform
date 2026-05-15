@@ -79,8 +79,8 @@
 - `NEW_API_TOKEN_ALLOWED_MODELS=` 留空
 - `NEW_API_TOKEN_MODEL_LIMITS_ENABLED=false`
 - `NEW_API_RATE_LIMIT_ENABLED=false`
-- 让 `NEW-API /v1/models` 直接返回当前服务 token 可访问的真实模型集合
-- 由 LibreChat 动态拉取，而不是在前端写死单模型
+- 让 `NEW-API /v1/models` 返回当前服务 token 可访问的真实模型集合
+- LibreChat 侧按 `API-zhipu` / `API-deepseek` 分组渲染对应供应商模型
 - 如果前端只想显示部分模型，再由 LibreChat 侧用 `LIBRECHAT_VISIBLE_MODELS` 做展示过滤
 
 ### 4. 智谱渠道
@@ -90,8 +90,8 @@
 关键字段：
 - `type=26`
 - `group` 由后台现状决定，可按你的实际分组维护
-- `models` 包含 19 个智谱模型（由 `ZHIPU_EXPOSED_MODEL` 控制）
-- `test_model=glm-4-flash-250414`
+- `models` 由 `scripts/sync-provider-models.sh` 从智谱模型 API 动态刷新
+- `test_model` 会在同步时校正为当前模型列表中的可用模型
 - `model_mapping={}`（直通模式）
 - `balance=NEW_API_PROVIDER_CHANNEL_BALANCE`（项目内不限额显示/校正值）
 
@@ -102,7 +102,7 @@
 关键字段：
 - `type=1`
 - `base_url=https://api.deepseek.com`
-- `models` 默认包含 `deepseek-v4-flash,deepseek-v4-pro,deepseek-chat,deepseek-reasoner`
+- `models` 由 `scripts/sync-provider-models.sh` 从 DeepSeek 模型 API 动态刷新，当前真实返回为 `deepseek-v4-pro,deepseek-v4-flash`
 - `test_model=deepseek-v4-flash`
 - `model_mapping={}`（保持直通模型名）
 - `balance=NEW_API_PROVIDER_CHANNEL_BALANCE`（项目内不限额显示/校正值）
@@ -157,7 +157,7 @@
 因为本项目已经把“标准状态”定义进脚本中。手工改动虽然能临时解决问题，但如果没有同步到 `.env` 或文档，下次 bootstrap 可能覆盖或失配。
 
 补充说明：
-- 当前主配置 `NEW_API_SYNC_CHANNEL_MODELS_FROM_ENV=true`，bootstrap 会把 `.env` 中的 19 模型矩阵同步到渠道配置。
+- 当前主配置 `NEW_API_SYNC_CHANNEL_MODELS_FROM_ENV=true`，bootstrap 会把 `.env` 中已同步的供应商模型矩阵写入渠道配置。
 - 当前主配置会把服务 token 设为 unlimited，并把供应商渠道余额校正为 `NEW_API_PROVIDER_CHANNEL_BALANCE`。
 - 若你希望长期以 `NEW-API` 后台为主维护入口，可显式把 `NEW_API_SYNC_CHANNEL_MODELS_FROM_ENV` 改回 `false`。
 
@@ -169,13 +169,13 @@
 - 类型是否为 `26`
 - 分组是否符合你的实际授权策略
 - 模型矩阵是否包含你当前希望在 LibreChat 暴露的模型
-- 测试模型是否为 `glm-4-flash-250414`
+- 测试模型是否属于当前 `ZHIPU_EXPOSED_MODEL`
 - `model_mapping` 是否正确
 - 状态是否启用
 
 补充检查：
 - `GET /v1/models` 是否返回你刚在后台维护的模型
-- 若前端没同步到最新列表，执行 `make sync-librechat-models`
+- 若前端没同步到最新列表，执行 `make sync-provider-models`
 
 ### 场景 2：更换智谱 API Key
 推荐步骤：
@@ -237,7 +237,7 @@ make bootstrap
 
 推荐处理：
 ```bash
-make sync-librechat-models
+make sync-provider-models
 ```
 
 ## 运维侧建议

@@ -84,15 +84,15 @@
 关键细节：
 - 不能直接把带 `${...}` 的模板文件给容器使用。
 - 服务 token 变更后必须自动重渲染并重启 LibreChat。
-- LibreChat 默认从 `NEW-API /v1/models` 动态拉取模型。
+- LibreChat 默认按供应商拆分为 `API-zhipu` / `API-deepseek` 端点。
 - 若配置前端白名单，则只展示白名单与 `NEW-API` 模型集合的交集。
 - LibreChat 不暴露真实上游模型名，只暴露平台批准的模型名或别名。
 
 完成标准：
 - LibreChat 可访问。
-- LibreChat 已识别 `NEW-API` 自定义端点。
-- 最终用户可以在 UI 中看到 `NEW-API` 当前授权模型。
-- 管理员可通过 `make sync-librechat-models` 单独同步前端模型列表。
+- LibreChat 已识别 `API-zhipu` / `API-deepseek` 自定义端点。
+- 最终用户可以在 UI 中按供应商看到当前授权模型。
+- 管理员可通过 `make sync-provider-models` 同步供应商模型列表与前端模型列表。
 
 ### Phase 5：治理、运维与验收
 目标：让平台从“能跑”变成“可交付、可验收、可接手”。

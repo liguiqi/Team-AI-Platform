@@ -91,7 +91,7 @@ GET http://localhost:13000/v1/models
 结果：**通过**
 
 ```
-POST /v1/chat/completions (model: glm-4-flash-250414)
+POST /v1/chat/completions (model: glm-5.1 / deepseek-v4-flash)
 - Response: "Hello 👋! I'm ChatGLM"
 - HTTP 200
 ```
@@ -188,7 +188,7 @@ BOOTSTRAP_AUTOCONFIGURE=true
 ## 当前已知结论
 - 平台主链路已完全打通
 - LibreChat 已升级到 v0.8.5（支持 Admin Panel、自定义角色、分级权限等）
-- 19 个智谱模型全部可用
+- 智谱与 DeepSeek 模型按供应商分组可用
 - 自动 bootstrap 一次部署即可使用
 - 搜索功能（Serper/Firecrawl/Jina）已配置
 - 内存使用适合 2C2G ECS 部署（总计约 650MiB）

@@ -71,21 +71,23 @@
 ## 当前端点设计
 
 ### 端点名称
-- `NEW-API`
+- `API-zhipu`
+- `API-deepseek`
 
 ### 实际调用基址
 - 容器内部：`http://new-api:3000/v1`
 
 ### 模型来源
-- 默认情况下，LibreChat 会向 `NEW-API /v1/models` 动态拉取模型列表。
-- 因此前端实际可选模型，取决于 `NEW-API` 当前返回给服务 token 的模型集合。
-- `LIBRECHAT_DEFAULT_MODELS` 只作为默认模型或兜底模型，不再是唯一可见模型。
-- 当前模板里若把 `LIBRECHAT_DEFAULT_MODELS=` 留空，渲染脚本会回退使用所有已启用供应商的 `*_EXPOSED_MODEL` 合并结果作为 default 列表，同时保持 `LIBRECHAT_FETCH_MODELS=true`，所以实际可见模型仍以 `NEW-API /v1/models` 为准。
+- 默认情况下，`scripts/render-librechat-config.sh` 会按供应商分别读取 `*_EXPOSED_MODEL`。
+- `API-zhipu` 只渲染 `ZHIPU_EXPOSED_MODEL`，`API-deepseek` 只渲染 `DEEPSEEK_EXPOSED_MODEL`。
+- 每个列表会按 `*_MODEL_ORDER` 做高阶优先排序。
+- `scripts/sync-provider-models.sh` 会定期从供应商模型 API 更新 `*_EXPOSED_MODEL`，再回放 bootstrap。
 
 ### 模型显示标签
-- `Team AI`
+- `API-zhipu`
+- `API-deepseek`
 
-这意味着用户在 LibreChat 中看到的是 `NEW-API` 当前允许暴露的模型名，而不是 LibreChat 本地写死的一份静态列表。
+这意味着用户在 LibreChat 中不再看到混杂的 `NEW-API` 单入口，而是按供应商选择模型；底层仍由 `NEW-API` 统一鉴权、计量和转发。
 
 ## 管理员账号说明
 
@@ -147,7 +149,8 @@ curl http://localhost:3080/api/endpoints
 ```
 
 正常情况下应能看到：
-- `NEW-API`
+- `API-zhipu`
+- `API-deepseek`（启用 DeepSeek 时）
 
 如需验证模型是否已同步，继续检查：
 ```bash
@@ -155,7 +158,7 @@ curl -fsS "$NEW_API_PUBLIC_URL/v1/models" \
   -H "Authorization: Bearer $NEW_API_SERVICE_TOKEN" | jq -r '.data[].id'
 ```
 
-应返回 19 个智谱模型。
+应返回当前已启用供应商渠道同步后的模型集合。
 
 ### 4. 配置文件已渲染为真实值
 检查：
@@ -285,31 +288,32 @@ docker compose --env-file .env -f deploy/docker-compose.local.yml logs -f librec
 5. 必要时从浏览器做一次真实发言验证
 
 ### 动态模型同步建议
-- 推荐保持 `LIBRECHAT_FETCH_MODELS=true`
+- 推荐保持 `LIBRECHAT_SPLIT_PROVIDER_ENDPOINTS=true`
 - 推荐保持 `NEW_API_TOKEN_MODEL_LIMITS_ENABLED=false`
 - 推荐保持 `NEW_API_SYNC_CHANNEL_MODELS_FROM_ENV=true`
+- 推荐执行 `make install-model-sync-cron`
 
 这样做的效果是：
-- LibreChat 不再写死模型列表
+- LibreChat 按供应商拆分模型列表
 - 服务 token 不再额外把模型收窄成单模型
-- `.env` 中的模型矩阵会在 bootstrap 时同步到 `NEW-API`，前后端展示保持一致
+- 上游模型 API 每日检测后会更新 `.env` 中的模型矩阵，再同步到 `NEW-API` 和 LibreChat
 
 ## 多模型动态同步运维说明
 
-### 模式 1：全量动态同步
+### 模式 1：按供应商拆分动态同步
 适用场景：
-- 希望 LibreChat 前端始终显示 `NEW-API /v1/models` 当前返回的全部模型
+- 希望 LibreChat 前端按 `API-zhipu` / `API-deepseek` 分组展示当前供应商模型
 
 推荐配置：
-- `LIBRECHAT_FETCH_MODELS=true`
+- `LIBRECHAT_SPLIT_PROVIDER_ENDPOINTS=true`
 - `LIBRECHAT_VISIBLE_MODELS=` 保持为空
 - `NEW_API_TOKEN_MODEL_LIMITS_ENABLED=false`
 - `NEW_API_SYNC_CHANNEL_MODELS_FROM_ENV=true`
 
 运维动作：
-1. 在 `NEW-API` 后台维护渠道模型矩阵
+1. 执行 `make sync-provider-models`
 2. 刷新 LibreChat 页面
-3. 如需强制刷新运行配置，执行 `make sync-librechat-models`
+3. 如需每日自动刷新，执行 `make install-model-sync-cron`
 
 ### 模式 2：前端白名单筛选
 适用场景：
@@ -331,24 +335,24 @@ LIBRECHAT_VISIBLE_MODELS=glm-4-flash,glm-4-plus,glm-5
 1. 修改 `.env` 中 `LIBRECHAT_VISIBLE_MODELS`
 2. 执行：
    ```bash
-   make sync-librechat-models
+   make sync-provider-models
    ```
 3. 刷新 LibreChat 页面确认模型列表
 
 ### 推荐同步命令
 当你完成以下任一变更后，建议执行：
-- 调整了 `NEW-API` 后台模型矩阵
+- 调整了供应商模型 API、模型排序或可见模型规则
 - 调整了 `LIBRECHAT_VISIBLE_MODELS`
 - 调整了服务 token 或相关配置
 
 命令：
 ```bash
-make sync-librechat-models
+make sync-provider-models
 ```
 
 ### 常见结论
-- 没有配置 `LIBRECHAT_VISIBLE_MODELS`：前端按 `NEW-API` 全量动态显示
-- 配置了 `LIBRECHAT_VISIBLE_MODELS`：前端只显示白名单与 `NEW-API` 实际模型的交集
+- 没有配置 `LIBRECHAT_VISIBLE_MODELS`：前端按供应商端点分别显示同步后的模型
+- 配置了 `LIBRECHAT_VISIBLE_MODELS`：前端只显示白名单与供应商同步模型的交集
 - 白名单里写了一个 `NEW-API` 当前没有的模型：该模型会被自动跳过
 
 ### 不建议的做法

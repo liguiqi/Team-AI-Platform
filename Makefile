@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: init up down restart bootstrap render-auth sync-casdoor-auth sync-casdoor-providers sync-librechat-models health smoke smoke-zhipu smoke-deepseek backup restore doctor verify-no-secrets
+.PHONY: init up down restart bootstrap render-auth sync-casdoor-auth sync-casdoor-providers sync-provider-models install-model-sync-cron sync-librechat-models health smoke smoke-zhipu smoke-deepseek backup restore doctor verify-no-secrets
 
 init:
 	bash scripts/init-local.sh
@@ -25,6 +25,12 @@ sync-casdoor-auth:
 
 sync-casdoor-providers:
 	bash scripts/sync-casdoor-providers.sh
+
+sync-provider-models:
+	bash scripts/sync-provider-models.sh
+
+install-model-sync-cron:
+	bash scripts/install-model-sync-cron.sh
 
 sync-librechat-models:
 	bash scripts/sync-librechat-models.sh

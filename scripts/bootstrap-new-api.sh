@@ -30,7 +30,7 @@ ensure_enabled_provider_keys() {
   local enabled_count=0
   local prefix api_key_var api_key_value
 
-  for prefix in ZHIPU DEEPSEEK; do
+  while IFS= read -r prefix; do
     if [[ "$(provider_is_enabled "$prefix")" != "true" ]]; then
       continue
     fi
@@ -39,7 +39,7 @@ ensure_enabled_provider_keys() {
     api_key_value="${!api_key_var:-}"
     require_non_placeholder_env "$api_key_var" "$api_key_value"
     enabled_count=$((enabled_count + 1))
-  done
+  done < <(provider_prefixes)
 
   (( enabled_count > 0 )) || die "请至少启用一个模型供应商并填写真实 API Key"
 }
@@ -66,11 +66,11 @@ upsert_channel_from_env() {
   local exposed_models="${!exposed_models_var:-}"
   local channel_group="${!channel_group_var:-}"
   local test_model="${!test_model_var:-}"
-  local model_mapping="${!model_mapping_var:-{}}"
+  local model_mapping="${!model_mapping_var-}"
   local channel_priority="${!channel_priority_var:-10}"
   local channel_weight="${!channel_weight_var:-100}"
   local channel_remark="${!channel_remark_var:-}"
-  local channel_balance="${!channel_balance_var:-${new_api_provider_channel_balance}}"
+  local channel_balance="${!channel_balance_var-}"
   local channel_balance_updated_time
   local channel_search_resp channel_json channel_id add_channel_payload add_channel_resp update_channel_payload update_channel_resp
 
@@ -78,6 +78,8 @@ upsert_channel_from_env() {
     info "已跳过未启用的 ${provider_label} 渠道"
     return 0
   fi
+  [[ -n "$model_mapping" ]] || model_mapping="{}"
+  [[ -n "$channel_balance" ]] || channel_balance="${new_api_provider_channel_balance}"
 
   [[ -n "$channel_name" ]] || die "请先在 $(env_file) 中填写 ${channel_name_var}"
   [[ -n "$channel_type" ]] || die "请先在 $(env_file) 中填写 ${channel_type_var}"
@@ -100,6 +102,7 @@ EOF
     add_channel_resp="$(curl -fsS -c "$ROOT_COOKIE" -b "$ROOT_COOKIE" -X POST "${new_api_url}/api/channel/" -H 'Content-Type: application/json' -H "New-Api-User: ${ROOT_ID}" -d "$add_channel_payload")"
     printf '%s' "$add_channel_resp" | json_has_true success || die "创建${provider_label}渠道失败: $add_channel_resp"
     ensure_channel_project_balance "$channel_name" "$provider_label" "$channel_balance"
+    ensure_channel_model_mapping "$channel_name" "$provider_label" "$model_mapping"
     return 0
   fi
 
@@ -132,6 +135,7 @@ EOF
   update_channel_resp="$(curl -fsS -c "$ROOT_COOKIE" -b "$ROOT_COOKIE" -X PUT "${new_api_url}/api/channel/" -H 'Content-Type: application/json' -H "New-Api-User: ${ROOT_ID}" -d "$update_channel_payload")"
   printf '%s' "$update_channel_resp" | json_has_true success || die "更新${provider_label}渠道失败: $update_channel_resp"
   ensure_channel_project_balance "$channel_name" "$provider_label" "$channel_balance"
+  ensure_channel_model_mapping "$channel_name" "$provider_label" "$model_mapping"
 }
 
 ensure_enabled_provider_keys
@@ -219,10 +223,26 @@ ensure_channel_project_balance() {
   info "${provider_label}渠道 ${channel_name} 余额已设置为项目内不限额基准 ${actual_balance}"
 }
 
+ensure_channel_model_mapping() {
+  local channel_name="$1"
+  local provider_label="$2"
+  local model_mapping="${3-}"
+  local channel_name_sql model_mapping_sql normalized_mapping actual_mapping
+
+  [[ -n "$model_mapping" ]] || model_mapping="{}"
+  normalized_mapping="$(printf '%s' "$model_mapping" | jq -c 'if type == "object" then . else error("model_mapping must be object") end')" \
+    || die "${provider_label}渠道 model_mapping 不是合法 JSON object: ${model_mapping}"
+  channel_name_sql="$(sql_escape "${channel_name}")"
+  model_mapping_sql="$(sql_escape "${normalized_mapping}")"
+  actual_mapping="$(psql_exec "WITH updated AS (UPDATE channels SET model_mapping = '${model_mapping_sql}' WHERE name = '${channel_name_sql}' RETURNING model_mapping) SELECT model_mapping FROM updated;")"
+  [[ -n "${actual_mapping:-}" ]] || die "校正${provider_label}渠道 model_mapping 失败: 找不到渠道 ${channel_name}"
+  info "${provider_label}渠道 ${channel_name} model_mapping 已校正为 ${actual_mapping}"
+}
+
 ensure_known_provider_channel_balances() {
   local prefix provider_label channel_name_var channel_balance_var channel_name channel_balance
 
-  for prefix in ZHIPU DEEPSEEK; do
+  while IFS= read -r prefix; do
     case "$prefix" in
       ZHIPU) provider_label="智谱" ;;
       DEEPSEEK) provider_label="DeepSeek" ;;
@@ -232,11 +252,12 @@ ensure_known_provider_channel_balances() {
     channel_name_var="${prefix}_CHANNEL_NAME"
     channel_balance_var="${prefix}_CHANNEL_BALANCE"
     channel_name="${!channel_name_var:-}"
-    channel_balance="${!channel_balance_var:-${new_api_provider_channel_balance}}"
+    channel_balance="${!channel_balance_var-}"
+    [[ -n "$channel_balance" ]] || channel_balance="${new_api_provider_channel_balance}"
     [[ -n "$channel_name" ]] || continue
     require_non_negative_number "${channel_balance_var:-NEW_API_PROVIDER_CHANNEL_BALANCE}" "${channel_balance}"
     ensure_channel_project_balance "$channel_name" "$provider_label" "$channel_balance" false
-  done
+  done < <(provider_prefixes)
 }
 
 api_setup_resp="$(curl -fsS "${new_api_url}/api/setup")"

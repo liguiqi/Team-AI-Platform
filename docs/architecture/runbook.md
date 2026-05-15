@@ -213,7 +213,7 @@ docker compose --env-file .env -f deploy/docker-compose.local.yml logs -f casdoo
 1. 手工请求 `/v1/models`
 2. 检查 `.env` 中 `NEW_API_TOKEN_MODEL_LIMITS_ENABLED` 是否误设为 `true`
 3. 若配置了 `LIBRECHAT_VISIBLE_MODELS`，检查目标模型是否在白名单内
-4. 执行 `make sync-librechat-models`
+4. 执行 `make sync-provider-models`
 5. 再检查 `NEW-API` 后台渠道是否启用、模型映射与组别是否正确
 
 ### 场景 6：聊天请求返回 404
@@ -284,14 +284,14 @@ make bootstrap
 
 ## 何时只需要同步 LibreChat 模型列表
 
-以下场景通常不需要全量 bootstrap：
-- 你只是在 `NEW-API` 后台新增或下线了模型
+以下场景通常不需要手工改后台：
+- 你只想刷新供应商当前模型列表
 - 你只修改了 `.env` 中的 `LIBRECHAT_VISIBLE_MODELS`
 - 你确认服务 token、渠道 key、root 账号均未变化
 
 命令：
 ```bash
-make sync-librechat-models
+make sync-provider-models
 ```
 
 ## 敏感信息检查

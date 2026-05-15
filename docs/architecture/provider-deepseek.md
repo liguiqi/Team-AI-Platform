@@ -17,14 +17,12 @@
 
 | 模型 ID | 说明 |
 |---------|------|
-| `deepseek-v4-flash` | 当前推荐默认模型 |
 | `deepseek-v4-pro` | 更强能力版本 |
-| `deepseek-chat` | 兼容保留模型名，官方标注将于 2026-07-24 弃用 |
-| `deepseek-reasoner` | 兼容保留模型名，官方标注将于 2026-07-24 弃用 |
+| `deepseek-v4-flash` | 当前推荐默认/测试模型 |
 
 说明：
-- 当前模板默认把这 4 个模型都暴露给 `NEW-API`。
-- 若后续 DeepSeek 官方继续扩展模型矩阵，直接更新 `DEEPSEEK_EXPOSED_MODEL` 即可。
+- `scripts/sync-provider-models.sh` 会从 DeepSeek 模型 API 动态刷新 `DEEPSEEK_EXPOSED_MODEL`。
+- 历史兼容模型名 `deepseek-chat` / `deepseek-reasoner` 不再写死在默认列表中；如果官方 API 后续再次返回，它们会按同步规则进入列表。
 
 ## 关键环境变量
 
@@ -34,7 +32,7 @@ DEEPSEEK_API_KEY=__FILL_BY_USER__
 DEEPSEEK_API_BASE_URL=https://api.deepseek.com
 DEEPSEEK_DEFAULT_MODEL=deepseek-v4-flash
 DEEPSEEK_TEST_MODEL=deepseek-v4-flash
-DEEPSEEK_EXPOSED_MODEL=deepseek-v4-flash,deepseek-v4-pro,deepseek-chat,deepseek-reasoner
+DEEPSEEK_EXPOSED_MODEL=deepseek-v4-pro,deepseek-v4-flash
 DEEPSEEK_CHANNEL_NAME=deepseek-primary
 DEEPSEEK_CHANNEL_TYPE=1
 DEEPSEEK_CHANNEL_GROUP=default
@@ -42,6 +40,10 @@ DEEPSEEK_CHANNEL_PRIORITY=10
 DEEPSEEK_CHANNEL_WEIGHT=100
 DEEPSEEK_MODEL_MAPPING_JSON='{}'
 DEEPSEEK_CHANNEL_REMARK="Primary DeepSeek channel for acceptance"
+DEEPSEEK_LIBRECHAT_ENDPOINT_NAME=API-deepseek
+DEEPSEEK_MODEL_ORDER=deepseek-v4-pro,deepseek-v4-flash,deepseek-reasoner,deepseek-chat
+DEEPSEEK_MODEL_LIST_URLS=https://api.deepseek.com/models,https://api.deepseek.com/v1/models
+DEEPSEEK_MODEL_INCLUDE_REGEX='^deepseek-'
 ```
 
 补充建议：
@@ -50,7 +52,8 @@ DEEPSEEK_CHANNEL_REMARK="Primary DeepSeek channel for acceptance"
 - `NEW_API_RATE_LIMIT_ENABLED=false` — 本项目不再额外限制请求频率
 - `NEW_API_TOKEN_MODEL_LIMITS_ENABLED=false` — 让 LibreChat 通过服务 token 直接看到 `NEW-API /v1/models` 的完整返回
 - `NEW_API_SYNC_CHANNEL_MODELS_FROM_ENV=true` — 让 bootstrap 始终按 `.env` 回放 DeepSeek 模型矩阵
-- `LIBRECHAT_FETCH_MODELS=true` — 让前端按 `NEW-API` 动态拉取可见模型
+- `LIBRECHAT_SPLIT_PROVIDER_ENDPOINTS=true` — 在 LibreChat 中以 `API-deepseek` 独立分组展示
+- `LIBRECHAT_FETCH_MODELS=true` — 保留兼容开关；拆分端点模式下每个端点使用同步后的 provider 模型列表
 - 如果当前只想启用 DeepSeek，不再同时维护智谱，请显式设置 `ZHIPU_ENABLED=false`
 
 ## 为什么 Base URL 直接写根域名
@@ -97,18 +100,19 @@ bootstrap 会自动完成：
 ## LibreChat 如何看到 DeepSeek 模型
 
 当前仓库默认保持：
+- `LIBRECHAT_SPLIT_PROVIDER_ENDPOINTS=true`
 - `LIBRECHAT_FETCH_MODELS=true`
 - `LIBRECHAT_VISIBLE_MODELS=` 留空
 
-因此 LibreChat 不会在前端写死 DeepSeek 列表，而是通过：
+因此 LibreChat 不再把 DeepSeek 和智谱混在一个 `NEW-API` 菜单里，而是渲染：
 
 ```text
-LibreChat -> NEW-API /v1/models -> 返回 deepseek-* 模型
+LibreChat API-deepseek -> NEW-API /v1/chat/completions -> deepseek-primary
 ```
 
 当 `ZHIPU_ENABLED=true` 与 `DEEPSEEK_ENABLED=true` 同时开启时：
 - `NEW-API /v1/models` 会返回两条渠道合并后的模型集合
-- LibreChat 会直接看到两家供应商的模型
+- LibreChat 会显示 `API-zhipu` 与 `API-deepseek` 两个入口
 - 仍由同一个 `NEW_API_SERVICE_TOKEN` 完成鉴权
 
 如果当前只想测试 DeepSeek，不再保留智谱主链路，请把：
@@ -127,10 +131,8 @@ curl -fsS "$NEW_API_PUBLIC_URL/v1/models" \
 ```
 
 成功时应能看到：
-- `deepseek-v4-flash`
 - `deepseek-v4-pro`
-- `deepseek-chat`
-- `deepseek-reasoner`
+- `deepseek-v4-flash`
 
 ### 方式二：执行 DeepSeek smoke
 ```bash
@@ -166,11 +168,11 @@ make smoke-deepseek
 ### LibreChat 看不到 DeepSeek 模型
 优先检查：
 1. `GET /v1/models` 是否已经返回 `deepseek-*`
-2. `LIBRECHAT_FETCH_MODELS=true`
+2. `LIBRECHAT_SPLIT_PROVIDER_ENDPOINTS=true`
 3. 若配置了 `LIBRECHAT_VISIBLE_MODELS`，确认白名单中包含 DeepSeek 模型
-4. 执行 `make sync-librechat-models`
+4. 执行 `make sync-provider-models`
 
 ## 与智谱并存时的建议
 - 若两家都启用，优先保持模型名直通，不在 `model_mapping` 中做人为别名折叠
 - 若只想前端展示 DeepSeek 子集，使用 `LIBRECHAT_VISIBLE_MODELS`
-- 若后续将 DeepSeek 设为主模型，记得同步调整 `LIBRECHAT_TITLE_MODEL`
+- 若后续将 DeepSeek 设为主模型，记得同步调整 `DEEPSEEK_DEFAULT_MODEL`

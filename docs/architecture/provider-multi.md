@@ -56,7 +56,9 @@ DEEPSEEK_CHANNEL_TYPE=1
 DEEPSEEK_CHANNEL_GROUP=default
 DEEPSEEK_CHANNEL_PRIORITY=10
 DEEPSEEK_CHANNEL_WEIGHT=100
-DEEPSEEK_EXPOSED_MODEL=deepseek-v4-flash,deepseek-v4-pro,deepseek-chat,deepseek-reasoner
+DEEPSEEK_EXPOSED_MODEL=deepseek-v4-pro,deepseek-v4-flash
+DEEPSEEK_LIBRECHAT_ENDPOINT_NAME=API-deepseek
+DEEPSEEK_MODEL_ORDER=deepseek-v4-pro,deepseek-v4-flash,deepseek-reasoner,deepseek-chat
 ```
 
 ### 第三步：执行 bootstrap 自动创建渠道
@@ -77,6 +79,12 @@ bootstrap 会自动创建或更新 `deepseek-primary` 渠道，并同步本项�
 - 服务 token 保持 `NEW_API_SERVICE_TOKEN_UNLIMITED=true`
 - token 模型白名单保持关闭
 - 供应商渠道 `balance` 校正为 `NEW_API_PROVIDER_CHANNEL_BALANCE`
+- LibreChat 按 `API-zhipu` / `API-deepseek` 分组展示模型
+
+每日动态同步可执行：
+```bash
+make install-model-sync-cron
+```
 
 如果当前只想测试 DeepSeek，不再保留智谱主链路，请把：
 
@@ -104,13 +112,12 @@ DEEPSEEK_API_BASE_URL=https://api.deepseek.com
 
 渠道配置：
 - 类型：`1`（OpenAI 兼容）
-- 模型：`deepseek-v4-flash,deepseek-v4-pro,deepseek-chat,deepseek-reasoner`
+- 模型：由 DeepSeek 模型 API 动态刷新，当前真实返回 `deepseek-v4-pro,deepseek-v4-flash`
 - Base URL：`https://api.deepseek.com`
 
 注意：
 - DeepSeek 的 API 完全兼容 OpenAI 格式
-- 当前官方首页给出的 OpenAI 兼容模型矩阵包括 `deepseek-v4-flash`、`deepseek-v4-pro`、`deepseek-chat`、`deepseek-reasoner`
-- `deepseek-chat` 与 `deepseek-reasoner` 当前仍可用，但官方标注将于 `2026-07-24` 弃用
+- 本仓库不再长期写死 DeepSeek 模型矩阵，`make sync-provider-models` 会按官方模型 API 返回值刷新
 
 ### 阿里通义/百炼 DashScope
 

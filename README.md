@@ -19,7 +19,7 @@
 
 本仓库默认采用：
 - `NEW-API` 原生 `ZhipuV4` 渠道 + DeepSeek OpenAI 兼容渠道
-- `LibreChat` 自定义 OpenAI 兼容端点接入 `NEW-API`
+- `LibreChat` 自定义 OpenAI 兼容端点按供应商拆分为 `API-zhipu` / `API-deepseek`，底层仍统一走 `NEW-API`
 - `Docker Compose` 作为本地与单机生产的统一编排方式
 - `Caddy` 作为生产反向代理
 
@@ -59,9 +59,9 @@
    ```bash
    make smoke-deepseek
    ```
-5. 如果你后续在 `NEW-API` 后台调整了模型矩阵，或配置了 LibreChat 前端白名单，执行：
+5. 如果你后续调整了上游模型矩阵，或配置了 LibreChat 前端白名单，执行：
    ```bash
-   make sync-librechat-models
+   make sync-provider-models
    ```
 
 说明：
@@ -70,7 +70,7 @@
 - 本地 compose 当前默认带上 `LibreChat Admin Panel`，入口为 `http://localhost:3001`。
 - LibreChat 的 OIDC state / session 当前持久化到 `new-api-redis` 的 DB 1，重启后不会再因为内存 session 丢失而要求重复登录。
 - Casdoor 登录页样式由脚本渲染并随浏览器 `light/dark` 主题自适应。
-- 当 `ZHIPU_ENABLED=true` 与 `DEEPSEEK_ENABLED=true` 同时开启时，`make bootstrap` 会同时创建/更新 `zhipu-primary` 与 `deepseek-primary` 两条渠道，LibreChat 通过同一个 `NEW_API_SERVICE_TOKEN` 动态获取合并后的模型集合。
+- 当 `ZHIPU_ENABLED=true` 与 `DEEPSEEK_ENABLED=true` 同时开启时，`make bootstrap` 会同时创建/更新 `zhipu-primary` 与 `deepseek-primary` 两条渠道；LibreChat 展示为 `API-zhipu` / `API-deepseek` 两个入口，底层共用同一个 `NEW_API_SERVICE_TOKEN`。
 
 ## 目录结构
 ```text
@@ -88,7 +88,8 @@ runtime/                  本地与生产运行期数据目录（不入库）
 - `make down`：停止本地 compose。
 - `make restart`：重启本地 compose。
 - `make bootstrap`：初始化 `NEW-API` 并配置已启用供应商渠道。
-- `make sync-librechat-models`：按当前 `NEW-API` 模型矩阵与前端白名单重渲染 LibreChat 模型列表。
+- `make sync-provider-models`：检测供应商模型 API、同步 `NEW-API` 渠道并重渲染 LibreChat 模型列表。
+- `make sync-librechat-models`：兼容入口，默认会调用 `make sync-provider-models` 等价逻辑。
 - `make health`：检查 `NEW-API` 与 `LibreChat` 应用层健康状态。
 - `make smoke`：执行通用 smoke test。
 - `make smoke-zhipu`：执行智谱验收通道 smoke test。
@@ -106,14 +107,15 @@ runtime/                  本地与生产运行期数据目录（不入库）
 ZHIPU_ENABLED=true
 ZHIPU_API_KEY=__FILL_BY_USER__
 ZHIPU_API_BASE_URL=https://open.bigmodel.cn
-ZHIPU_DEFAULT_MODEL=glm-4-flash-250414
-ZHIPU_TEST_MODEL=glm-4-flash-250414
-ZHIPU_EXPOSED_MODEL=glm-5.1,glm-5,glm-5-turbo,glm-4.7,glm-4.7-flash,glm-4.7-flashx,glm-4.6,glm-4.5-air,glm-4.5-airx,glm-4.5-flash,glm-4-long,glm-4-flashx-250414,glm-4-flash-250414,glm-5v-turbo,glm-4.6v,glm-4.6v-flash,glm-4.1v-thinking-flashx,glm-4.1v-thinking-flash,glm-4v-flash
+ZHIPU_DEFAULT_MODEL=glm-5.1
+ZHIPU_TEST_MODEL=glm-5.1
+ZHIPU_EXPOSED_MODEL=glm-5.1,glm-5,glm-5-turbo,glm-4.7,glm-4.6,glm-4.5-air,glm-4.5
+ZHIPU_LIBRECHAT_ENDPOINT_NAME=API-zhipu
 ```
 
-当前主配置直接把 19 个智谱模型暴露给 `NEW-API`，并让 LibreChat 通过 `NEW-API /v1/models` 动态获取当前可见模型，从而实现：
+当前主配置会先从智谱模型 API 检测可用模型，再把排序后的 `ZHIPU_EXPOSED_MODEL` 同步到 `NEW-API` 与 LibreChat 的 `API-zhipu` 入口，从而实现：
 - 前端不直接持有官方采购密钥
-- LibreChat 只看见 `NEW-API` 当前授权给服务 token 的模型
+- LibreChat 只在 `API-zhipu` 下展示智谱模型
 - NEW-API 可继续扩展其它上游而不改前端
 
 `NEW-API` 的 `ZhipuV4` 渠道会自动补上 `/api/paas/v4`，所以 `ZHIPU_API_BASE_URL` 必须写成 `https://open.bigmodel.cn`，不要重复带完整路径。
@@ -126,7 +128,8 @@ DEEPSEEK_API_KEY=__FILL_BY_USER__
 DEEPSEEK_API_BASE_URL=https://api.deepseek.com
 DEEPSEEK_DEFAULT_MODEL=deepseek-v4-flash
 DEEPSEEK_TEST_MODEL=deepseek-v4-flash
-DEEPSEEK_EXPOSED_MODEL=deepseek-v4-flash,deepseek-v4-pro,deepseek-chat,deepseek-reasoner
+DEEPSEEK_EXPOSED_MODEL=deepseek-v4-pro,deepseek-v4-flash
+DEEPSEEK_LIBRECHAT_ENDPOINT_NAME=API-deepseek
 ```
 
 说明：
@@ -134,13 +137,14 @@ DEEPSEEK_EXPOSED_MODEL=deepseek-v4-flash,deepseek-v4-pro,deepseek-chat,deepseek-
 - `make bootstrap` 会在 `DEEPSEEK_ENABLED=true` 时自动创建/更新 `deepseek-primary` 渠道。
 - bootstrap 会把 `deepseek-primary` 与其它已启用供应商渠道的 `balance` 校正为 `NEW_API_PROVIDER_CHANNEL_BALANCE`，本项目内不再做渠道费用余额限制。
 - DeepSeek 官方文档当前给出的 OpenAI 兼容 `base_url` 是 `https://api.deepseek.com`，不需要额外手工补 `/v1`。
-- `deepseek-chat` 与 `deepseek-reasoner` 是兼容保留模型名，官方文档标注将于 `2026-07-24` 弃用；当前模板仍默认保留，以兼容旧调用方。
+- `make sync-provider-models` 会从 DeepSeek 模型 API 动态刷新 `DEEPSEEK_EXPOSED_MODEL`；当前真实 API 返回 `deepseek-v4-pro` / `deepseek-v4-flash`。
 
 ## 模型同步说明
-当前 LibreChat 支持两种模型展示方式：
+当前默认策略是按供应商拆分 LibreChat 模型入口：
 
-- 全量动态同步：保持 `LIBRECHAT_FETCH_MODELS=true` 且 `LIBRECHAT_VISIBLE_MODELS=` 为空，前端将直接显示 `NEW-API /v1/models` 当前返回的模型集合。
-- 前端白名单筛选：设置 `LIBRECHAT_VISIBLE_MODELS=glm-4-flash,glm-4-plus,glm-5` 这类逗号分隔列表后，前端只显示白名单与 `NEW-API` 实际模型集合的交集。
+- `API-zhipu`：只显示智谱模型，并按 `ZHIPU_MODEL_ORDER` 高阶优先排序。
+- `API-deepseek`：只显示 DeepSeek 模型，并按 `DEEPSEEK_MODEL_ORDER` 高阶优先排序。
+- 两个入口底层都使用同一个 `NEW_API_SERVICE_TOKEN` 请求 `NEW-API /v1/*`。
 
 推荐默认策略：
 - `NEW_API_SERVICE_TOKEN_QUOTA=1000000000000`
@@ -149,10 +153,16 @@ DEEPSEEK_EXPOSED_MODEL=deepseek-v4-flash,deepseek-v4-pro,deepseek-chat,deepseek-
 - `NEW_API_RATE_LIMIT_ENABLED=false`
 - `NEW_API_TOKEN_MODEL_LIMITS_ENABLED=false`
 - `NEW_API_SYNC_CHANNEL_MODELS_FROM_ENV=true`
+- `LIBRECHAT_SPLIT_PROVIDER_ENDPOINTS=true`
 - `LIBRECHAT_FETCH_MODELS=true`
 - `LIBRECHAT_VISIBLE_MODELS=` 留空
 
-这样可以把 `.env` 中的模型矩阵、`NEW-API` 渠道配置和 LibreChat 前端展示保持一致。
+每日动态同步：
+```bash
+make install-model-sync-cron
+```
+
+默认 cron 为 `17 4 * * *`，会执行 `make sync-provider-models` 等价逻辑：检测供应商模型 API、更新 `*_EXPOSED_MODEL`、回放 bootstrap，并重启 LibreChat。
 
 ## smoke test
 - 通用检查：

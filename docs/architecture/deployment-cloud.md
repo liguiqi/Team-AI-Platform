@@ -89,6 +89,7 @@ cp deploy/env/prod/.env.example deploy/env/prod/.env
   - `NEW_API_RATE_LIMIT_ENABLED=false`
   - `NEW_API_TOKEN_MODEL_LIMITS_ENABLED=false`
   - `NEW_API_SYNC_CHANNEL_MODELS_FROM_ENV=true`
+  - `LIBRECHAT_SPLIT_PROVIDER_ENDPOINTS=true`
   - `LIBRECHAT_FETCH_MODELS=true`
   - `LIBRECHAT_VISIBLE_MODELS=` 留空
 

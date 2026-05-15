@@ -18,7 +18,7 @@
 - `NEW-API` 能通过智谱完成真实模型调用。
 - LibreChat 已接入 `NEW-API` 自定义端点。
 - LibreChat 已接入 Casdoor OIDC，且本地登录入口已关闭。
-- 19 个智谱模型全部可访问（13 chat + 6 vision）。
+- 智谱与 DeepSeek 模型能按 `API-zhipu` / `API-deepseek` 分组访问。
 - 自动 bootstrap 在 `make up` 时正确执行。
 - 网络搜索功能已配置（Serper + Firecrawl + Jina）。
 - 所有容器配置了内存限制。
@@ -89,9 +89,9 @@ bash scripts/bootstrap-new-api.sh
 3. 点击进入 Casdoor
 4. 至少验证一次邮箱真实登录
 5. 至少验证一次手机号真实登录
-6. 确认端点中存在 `NEW-API`
-7. 确认模型列表包含 19 个智谱模型
-8. 至少选择一个可用模型发起真实对话，建议优先验证 `glm-4-flash-250414`
+6. 确认端点中存在 `API-zhipu`，启用 DeepSeek 时存在 `API-deepseek`
+7. 确认模型列表按供应商拆分并高阶优先排序
+8. 至少选择一个可用模型发起真实对话，建议优先验证 `glm-5.1` 与 `deepseek-v4-flash`
 9. 重启 LibreChat 后再次走一次统一认证，确认不会稳定复现 state 校验失败页
 
 ## 通过标准
@@ -101,7 +101,7 @@ bash scripts/bootstrap-new-api.sh
 - `make smoke-zhipu` 输出成功
 
 ### API 层
-- `GET /v1/models` 返回 19 个智谱模型
+- `GET /v1/models` 返回当前已启用供应商同步后的模型集合
 - `POST /v1/chat/completions` 返回 `HTTP 200`
 - 返回体中包含 `choices`
 

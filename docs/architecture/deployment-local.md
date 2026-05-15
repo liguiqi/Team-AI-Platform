@@ -105,6 +105,7 @@ CASDOOR_SMS_TEMPLATE_CODE=短信模板编号
   - `NEW_API_RATE_LIMIT_ENABLED=false`
   - `NEW_API_TOKEN_MODEL_LIMITS_ENABLED=false`
   - `NEW_API_SYNC_CHANNEL_MODELS_FROM_ENV=true`
+  - `LIBRECHAT_SPLIT_PROVIDER_ENDPOINTS=true`
   - `LIBRECHAT_FETCH_MODELS=true`
   - `LIBRECHAT_VISIBLE_MODELS=` 留空
   - `PLATFORM_THEME_MODE=system`
@@ -194,7 +195,7 @@ bash scripts/bootstrap-new-api.sh
 
 ### 执行命令
 ```bash
-make sync-librechat-models
+make sync-provider-models
 ```
 
 ### 适用场景
@@ -204,10 +205,17 @@ make sync-librechat-models
 
 ### 这一步会做什么
 - 读取当前 `.env`
-- 请求 `NEW-API /v1/models`
-- 按 `LIBRECHAT_VISIBLE_MODELS` 决定是否做前端白名单过滤
-- 重渲染 `runtime/local/librechat/librechat.yaml`
-- 重启 LibreChat
+- 调用供应商模型 API 检测当前模型矩阵
+- 更新 `ZHIPU_EXPOSED_MODEL` / `DEEPSEEK_EXPOSED_MODEL`
+- 按 `*_MODEL_ORDER` 做高阶优先排序
+- 回放 bootstrap，把模型矩阵写入 `NEW-API` 渠道并重渲染 LibreChat
+
+### 安装每日自动同步
+```bash
+make install-model-sync-cron
+```
+
+默认每天 04:17 执行一次，可通过 `PROVIDER_MODEL_SYNC_CRON` 调整。
 
 ## 主链路联调
 
@@ -293,7 +301,7 @@ ss -ltn | grep 18000
 1. `curl -fsS "$NEW_API_PUBLIC_URL/v1/models" -H "Authorization: Bearer $NEW_API_SERVICE_TOKEN" | jq -r '.data[].id'`
 2. 确认 `.env` 中 `NEW_API_TOKEN_MODEL_LIMITS_ENABLED=false`
 3. 若配置了 `LIBRECHAT_VISIBLE_MODELS`，确认目标模型确实包含在白名单中
-4. 执行 `make sync-librechat-models`
+4. 执行 `make sync-provider-models`
 5. 必要时再执行 `make bootstrap`
 6. `docker compose --env-file .env -f deploy/docker-compose.local.yml logs -f librechat`
 

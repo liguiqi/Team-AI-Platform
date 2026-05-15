@@ -55,7 +55,7 @@
 ## 使用场景
 
 ### 场景 1：普通员工通过网页发起对话
-普通员工打开 LibreChat 页面，先通过 Casdoor 完成邮箱或手机号真实认证，再选择平台允许暴露的模型，例如 `glm-4-flash-250414`，输入问题后得到对话结果。用户不持有供应商密钥，只使用平台已经开放的模型集合。
+普通员工打开 LibreChat 页面，先通过 Casdoor 完成邮箱或手机号真实认证，再在 `API-zhipu` / `API-deepseek` 等供应商分组下选择平台允许暴露的模型，输入问题后得到对话结果。用户不持有供应商密钥，只使用平台已经开放的模型集合。
 
 ### 场景 2：管理员新增或调整模型渠道
 管理员登录 `NEW-API` 后台，查看渠道配置、额度和日志，必要时替换上游密钥、调整模型映射、禁用异常渠道或修改限流参数。
@@ -64,7 +64,7 @@
 管理员在新机器或故障机器上，根据文档执行 `make init`、`make up`、`make smoke-zhipu`、`make backup`、`make restore`，完成平台部署或恢复。
 
 ### 场景 4：管理员只想让前端显示部分模型
-管理员在 `NEW-API` 后台维护完整模型矩阵，同时在 `.env` 中配置 `LIBRECHAT_VISIBLE_MODELS`，随后执行 `make sync-librechat-models`，让 LibreChat 只展示指定模型子集。
+管理员在 `.env` 中配置 `LIBRECHAT_VISIBLE_MODELS` 或供应商模型同步规则，随后执行 `make sync-provider-models`，让 LibreChat 按供应商分组展示最新模型子集。
 
 ## 范围定义
 
@@ -165,7 +165,7 @@
 - `NEW-API` 管理后台可访问。
 - LibreChat 页面可访问。
 - `make up` 后自动 bootstrap 完成，平台立即可用。
-- `NEW-API /v1/models` 能返回 19 个智谱模型。
+- `NEW-API /v1/models` 能返回当前智谱与 DeepSeek 渠道同步后的模型集合。
 - LibreChat 中可见所有授权模型，并能完成一次真实问答。
 - 网络搜索功能在 LibreChat 中可用。
 - 所有容器内存使用在限制范围内。

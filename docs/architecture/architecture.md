@@ -81,13 +81,13 @@ NEW-API OpenAI 兼容接口
 - 这样可以避免容器内部读取到未替换的 `${...}` 占位符。
 
 ### 前端模型展示模式
-- 模式 A：动态同步模式
-  - `LIBRECHAT_FETCH_MODELS=true`
-  - `LIBRECHAT_VISIBLE_MODELS=` 留空
-  - LibreChat 直接按 `NEW-API /v1/models` 展示当前授权模型
-- 模式 B：前端白名单模式
+- 默认模式：供应商拆分模式
+  - `LIBRECHAT_SPLIT_PROVIDER_ENDPOINTS=true`
+  - LibreChat 渲染 `API-zhipu` / `API-deepseek`
+  - 每个入口只展示对应供应商的 `*_EXPOSED_MODEL`
+- 前端白名单模式
   - 设置 `LIBRECHAT_VISIBLE_MODELS`
-  - 渲染脚本先拉取 `NEW-API /v1/models`，再按白名单做交集过滤
+  - 渲染脚本按白名单与供应商模型列表做交集过滤
   - 前端最终只显示指定模型子集
 
 ## 调用链路
@@ -123,8 +123,8 @@ NEW-API OpenAI 兼容接口
 当前使用直通模式（passthrough），`ZHIPU_MODEL_MAPPING_JSON='{}'`，即 LibreChat 中展示的模型名与智谱上游真实模型名一致。
 
 ### 已接入模型
-- **Chat 模型（13 个）**：glm-5.1, glm-5, glm-5-turbo, glm-4.7, glm-4.7-flash, glm-4.7-flashx, glm-4.6, glm-4.5-air, glm-4.5-airx, glm-4.5-flash, glm-4-long, glm-4-flashx-250414, glm-4-flash-250414
-- **Vision 模型（6 个）**：glm-5v-turbo, glm-4.6v, glm-4.6v-flash, glm-4.1v-thinking-flashx, glm-4.1v-thinking-flash, glm-4v-flash
+- 智谱：由 `scripts/sync-provider-models.sh` 从智谱模型 API 动态刷新，当前本地同步结果为 `glm-5.1,glm-5,glm-5-turbo,glm-4.7,glm-4.6,glm-4.5-air,glm-4.5`。
+- DeepSeek：由 `scripts/sync-provider-models.sh` 从 DeepSeek 模型 API 动态刷新，当前本地同步结果为 `deepseek-v4-pro,deepseek-v4-flash`。
 
 ### 好处
 - 用户可以直接选择具体模型，精确控制使用哪个模型。
