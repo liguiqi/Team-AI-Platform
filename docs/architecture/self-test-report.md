@@ -6,7 +6,7 @@
 ## 自测环境
 - 操作系统：Linux 开发环境（Ubuntu）
 - 部署模式：`MODE=local`
-- 测试日期：2026-05-15（登录页样式、OIDC 重启恢复、DeepSeek、阿里云百炼、Kimi 与火山方舟豆包接入后复测）
+- 测试日期：2026-05-15（登录页样式、OIDC 重启恢复、DeepSeek、阿里云百炼、Kimi、火山方舟豆包与小米 MiMo 接入后复测）
 - 运行组件：
   - `calciumion/new-api:v0.12.1`
   - `ghcr.io/danny-avila/librechat:v0.8.5`
@@ -23,6 +23,7 @@
 - 阿里云百炼 DashScope 模型矩阵接入（OpenAI 兼容模式）
 - Kimi 开放平台模型矩阵接入（OpenAI 兼容模式）
 - 火山方舟豆包模型矩阵接入（NEW-API VolcEngine 原生适配器）
+- 小米 MiMo 模型矩阵接入（OpenAI 兼容模式）
 - 服务用户与服务 token 自动化（强随机 token）
 - LibreChat 运行时配置渲染
 - LibreChat 动态模型同步
@@ -219,6 +220,25 @@ make smoke-doubao
 - 当前项目侧转发链路和 LibreChat 分组已完成
 - 火山方舟账号侧需开通目标模型服务，或将 `DOUBAO_TEST_MODEL` / `DOUBAO_EXPOSED_MODEL` 配置为控制台可调用的 `ep-*` 推理接入点
 
+### 14. 小米 MiMo 接入
+结果：**通过**
+
+```
+make sync-provider-models
+- 小米 MiMo 模型 API 检测完成
+- MIMO_EXPOSED_MODEL 已过滤 TTS / voiceclone / voicedesign 等非普通 chat 模型，并按高阶优先排序
+
+make smoke-mimo
+- 创建/更新 mimo-primary 渠道
+- 渠道 type=1，base_url=https://api.xiaomimimo.com
+- 渠道 balance 校正为 999999999999
+- model_mapping 校正为 {}
+- 使用 mimo-v2.5-pro 完成真实 chat/completions 调用
+
+runtime/local/librechat/librechat.yaml
+- 已渲染 API-mimo
+```
+
 ## 关键修复记录
 
 ### 修复 1：PostgreSQL 主版本不兼容
@@ -252,7 +272,7 @@ make smoke-doubao
 ## 当前已知结论
 - 平台主链路已完全打通
 - LibreChat 已升级到 v0.8.5（支持 Admin Panel、自定义角色、分级权限等）
-- 智谱、DeepSeek、阿里云百炼、Kimi 与火山方舟豆包模型按供应商分组可见；豆包真实 chat 需先在火山方舟账号侧开通模型服务或配置推理接入点
+- 智谱、DeepSeek、阿里云百炼、Kimi、火山方舟豆包与小米 MiMo 模型按供应商分组可见；豆包真实 chat 需先在火山方舟账号侧开通模型服务或配置推理接入点
 - 自动 bootstrap 一次部署即可使用
 - 搜索功能（Serper/Firecrawl/Jina）已配置
 - 内存使用适合 2C2G ECS 部署（总计约 650MiB）

@@ -1,7 +1,7 @@
 # 多模型供应商接入指南
 
 ## 文档目标
-本文档说明如何在当前平台中接入除智谱以外的其他大模型供应商，包括 DeepSeek、阿里云百炼 DashScope、Kimi、火山方舟豆包、OpenAI 等。平台架构已设计为可扩展；其中 DeepSeek、阿里云百炼、Kimi 与火山方舟豆包已经被纳入当前 bootstrap 自动化，其它供应商仍可按本文方式继续扩展。
+本文档说明如何在当前平台中接入除智谱以外的其他大模型供应商，包括 DeepSeek、阿里云百炼 DashScope、Kimi、火山方舟豆包、小米 MiMo、OpenAI 等。平台架构已设计为可扩展；其中 DeepSeek、阿里云百炼、Kimi、火山方舟豆包与小米 MiMo 已经被纳入当前 bootstrap 自动化，其它供应商仍可按本文方式继续扩展。
 
 ## 架构前提
 
@@ -26,6 +26,7 @@ LibreChat -> NEW-API (统一网关) -> 各供应商渠道
 | 阿里云百炼 DashScope | 1 | OpenAI 兼容 | base_url 使用 `/compatible-mode` |
 | Kimi / Moonshot | 1 | OpenAI 兼容 | base_url 使用 `https://api.moonshot.cn` |
 | 火山方舟豆包 Volcengine | 45 | VolcEngine | NEW-API 原生火山方舟适配器 |
+| 小米 MiMo | 1 | OpenAI 兼容 | base_url 使用 `https://api.xiaomimimo.com` |
 | OpenAI | 1 | 原生 | 直连 OpenAI |
 | Azure OpenAI | 3 | Azure | 需额外配置 |
 | Google Gemini | 24 | Gemini | Google AI Studio |
@@ -80,7 +81,7 @@ bootstrap 会自动创建或更新 `deepseek-primary` 渠道，并同步本项�
 - 服务 token 保持 `NEW_API_SERVICE_TOKEN_UNLIMITED=true`
 - token 模型白名单保持关闭
 - 供应商渠道 `balance` 校正为 `NEW_API_PROVIDER_CHANNEL_BALANCE`
-- LibreChat 按 `API-zhipu` / `API-deepseek` / `API-aliyun` / `API-kimi` / `API-doubao` 分组展示模型
+- LibreChat 按 `API-zhipu` / `API-deepseek` / `API-aliyun` / `API-kimi` / `API-doubao` / `API-mimo` 分组展示模型
 
 每日动态同步可执行：
 ```bash
@@ -206,6 +207,35 @@ DOUBAO_MODEL_LIST_URLS=https://ark.cn-beijing.volces.com/api/v3/models
 - `type=45` 会由 NEW-API 自动拼接 `/api/v3/chat/completions`，因此渠道 Base URL 不要写 `/api/v3`
 - 火山方舟账号需先开通目标模型服务，或创建可调用的推理接入点
 
+### 小米 MiMo
+
+```dotenv
+MIMO_ENABLED=true
+MIMO_API_KEY=sk-xxxxx
+MIMO_API_BASE_URL=https://api.xiaomimimo.com
+MIMO_DEFAULT_MODEL=mimo-v2.5-pro
+MIMO_TEST_MODEL=mimo-v2.5-pro
+MIMO_EXPOSED_MODEL=mimo-v2.5-pro,mimo-v2.5,mimo-v2-pro,mimo-v2-omni,mimo-v2-flash
+MIMO_CHANNEL_NAME=mimo-primary
+MIMO_CHANNEL_TYPE=1
+MIMO_CHANNEL_GROUP=default
+MIMO_MODEL_MAPPING_JSON='{}'
+MIMO_LIBRECHAT_ENDPOINT_NAME=API-mimo
+MIMO_MODEL_ORDER=mimo-v2.5-pro,mimo-v2.5,mimo-v2-pro,mimo-v2-omni,mimo-v2-flash
+MIMO_MODEL_LIST_URLS=https://api.xiaomimimo.com/v1/models
+```
+
+渠道配置：
+- 类型：`1`（OpenAI 兼容）
+- 模型：由 MiMo 模型 API 动态刷新，默认优先使用 `mimo-v2.5-pro`
+- Base URL：`https://api.xiaomimimo.com`
+- 模型列表 URL：`https://api.xiaomimimo.com/v1/models`
+
+注意：
+- MiMo 官方 SDK Base URL 带 `/v1`，但 NEW-API 渠道 Base URL 不带 `/v1`
+- 当前仓库自动化使用 `MIMO_*` 前缀和 `API-mimo` LibreChat 分组
+- 模型同步会过滤 TTS / voiceclone / voicedesign 等非普通 chat 模型
+
 ### OpenAI
 
 ```dotenv
@@ -242,6 +272,7 @@ OPENAI_API_BASE_URL=https://api.openai.com
 - 阿里云百炼渠道
 - Kimi 渠道
 - 火山方舟豆包渠道
+- 小米 MiMo 渠道
 
 如果需要将更多供应商也纳入自动化管理，可以：
 

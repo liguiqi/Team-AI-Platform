@@ -35,3 +35,9 @@ if [[ "$(normalize_bool "${DOUBAO_ENABLED:-false}")" == "true" ]] && ! is_placeh
 else
   warn "未检测到真实 DOUBAO_API_KEY，跳过火山方舟豆包真实联调，仅完成健康检查"
 fi
+
+if [[ "$(normalize_bool "${MIMO_ENABLED:-false}")" == "true" ]] && ! is_placeholder "${MIMO_API_KEY:-}"; then
+  bash "$ROOT_DIR/scripts/smoke-test-mimo.sh"
+else
+  warn "未检测到真实 MIMO_API_KEY，跳过小米 MiMo 真实联调，仅完成健康检查"
+fi

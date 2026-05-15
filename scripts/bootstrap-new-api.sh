@@ -249,6 +249,7 @@ ensure_known_provider_channel_balances() {
       ALIYUN) provider_label="阿里云百炼" ;;
       KIMI) provider_label="Kimi" ;;
       DOUBAO) provider_label="火山方舟豆包" ;;
+      MIMO) provider_label="小米 MiMo" ;;
       *) provider_label="$prefix" ;;
     esac
 
@@ -338,6 +339,7 @@ upsert_channel_from_env DEEPSEEK "DeepSeek"
 upsert_channel_from_env ALIYUN "阿里云百炼"
 upsert_channel_from_env KIMI "Kimi"
 upsert_channel_from_env DOUBAO "火山方舟豆包"
+upsert_channel_from_env MIMO "小米 MiMo"
 ensure_known_provider_channel_balances
 
 token_name_sql="$(sql_escape "${NEW_API_SERVICE_TOKEN_NAME}")"

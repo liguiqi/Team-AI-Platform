@@ -437,7 +437,7 @@ append_csv_values() {
 }
 
 provider_prefixes() {
-  printf '%s\n' ZHIPU DEEPSEEK ALIYUN KIMI DOUBAO
+  printf '%s\n' ZHIPU DEEPSEEK ALIYUN KIMI DOUBAO MIMO
 }
 
 provider_slug() {
@@ -451,6 +451,7 @@ provider_display_label() {
     ALIYUN) printf '阿里云百炼' ;;
     KIMI) printf 'Kimi' ;;
     DOUBAO) printf '火山方舟豆包' ;;
+    MIMO) printf '小米 MiMo' ;;
     *) provider_slug "$1" ;;
   esac
 }

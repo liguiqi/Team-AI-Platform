@@ -5,21 +5,21 @@
 ## 责任边界
 - Codex 负责完整实施、结构整理、文档交付、脚本生成、配置模板、联调路径设计、自测与问题收敛。
 - 用户Project Owner最后只负责验收。
-- 用户会提供明确可用的智谱、DeepSeek、阿里云百炼、Kimi 或火山方舟豆包 API Key。
+- 用户会提供明确可用的智谱、DeepSeek、阿里云百炼、Kimi、火山方舟豆包或小米 MiMo API Key。
 - 最终验收以智谱 API 渠道为主验收渠道。
 - 除填写真实密钥和执行最终验收外，用户不负责补做工程集成。
 
 ## 架构
 ```text
-智谱 / DeepSeek / 阿里云百炼 / Kimi / 火山方舟豆包 / 其他上游模型
+智谱 / DeepSeek / 阿里云百炼 / Kimi / 火山方舟豆包 / 小米 MiMo / 其他上游模型
     -> NEW-API
     -> LibreChat
     -> 部门用户
 ```
 
 本仓库默认采用：
-- `NEW-API` 原生 `ZhipuV4` 渠道 + 火山方舟豆包原生渠道 + DeepSeek / 阿里云百炼 / Kimi OpenAI 兼容渠道
-- `LibreChat` 自定义 OpenAI 兼容端点按供应商拆分为 `API-zhipu` / `API-deepseek` / `API-aliyun` / `API-kimi` / `API-doubao`，底层仍统一走 `NEW-API`
+- `NEW-API` 原生 `ZhipuV4` 渠道 + 火山方舟豆包原生渠道 + DeepSeek / 阿里云百炼 / Kimi / 小米 MiMo OpenAI 兼容渠道
+- `LibreChat` 自定义 OpenAI 兼容端点按供应商拆分为 `API-zhipu` / `API-deepseek` / `API-aliyun` / `API-kimi` / `API-doubao` / `API-mimo`，底层仍统一走 `NEW-API`
 - `Docker Compose` 作为本地与单机生产的统一编排方式
 - `Caddy` 作为生产反向代理
 
@@ -41,8 +41,8 @@
    ```bash
    cp .env.example .env
    ```
-   必填项：`ZHIPU_API_KEY`、`DEEPSEEK_API_KEY`、`ALIYUN_API_KEY`、`KIMI_API_KEY` 或 `DOUBAO_API_KEY`
-   如果当前只想接 DeepSeek、阿里云百炼、Kimi 或豆包，不再使用智谱，请同时把 `ZHIPU_ENABLED=false`。
+   必填项：`ZHIPU_API_KEY`、`DEEPSEEK_API_KEY`、`ALIYUN_API_KEY`、`KIMI_API_KEY`、`DOUBAO_API_KEY` 或 `MIMO_API_KEY`
+   如果当前只想接 DeepSeek、阿里云百炼、Kimi、豆包或 MiMo，不再使用智谱，请同时把 `ZHIPU_ENABLED=false`。
 2. 初始化本地目录并自动生成非敏感随机密钥：
    ```bash
    make init
@@ -71,18 +71,22 @@
    ```bash
    make smoke-doubao
    ```
+   如已启用小米 MiMo，也可执行：
+   ```bash
+   make smoke-mimo
+   ```
 5. 如果你后续调整了上游模型矩阵，或配置了 LibreChat 前端白名单，执行：
    ```bash
    make sync-provider-models
    ```
 
 说明：
-- `make smoke-zhipu` / `make smoke-deepseek` / `make smoke-aliyun` / `make smoke-kimi` / `make smoke-doubao` 都会先调用 `scripts/bootstrap-new-api.sh`，自动完成 `NEW-API` 初始化、限流参数写入、已启用供应商渠道创建、LibreChat 服务用户与 token 生成。
+- `make smoke-zhipu` / `make smoke-deepseek` / `make smoke-aliyun` / `make smoke-kimi` / `make smoke-doubao` / `make smoke-mimo` 都会先调用 `scripts/bootstrap-new-api.sh`，自动完成 `NEW-API` 初始化、限流参数写入、已启用供应商渠道创建、LibreChat 服务用户与 token 生成。
 - bootstrap 过程会把自动生成的 `NEW_API_SERVICE_TOKEN` 回写到本地 `.env`，无需手工复制 token。
 - 本地 compose 当前默认带上 `LibreChat Admin Panel`，入口为 `http://localhost:3001`。
 - LibreChat 的 OIDC state / session 当前持久化到 `new-api-redis` 的 DB 1，重启后不会再因为内存 session 丢失而要求重复登录。
 - Casdoor 登录页样式由脚本渲染并随浏览器 `light/dark` 主题自适应。
-- 当 `ZHIPU_ENABLED=true`、`DEEPSEEK_ENABLED=true`、`ALIYUN_ENABLED=true`、`KIMI_ENABLED=true`、`DOUBAO_ENABLED=true` 同时开启时，`make bootstrap` 会同时创建/更新 `zhipu-primary`、`deepseek-primary`、`aliyun-bailian-primary`、`kimi-primary` 与 `doubao-primary` 渠道；LibreChat 展示为 `API-zhipu` / `API-deepseek` / `API-aliyun` / `API-kimi` / `API-doubao` 五个入口，底层共用同一个 `NEW_API_SERVICE_TOKEN`。
+- 当 `ZHIPU_ENABLED=true`、`DEEPSEEK_ENABLED=true`、`ALIYUN_ENABLED=true`、`KIMI_ENABLED=true`、`DOUBAO_ENABLED=true`、`MIMO_ENABLED=true` 同时开启时，`make bootstrap` 会同时创建/更新 `zhipu-primary`、`deepseek-primary`、`aliyun-bailian-primary`、`kimi-primary`、`doubao-primary` 与 `mimo-primary` 渠道；LibreChat 展示为 `API-zhipu` / `API-deepseek` / `API-aliyun` / `API-kimi` / `API-doubao` / `API-mimo` 六个入口，底层共用同一个 `NEW_API_SERVICE_TOKEN`。
 
 ## 目录结构
 ```text
@@ -109,6 +113,7 @@ runtime/                  本地与生产运行期数据目录（不入库）
 - `make smoke-aliyun`：执行阿里云百炼验收通道 smoke test。
 - `make smoke-kimi`：执行 Kimi 验收通道 smoke test。
 - `make smoke-doubao`：执行火山方舟豆包验收通道 smoke test。
+- `make smoke-mimo`：执行小米 MiMo 验收通道 smoke test。
 - `make doctor`：诊断依赖、端口、env、compose 配置。
 - `make verify-no-secrets`：扫描已纳入 Git 的文件，检查明显密钥风险。
 
@@ -208,6 +213,23 @@ DOUBAO_LIBRECHAT_ENDPOINT_NAME=API-doubao
 - 模型检测接口由 `DOUBAO_MODEL_LIST_URLS=https://ark.cn-beijing.volces.com/api/v3/models` 单独配置，并会过滤停用、embedding、图像、音视频等非普通 chat 模型。
 - 火山方舟账号必须在控制台开通对应模型服务或创建可调用的推理接入点；否则 API key 可查模型列表但真实 chat 会返回“未开通该模型服务”。
 
+## 小米 MiMo 配置说明
+根目录 `.env` 启用 MiMo 时至少填写以下字段：
+```dotenv
+MIMO_ENABLED=true
+MIMO_API_KEY=__FILL_BY_USER__
+MIMO_API_BASE_URL=https://api.xiaomimimo.com
+MIMO_DEFAULT_MODEL=mimo-v2.5-pro
+MIMO_TEST_MODEL=mimo-v2.5-pro
+MIMO_EXPOSED_MODEL=mimo-v2.5-pro,mimo-v2.5,mimo-v2-pro,mimo-v2-omni,mimo-v2-flash
+MIMO_LIBRECHAT_ENDPOINT_NAME=API-mimo
+```
+
+说明：
+- 当前仓库使用 `type=1` 的 OpenAI 兼容渠道接入小米 MiMo。
+- MiMo 官方 SDK Base URL 是 `https://api.xiaomimimo.com/v1`；NEW-API 渠道写 `https://api.xiaomimimo.com`，模型检测接口由 `MIMO_MODEL_LIST_URLS=https://api.xiaomimimo.com/v1/models` 单独配置。
+- `make sync-provider-models` 会从 MiMo 模型 API 动态刷新 `MIMO_EXPOSED_MODEL`，过滤 TTS / voiceclone / voicedesign 等非普通 chat 模型，并按 `MIMO_MODEL_ORDER` 高阶优先排序。
+
 ## 模型同步说明
 当前默认策略是按供应商拆分 LibreChat 模型入口：
 
@@ -216,6 +238,7 @@ DOUBAO_LIBRECHAT_ENDPOINT_NAME=API-doubao
 - `API-aliyun`：只显示阿里云百炼模型，并按 `ALIYUN_MODEL_ORDER` 高阶优先排序。
 - `API-kimi`：只显示 Kimi 模型，并按 `KIMI_MODEL_ORDER` 高阶优先排序。
 - `API-doubao`：只显示火山方舟豆包模型，并按 `DOUBAO_MODEL_ORDER` 高阶优先排序。
+- `API-mimo`：只显示小米 MiMo 模型，并按 `MIMO_MODEL_ORDER` 高阶优先排序。
 - 所有入口底层都使用同一个 `NEW_API_SERVICE_TOKEN` 请求 `NEW-API /v1/*`。
 
 推荐默认策略：
@@ -261,6 +284,10 @@ make install-model-sync-cron
   ```bash
   make smoke-doubao
   ```
+- 小米 MiMo 主验收通道：
+  ```bash
+  make smoke-mimo
+  ```
 - 应用层健康检查：
   ```bash
   make health
@@ -277,6 +304,7 @@ make install-model-sync-cron
 - 阿里云百炼接入说明：[docs/architecture/provider-aliyun.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/provider-aliyun.md)
 - Kimi 接入说明：[docs/architecture/provider-kimi.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/provider-kimi.md)
 - 火山方舟豆包接入说明：[docs/architecture/provider-doubao.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/provider-doubao.md)
+- 小米 MiMo 接入说明：[docs/architecture/provider-mimo.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/provider-mimo.md)
 - NEW-API 管理员手册：[docs/architecture/admin-new-api.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/admin-new-api.md)
 - LibreChat 管理员手册：[docs/architecture/admin-librechat.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/admin-librechat.md)
 - Admin Panel 管理说明：[docs/architecture/admin-panel.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/admin-panel.md)

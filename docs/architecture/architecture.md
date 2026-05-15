@@ -14,7 +14,7 @@ LibreChat Web / API
     -> 模型访问
 NEW-API OpenAI 兼容接口
     -> 上游转发
-智谱 ZhipuV4 / DeepSeek / 阿里云百炼 / Kimi / 火山方舟豆包 / 其他未来上游
+智谱 ZhipuV4 / DeepSeek / 阿里云百炼 / Kimi / 火山方舟豆包 / 小米 MiMo / 其他未来上游
 ```
 
 本项目的核心思想是：认证与模型治理分层。用户身份由 `Casdoor` 统一负责，模型能力统一经过 `NEW-API` 治理，再由 LibreChat 提供最终用户体验。
@@ -25,7 +25,7 @@ NEW-API OpenAI 兼容接口
 - 面向最终用户的聊天界面。
 - 通过 Casdoor OIDC 承接统一认证结果。
 - 负责会话管理、对话历史展示、模型选择和消息发送。
-- 不直接持有智谱、DeepSeek、阿里云百炼、Kimi、火山方舟豆包等上游采购密钥。
+- 不直接持有智谱、DeepSeek、阿里云百炼、Kimi、火山方舟豆包、小米 MiMo 等上游采购密钥。
 - 通过自定义 OpenAI 兼容端点调用 `NEW-API /v1/*`。
 - 在当前方案中，模型列表由 `NEW-API /v1/models` 动态提供，而不是在前端静态写死。
 - 当前还把 OIDC state / session 持久化到 Redis，避免 LibreChat 重启后丢失认证上下文。
@@ -47,7 +47,7 @@ NEW-API OpenAI 兼容接口
 ### NEW-API
 - 统一模型网关。
 - 负责上游渠道配置、服务 token、模型映射、日志、额度、限流和审计。
-- 负责把 LibreChat 的标准 OpenAI 请求转发到智谱、DeepSeek、阿里云百炼、Kimi、火山方舟豆包等真实上游。
+- 负责把 LibreChat 的标准 OpenAI 请求转发到智谱、DeepSeek、阿里云百炼、Kimi、火山方舟豆包、小米 MiMo 等真实上游。
 - 管理员后台入口与 OpenAI 兼容 API 使用同一个服务实例。
 
 ### PostgreSQL
@@ -83,7 +83,7 @@ NEW-API OpenAI 兼容接口
 ### 前端模型展示模式
 - 默认模式：供应商拆分模式
   - `LIBRECHAT_SPLIT_PROVIDER_ENDPOINTS=true`
-  - LibreChat 渲染 `API-zhipu` / `API-deepseek` / `API-aliyun` / `API-kimi` / `API-doubao`
+  - LibreChat 渲染 `API-zhipu` / `API-deepseek` / `API-aliyun` / `API-kimi` / `API-doubao` / `API-mimo`
   - 每个入口只展示对应供应商的 `*_EXPOSED_MODEL`
 - 前端白名单模式
   - 设置 `LIBRECHAT_VISIBLE_MODELS`
@@ -106,7 +106,7 @@ NEW-API OpenAI 兼容接口
 2. LibreChat 使用 `NEW_API_SERVICE_TOKEN` 请求 `NEW-API /v1/models`，动态获取当前可见模型列表。
 3. 用户选择某个模型后，LibreChat 再调用 `NEW-API /v1/chat/completions`。
 4. `NEW-API` 根据服务 token 的分组、模型限制和渠道配置做鉴权。
-5. `NEW-API` 根据匹配到的渠道配置，把请求转发到智谱、DeepSeek、阿里云百炼、Kimi、火山方舟豆包等真实上游。
+5. `NEW-API` 根据匹配到的渠道配置，把请求转发到智谱、DeepSeek、阿里云百炼、Kimi、火山方舟豆包、小米 MiMo 等真实上游。
 6. 上游返回响应后，`NEW-API` 做兼容格式转换并返回给 LibreChat。
 7. LibreChat 将结果展示给用户。
 
@@ -128,6 +128,7 @@ NEW-API OpenAI 兼容接口
 - 阿里云百炼：由 `scripts/sync-provider-models.sh` 从百炼 OpenAI 兼容模型 API 动态刷新，LibreChat 展示为 `API-aliyun`。
 - Kimi：由 `scripts/sync-provider-models.sh` 从 Kimi 模型 API 动态刷新，LibreChat 展示为 `API-kimi`。
 - 火山方舟豆包：由 `scripts/sync-provider-models.sh` 从火山方舟模型 API 动态刷新，LibreChat 展示为 `API-doubao`。
+- 小米 MiMo：由 `scripts/sync-provider-models.sh` 从 MiMo 模型 API 动态刷新，LibreChat 展示为 `API-mimo`。
 
 ### 好处
 - 用户可以直接选择具体模型，精确控制使用哪个模型。
@@ -137,7 +138,7 @@ NEW-API OpenAI 兼容接口
 ## 配置与密钥流转
 
 ### 上游密钥
-- 变量名：`ZHIPU_API_KEY`、`DEEPSEEK_API_KEY`、`ALIYUN_API_KEY`、`KIMI_API_KEY`、`DOUBAO_API_KEY`
+- 变量名：`ZHIPU_API_KEY`、`DEEPSEEK_API_KEY`、`ALIYUN_API_KEY`、`KIMI_API_KEY`、`DOUBAO_API_KEY`、`MIMO_API_KEY`
 - 存放位置：本地 `.env` 或生产环境变量文件
 - 使用位置：bootstrap 写入 `NEW-API` 渠道配置
 - 不进入 Git
@@ -186,7 +187,7 @@ NEW-API OpenAI 兼容接口
 ## 安全边界
 
 ### 浏览器侧
-- 不直接持有 `ZHIPU_API_KEY`、`DEEPSEEK_API_KEY`、`ALIYUN_API_KEY`、`KIMI_API_KEY`、`DOUBAO_API_KEY`
+- 不直接持有 `ZHIPU_API_KEY`、`DEEPSEEK_API_KEY`、`ALIYUN_API_KEY`、`KIMI_API_KEY`、`DOUBAO_API_KEY`、`MIMO_API_KEY`
 - 不直接持有短信或邮件服务密钥
 - 只通过 LibreChat 和 Casdoor 页面交互
 

@@ -49,6 +49,11 @@ provider_model_list_urls() {
         "${base_url}/api/v3/models" \
         "${base_url}/models"
       ;;
+    MIMO)
+      printf '%s\n' \
+        "${base_url}/v1/models" \
+        "${base_url}/models"
+      ;;
     *)
       printf '%s\n' \
         "${base_url}/models" \
