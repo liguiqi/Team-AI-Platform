@@ -59,10 +59,11 @@
 作用：
 - 代表 LibreChat 访问 `NEW-API`
 - 持有服务 token
-- 消耗自身用户额度
+- 持有项目内高额度基准，避免本项目先于上游平台阻断调用
 
 重要结论：
-- 即使 token 额度足够，服务用户自身额度为 0 时，聊天请求仍可能失败。
+- `NEW-API` 用户表没有单独的 unlimited 开关，因此部署脚本会把 `NEW_API_SERVICE_TOKEN_QUOTA` 固定为大额基准。
+- 成本与费用上限统一交由智谱、DeepSeek 等上游模型平台控制。
 
 ### 3. 服务 token
 默认名称：
@@ -74,7 +75,10 @@
 - 决定分组、配额以及最终可见模型范围
 
 当前推荐策略：
+- `NEW_API_SERVICE_TOKEN_UNLIMITED=true`
+- `NEW_API_TOKEN_ALLOWED_MODELS=` 留空
 - `NEW_API_TOKEN_MODEL_LIMITS_ENABLED=false`
+- `NEW_API_RATE_LIMIT_ENABLED=false`
 - 让 `NEW-API /v1/models` 直接返回当前服务 token 可访问的真实模型集合
 - 由 LibreChat 动态拉取，而不是在前端写死单模型
 - 如果前端只想显示部分模型，再由 LibreChat 侧用 `LIBRECHAT_VISIBLE_MODELS` 做展示过滤
@@ -89,6 +93,19 @@
 - `models` 包含 19 个智谱模型（由 `ZHIPU_EXPOSED_MODEL` 控制）
 - `test_model=glm-4-flash-250414`
 - `model_mapping={}`（直通模式）
+- `balance=NEW_API_PROVIDER_CHANNEL_BALANCE`（项目内不限额显示/校正值）
+
+### 5. DeepSeek 渠道（可选）
+默认名称：
+- `deepseek-primary`
+
+关键字段：
+- `type=1`
+- `base_url=https://api.deepseek.com`
+- `models` 默认包含 `deepseek-v4-flash,deepseek-v4-pro,deepseek-chat,deepseek-reasoner`
+- `test_model=deepseek-v4-flash`
+- `model_mapping={}`（保持直通模型名）
+- `balance=NEW_API_PROVIDER_CHANNEL_BALANCE`（项目内不限额显示/校正值）
 
 ## 后台主要管理区域
 
@@ -127,7 +144,7 @@
 - 模型请求限流
 - 系统行为控制
 
-本项目 bootstrap 会自动写入模型请求限流配置，但管理员后续仍可以在后台查看或调整。
+本项目 bootstrap 会自动写入模型请求限流配置，当前默认 `NEW_API_RATE_LIMIT_ENABLED=false`，成本和调用频率限制交由上游模型平台控制。
 
 ## 本项目推荐的后台使用姿势
 
@@ -141,6 +158,7 @@
 
 补充说明：
 - 当前主配置 `NEW_API_SYNC_CHANNEL_MODELS_FROM_ENV=true`，bootstrap 会把 `.env` 中的 19 模型矩阵同步到渠道配置。
+- 当前主配置会把服务 token 设为 unlimited，并把供应商渠道余额校正为 `NEW_API_PROVIDER_CHANNEL_BALANCE`。
 - 若你希望长期以 `NEW-API` 后台为主维护入口，可显式把 `NEW_API_SYNC_CHANNEL_MODELS_FROM_ENV` 改回 `false`。
 
 ## 管理员常见操作
@@ -189,13 +207,16 @@ make bootstrap
 
 补充检查：
 - 确认 `.env` 中 `NEW_API_TOKEN_MODEL_LIMITS_ENABLED=false`
+- 确认 `.env` 中 `NEW_API_SERVICE_TOKEN_UNLIMITED=true`
 - 否则前端可能仍只能看到受限后的少量模型
 
 ### 场景 4：模型请求返回额度不足
 后台排查顺序：
-1. 看服务用户额度是否为 0
-2. 看服务 token 配额是否耗尽
-3. 看服务 token 是否被禁用
+1. 看服务用户额度是否低于项目内不限额基准
+2. 看服务 token 是否保持 `unlimited_quota=true`
+3. 看供应商渠道 `balance` 是否被后台手工改小
+4. 看服务 token 是否被禁用
+5. 若本项目状态正常，则到智谱或 DeepSeek 官方平台检查上游账号额度与限流
 
 推荐修复：
 ```bash
@@ -246,7 +267,8 @@ make sync-librechat-models
 - 智谱 key
 - 智谱 base_url
 - 是否允许 token 模型白名单生效
-- 服务 token 配额策略
+- 服务 token unlimited 策略
+- 供应商渠道余额基准
 
 以下内容在**当前主配置**下会由 `.env` / bootstrap 驱动，若只改后台而不改 `.env`，后续可能再次被同步覆盖：
 - 已存在渠道上的模型矩阵

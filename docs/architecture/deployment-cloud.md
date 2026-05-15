@@ -84,6 +84,9 @@ cp deploy/env/prod/.env.example deploy/env/prod/.env
 - 生产 `.env` 不要使用示例值。
 - 生产必须保持 `LIBRECHAT_OPENID_ALLOW_INSECURE_HTTP=false`，不要为了省事把 HTTP 调试开关带到公网环境。
 - 推荐默认保持：
+  - `NEW_API_SERVICE_TOKEN_UNLIMITED=true`
+  - `NEW_API_PROVIDER_CHANNEL_BALANCE=999999999999`
+  - `NEW_API_RATE_LIMIT_ENABLED=false`
   - `NEW_API_TOKEN_MODEL_LIMITS_ENABLED=false`
   - `NEW_API_SYNC_CHANNEL_MODELS_FROM_ENV=true`
   - `LIBRECHAT_FETCH_MODELS=true`

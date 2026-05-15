@@ -100,6 +100,9 @@ CASDOOR_SMS_TEMPLATE_CODE=短信模板编号
 - 本地模板默认 `LIBRECHAT_OPENID_ALLOW_INSECURE_HTTP=true`，用于允许 `http://localhost` 下的 OIDC 调试。
 - `make init` / `make up` 会把本地 `LIBRECHAT_PUBLIC_URL`、`NEW_API_PUBLIC_URL`、`CASDOOR_PUBLIC_URL` 从默认 `localhost` 自动迁移为宿主机 IP，避免容器内访问不到宿主机回调地址。
 - 当前主配置建议保持：
+  - `NEW_API_SERVICE_TOKEN_UNLIMITED=true`
+  - `NEW_API_PROVIDER_CHANNEL_BALANCE=999999999999`
+  - `NEW_API_RATE_LIMIT_ENABLED=false`
   - `NEW_API_TOKEN_MODEL_LIMITS_ENABLED=false`
   - `NEW_API_SYNC_CHANNEL_MODELS_FROM_ENV=true`
   - `LIBRECHAT_FETCH_MODELS=true`
@@ -173,13 +176,15 @@ bash scripts/bootstrap-new-api.sh
 2. 若尚未初始化 root，则完成 root 初始化
 3. 使用 root 账号登录后台
 4. 写入系统配置（SelfUseMode、DemoSite）
-5. 写入模型请求限流参数
+5. 写入项目内请求限流配置（当前默认关闭）
 6. 创建或校正服务用户 `NEW_API_SERVICE_USER`
-7. 确保服务用户额度足够
+7. 将服务用户额度校正为项目内不限额基准
 8. 创建或校正智谱渠道（19 个模型）
-9. 通过 PostgreSQL 创建或校正服务 token（48 字符强随机）
-10. 把 `NEW_API_SERVICE_TOKEN` 回写 `.env`
-11. 重新渲染 LibreChat 配置并重启 LibreChat
+9. 创建或校正 DeepSeek 渠道（启用时）
+10. 将供应商渠道余额校正为 `NEW_API_PROVIDER_CHANNEL_BALANCE`
+11. 通过 PostgreSQL 创建或校正服务 token（48 字符强随机，unlimited）
+12. 把 `NEW_API_SERVICE_TOKEN` 回写 `.env`
+13. 重新渲染 LibreChat 配置并重启 LibreChat
 
 补充说明：
 - 当前 LibreChat 使用 RedisStore 保存 OIDC state / session，重启后不会再因内存 session 丢失而要求重复登录。
@@ -315,10 +320,11 @@ ss -ltn | grep 18000
 - `ZHIPU_API_BASE_URL` 必须是 `https://open.bigmodel.cn`
 - 不要写成 `https://open.bigmodel.cn/api/paas/v4`
 
-### 智谱返回额度不足
+### 模型请求返回额度不足
 重点检查：
 - 重新执行 `make bootstrap`
-- 查看服务用户额度和服务 token 配额是否被消耗或改小
+- 查看服务用户额度、服务 token unlimited 状态、渠道余额是否被后台手工改小
+- 若本项目状态正常，则到智谱或 DeepSeek 官方平台检查上游账号额度与限流
 
 ## 调试命令
 

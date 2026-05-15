@@ -222,9 +222,11 @@ docker compose --env-file .env -f deploy/docker-compose.local.yml logs -f casdoo
 
 ### 场景 7：聊天请求返回额度不足
 重点检查：
-- 服务用户额度
-- 服务 token 配额
+- 服务用户额度是否仍是项目内不限额基准
+- 服务 token 是否仍为 `unlimited_quota=true`
+- 智谱 / DeepSeek 渠道余额是否仍为 `NEW_API_PROVIDER_CHANNEL_BALANCE`
 - 是否有人在后台手工改动
+- 若本项目状态正常，则到上游模型平台检查真实 API 额度与限流
 
 ## 重启建议
 

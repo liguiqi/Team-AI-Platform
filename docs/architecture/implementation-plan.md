@@ -63,7 +63,7 @@
 
 关键细节：
 - 自动初始化 root 管理员。
-- 自动写入模型请求限流。
+- 自动写入项目内请求限流配置，默认关闭。
 - 自动创建或校正服务用户。
 - 自动创建或校正智谱渠道。
 - 自动创建或校正 LibreChat 服务 token。
@@ -137,8 +137,8 @@
 - `insufficient_user_quota`
 
 处理：
-- bootstrap 自动校正服务用户总额度
-- 同时保证服务 token 配额与用户额度一致
+- bootstrap 自动校正服务用户总额度为项目内不限额基准
+- 同时保证服务 token 为 unlimited
 
 ### 问题 4：LibreChat "Unknown authentication strategy 'openid'"
 表现：

@@ -9,8 +9,8 @@
 - 上游渠道配置
 - 采购 API Key
 - 模型映射
-- 服务 token 配额
-- 限流
+- 服务 token unlimited 状态与渠道余额
+- 上游限流
 - 供应商错误排查
 
 如果问题是“用户看不到模型”“聊天请求失败”“模型换了要不要前端跟着改”，通常先查 `NEW-API`，再查 LibreChat。
@@ -57,7 +57,7 @@
 因为模板中含有：
 - `NEW_API_SERVICE_TOKEN`
 - `NEW_API_INTERNAL_URL`
-- `ZHIPU_EXPOSED_MODEL`
+- 各供应商的 `*_EXPOSED_MODEL`
 
 这些变量不能直接以 `${...}` 占位符形式交给容器，否则 LibreChat 实际加载时会拿到字面字符串，而不是正确配置。
 
@@ -80,7 +80,7 @@
 - 默认情况下，LibreChat 会向 `NEW-API /v1/models` 动态拉取模型列表。
 - 因此前端实际可选模型，取决于 `NEW-API` 当前返回给服务 token 的模型集合。
 - `LIBRECHAT_DEFAULT_MODELS` 只作为默认模型或兜底模型，不再是唯一可见模型。
-- 当前模板里若把 `LIBRECHAT_DEFAULT_MODELS=` 留空，渲染脚本会回退使用 `ZHIPU_EXPOSED_MODEL` 作为 default 列表，同时保持 `LIBRECHAT_FETCH_MODELS=true`，所以实际可见模型仍以 `NEW-API /v1/models` 为准。
+- 当前模板里若把 `LIBRECHAT_DEFAULT_MODELS=` 留空，渲染脚本会回退使用所有已启用供应商的 `*_EXPOSED_MODEL` 合并结果作为 default 列表，同时保持 `LIBRECHAT_FETCH_MODELS=true`，所以实际可见模型仍以 `NEW-API /v1/models` 为准。
 
 ### 模型显示标签
 - `Team AI`

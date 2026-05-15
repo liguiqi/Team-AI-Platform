@@ -88,6 +88,9 @@ ZHIPU_MODEL_MAPPING_JSON='{}'
 ```
 
 补充配置建议：
+- `NEW_API_SERVICE_TOKEN_UNLIMITED=true` — 服务 token 不再被项目内余额扣减限制
+- `NEW_API_PROVIDER_CHANNEL_BALANCE=999999999999` — 智谱渠道余额写成项目内不限额基准
+- `NEW_API_RATE_LIMIT_ENABLED=false` — 本项目不再额外限制请求频率
 - `NEW_API_TOKEN_MODEL_LIMITS_ENABLED=false` — 不限制 token 可用模型
 - `NEW_API_SYNC_CHANNEL_MODELS_FROM_ENV=true` — bootstrap 时从 env 同步模型矩阵
 - `LIBRECHAT_FETCH_MODELS=true` — LibreChat 动态获取模型列表
@@ -130,17 +133,18 @@ glm-4-flash-250414
 1. 等待 `NEW-API /api/status` 就绪
 2. 若尚未初始化 root，则完成 root 初始化
 3. root 登录并写入系统配置（SelfUseMode、DemoSite）
-4. 写入模型请求限流参数
+4. 写入项目内请求限流配置（当前默认关闭）
 5. 创建或校正服务用户
-6. 确保服务用户额度足够
+6. 将服务用户额度校正为项目内不限额基准
 7. 查询名为 `zhipu-primary` 的渠道是否已存在
 8. 若不存在，则创建渠道
 9. 若已存在，则按 `.env` 配置校正：
    - 当前主配置 `NEW_API_SYNC_CHANNEL_MODELS_FROM_ENV=true`，会同步 `models`、`group`、`test_model`、`model_mapping`
    - 若显式改成 `false`，则保留后台现有模型矩阵
-10. 通过 PostgreSQL 创建或校正服务 token
-11. 把 `NEW_API_SERVICE_TOKEN` 回写 `.env`
-12. 重新渲染 LibreChat 配置并重启 LibreChat
+10. 将渠道 `balance` 校正为 `NEW_API_PROVIDER_CHANNEL_BALANCE`
+11. 通过 PostgreSQL 创建或校正服务 token，并设置为 unlimited
+12. 把 `NEW_API_SERVICE_TOKEN` 回写 `.env`
+13. 重新渲染 LibreChat 配置并重启 LibreChat
 
 ## 如何验证智谱链路
 
@@ -195,7 +199,8 @@ curl -fsS "$NEW_API_PUBLIC_URL/v1/chat/completions" \
 
 ### `insufficient_user_quota`
 可能原因：
-- 服务用户额度被消耗或被手工改小
+- 服务用户额度、服务 token unlimited 状态或渠道余额被手工改小
+- 智谱上游账号额度不足
 
 处理：
 - 重新执行 `bash scripts/bootstrap-new-api.sh`
@@ -203,7 +208,7 @@ curl -fsS "$NEW_API_PUBLIC_URL/v1/chat/completions" \
 ### `429`
 可能原因：
 - 智谱上游限流
-- `NEW-API` 模型请求限流命中
+- `NEW-API` 模型请求限流被手工重新开启
 - 管理后台登录接口限流
 
 处理思路：

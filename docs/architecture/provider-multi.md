@@ -1,7 +1,7 @@
 # 多模型供应商接入指南
 
 ## 文档目标
-本文档说明如何在当前平台中接入除智谱以外的其他大模型供应商，包括 DeepSeek、阿里通义/百炼、火山豆包、OpenAI 等。平台架构已设计为可扩展，新增供应商只需在 `.env` 中添加配置并在 `NEW-API` 中创建对应渠道。
+本文档说明如何在当前平台中接入除智谱以外的其他大模型供应商，包括 DeepSeek、阿里通义/百炼、火山豆包、OpenAI 等。平台架构已设计为可扩展；其中 DeepSeek 已经被纳入当前 bootstrap 自动化，其它供应商仍可按本文方式继续扩展。
 
 ## 架构前提
 
@@ -49,25 +49,40 @@ LibreChat -> NEW-API (统一网关) -> 各供应商渠道
 DEEPSEEK_ENABLED=true
 DEEPSEEK_API_KEY=sk-xxxxx
 DEEPSEEK_API_BASE_URL=https://api.deepseek.com
+DEEPSEEK_DEFAULT_MODEL=deepseek-v4-flash
+DEEPSEEK_TEST_MODEL=deepseek-v4-flash
 DEEPSEEK_CHANNEL_NAME=deepseek-primary
 DEEPSEEK_CHANNEL_TYPE=1
 DEEPSEEK_CHANNEL_GROUP=default
 DEEPSEEK_CHANNEL_PRIORITY=10
 DEEPSEEK_CHANNEL_WEIGHT=100
-DEEPSEEK_EXPOSED_MODEL=deepseek-chat,deepseek-reasoner
+DEEPSEEK_EXPOSED_MODEL=deepseek-v4-flash,deepseek-v4-pro,deepseek-chat,deepseek-reasoner
 ```
 
-### 第三步：在 NEW-API 后台手动创建渠道
-1. 登录 `NEW-API` 后台（`http://localhost:13000`）
-2. 进入「渠道管理」->「添加渠道」
-3. 填写：
-   - 名称：`deepseek-primary`
-   - 类型：选择对应渠道类型
-   - Base URL：供应商 API 地址
-   - 密钥：API Key
-   - 模型：填写要暴露的模型列表
-   - 分组：`default`
-4. 保存并测试
+### 第三步：执行 bootstrap 自动创建渠道
+
+当前主线已经把 DeepSeek 纳入 `scripts/bootstrap-new-api.sh`。配置好 `.env` 后直接执行：
+
+```bash
+make bootstrap
+```
+
+或：
+
+```bash
+bash scripts/bootstrap-new-api.sh
+```
+
+bootstrap 会自动创建或更新 `deepseek-primary` 渠道，并同步本项目统一不限额策略：
+- 服务 token 保持 `NEW_API_SERVICE_TOKEN_UNLIMITED=true`
+- token 模型白名单保持关闭
+- 供应商渠道 `balance` 校正为 `NEW_API_PROVIDER_CHANNEL_BALANCE`
+
+如果当前只想测试 DeepSeek，不再保留智谱主链路，请把：
+
+```dotenv
+ZHIPU_ENABLED=false
+```
 
 ### 第四步：验证
 ```bash
@@ -89,12 +104,13 @@ DEEPSEEK_API_BASE_URL=https://api.deepseek.com
 
 渠道配置：
 - 类型：`1`（OpenAI 兼容）
-- 模型：`deepseek-chat,deepseek-reasoner`
+- 模型：`deepseek-v4-flash,deepseek-v4-pro,deepseek-chat,deepseek-reasoner`
 - Base URL：`https://api.deepseek.com`
 
 注意：
 - DeepSeek 的 API 完全兼容 OpenAI 格式
-- `deepseek-chat` 对应 DeepSeek-V3，`deepseek-reasoner` 对应 DeepSeek-R1
+- 当前官方首页给出的 OpenAI 兼容模型矩阵包括 `deepseek-v4-flash`、`deepseek-v4-pro`、`deepseek-chat`、`deepseek-reasoner`
+- `deepseek-chat` 与 `deepseek-reasoner` 当前仍可用，但官方标注将于 `2026-07-24` 弃用
 
 ### 阿里通义/百炼 DashScope
 
@@ -158,7 +174,11 @@ OPENAI_API_BASE_URL=https://api.openai.com
 
 ## 自动化扩展（可选）
 
-当前 bootstrap 脚本已处理智谱渠道。如果需要将新供应商也纳入自动化管理，可以：
+当前 bootstrap 脚本已处理：
+- 智谱渠道
+- DeepSeek 渠道
+
+如果需要将更多供应商也纳入自动化管理，可以：
 
 ### 方式一：手动后台管理（推荐）
 - 在 `NEW-API` 后台手动创建和管理新供应商渠道

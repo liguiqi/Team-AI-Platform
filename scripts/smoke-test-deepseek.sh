@@ -2,4 +2,4 @@
 set -euo pipefail
 
 source "$(cd "$(dirname "$0")" && pwd)/_common.sh"
-bash "$ROOT_DIR/scripts/smoke-test-provider.sh" ZHIPU 智谱
+bash "$ROOT_DIR/scripts/smoke-test-provider.sh" DEEPSEEK DeepSeek

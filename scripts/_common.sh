@@ -3,6 +3,8 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 MODE="${MODE:-local}"
+PROJECT_UNLIMITED_QUOTA="${PROJECT_UNLIMITED_QUOTA:-1000000000000}"
+PROJECT_PROVIDER_CHANNEL_BALANCE="${PROJECT_PROVIDER_CHANNEL_BALANCE:-999999999999}"
 
 if [[ "$MODE" != "local" && "$MODE" != "prod" ]]; then
   echo "MODE 只能是 local 或 prod，当前为: $MODE" >&2
@@ -306,6 +308,7 @@ prepare_env_file() {
   migrate_legacy_librechat_auth_flags "$file"
   migrate_legacy_casdoor_version "$file"
   migrate_local_public_urls_for_oidc "$file"
+  enforce_project_unlimited_new_api_policy "$file"
 
   if [[ "$MODE" == "local" ]]; then
     sync_local_env_copy
@@ -381,4 +384,72 @@ require_non_placeholder_env() {
   if is_placeholder "$value"; then
     die "请先在 $(env_file) 中填写 $key"
   fi
+}
+
+require_non_negative_number() {
+  local key="$1"
+  local value="$2"
+  if [[ ! "$value" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
+    die "${key} 必须是非负数字，当前为: ${value}"
+  fi
+}
+
+enforce_project_unlimited_new_api_policy() {
+  local file="$1"
+
+  replace_or_append_env NEW_API_SERVICE_TOKEN_QUOTA "$PROJECT_UNLIMITED_QUOTA" "$file"
+  replace_or_append_env NEW_API_SERVICE_TOKEN_UNLIMITED true "$file"
+  replace_or_append_env NEW_API_TOKEN_MODEL_LIMITS_ENABLED false "$file"
+  replace_or_append_env NEW_API_RATE_LIMIT_ENABLED false "$file"
+  replace_or_append_env NEW_API_PROVIDER_CHANNEL_BALANCE "$PROJECT_PROVIDER_CHANNEL_BALANCE" "$file"
+}
+
+trim_csv_item() {
+  printf '%s' "$1" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
+}
+
+append_csv_values() {
+  local existing_csv="${1:-}"
+  local incoming_csv="${2:-}"
+  local combined="$existing_csv"
+  local item normalized
+
+  IFS=',' read -r -a incoming_items <<<"$incoming_csv"
+  for item in "${incoming_items[@]}"; do
+    normalized="$(trim_csv_item "$item")"
+    [[ -n "$normalized" ]] || continue
+
+    case ",${combined}," in
+      *,"${normalized}",*)
+        continue
+        ;;
+      *)
+        if [[ -n "$combined" ]]; then
+          combined="${combined},${normalized}"
+        else
+          combined="${normalized}"
+        fi
+        ;;
+    esac
+  done
+
+  printf '%s' "$combined"
+}
+
+enabled_provider_exposed_models() {
+  local combined=""
+  local prefix enabled_var exposed_var enabled_value exposed_value
+
+  for prefix in ZHIPU DEEPSEEK; do
+    enabled_var="${prefix}_ENABLED"
+    exposed_var="${prefix}_EXPOSED_MODEL"
+    enabled_value="$(normalize_bool "${!enabled_var:-false}")"
+    exposed_value="${!exposed_var:-}"
+
+    if [[ "$enabled_value" == "true" && -n "$exposed_value" ]]; then
+      combined="$(append_csv_values "$combined" "$exposed_value")"
+    fi
+  done
+
+  printf '%s' "$combined"
 }

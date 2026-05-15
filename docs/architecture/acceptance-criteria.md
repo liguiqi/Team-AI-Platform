@@ -29,9 +29,9 @@
 - LibreChat 重启后，统一认证链路不应长期卡在 `Unable to verify authorization request state`。
 
 ## Should 条件
-- 服务用户额度和服务 token 配额有效。
+- 服务用户额度、服务 token unlimited 状态和供应商渠道余额符合项目内不限额策略。
 - 服务 token 使用 48 字符强随机值。
-- `NEW-API` 模型请求限流已生效。
+- `NEW-API` 项目内请求限流默认关闭，真实限额由上游模型平台控制。
 - LibreChat 模型动态同步行为符合预期。
 - 本地 Admin Panel 可访问并可用于管理员角色验证。
 - 备份恢复脚本可跑通。

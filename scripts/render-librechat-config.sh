@@ -16,7 +16,11 @@ if is_placeholder "${CASDOOR_CLIENT_SECRET:-}" || is_placeholder "${LIBRECHAT_OP
 fi
 
 librechat_fetch_models="$(normalize_bool "${LIBRECHAT_FETCH_MODELS:-true}")"
-default_models_raw="${LIBRECHAT_DEFAULT_MODELS:-${ZHIPU_EXPOSED_MODEL}}"
+default_models_fallback="$(enabled_provider_exposed_models)"
+if [[ -z "$default_models_fallback" ]]; then
+  default_models_fallback="${LIBRECHAT_TITLE_MODEL:-}"
+fi
+default_models_raw="${LIBRECHAT_DEFAULT_MODELS:-${default_models_fallback}}"
 visible_models_raw="${LIBRECHAT_VISIBLE_MODELS:-}"
 default_models_yaml=""
 
@@ -28,7 +32,16 @@ for raw_model in "${default_models_array[@]}"; do
 done
 
 if [[ -z "$default_models_yaml" ]]; then
-  default_models_yaml=$'\n'"          - \"$(json_escape "${ZHIPU_EXPOSED_MODEL}")\""
+  if [[ -n "$default_models_fallback" ]]; then
+    IFS=',' read -r -a fallback_models_array <<<"$default_models_fallback"
+    for raw_model in "${fallback_models_array[@]}"; do
+      model="$(printf '%s' "$raw_model" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+      [[ -n "$model" ]] || continue
+      default_models_yaml="${default_models_yaml}"$'\n'"          - \"$(json_escape "$model")\""
+    done
+  else
+    default_models_yaml=" []"
+  fi
 fi
 
 if [[ -n "$visible_models_raw" ]]; then
