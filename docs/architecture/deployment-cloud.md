@@ -56,6 +56,7 @@ cp deploy/env/prod/.env.example deploy/env/prod/.env
 - `ZHIPU_API_KEY`
 - `DEEPSEEK_API_KEY`（启用 DeepSeek 时）
 - `ALIYUN_API_KEY`（启用阿里云百炼时）
+- `KIMI_API_KEY`（启用 Kimi 时）
 - `NEW_API_SETUP_USERNAME`
 - `NEW_API_SETUP_PASSWORD`
 - `NEW_API_SERVICE_PASSWORD`
@@ -146,7 +147,7 @@ MODE=prod bash scripts/bootstrap-new-api.sh
 - 配置限流
 - 创建或校正服务用户
 - 创建或校正智谱渠道
-- 创建或校正 DeepSeek / 阿里云百炼渠道（启用时）
+- 创建或校正 DeepSeek / 阿里云百炼 / Kimi 渠道（启用时）
 - 创建或校正服务 token
 - 重渲染 LibreChat 配置并重启 LibreChat
 
@@ -155,10 +156,11 @@ MODE=prod bash scripts/bootstrap-new-api.sh
 MODE=prod bash scripts/smoke-test-zhipu.sh
 ```
 
-如已启用 DeepSeek 或阿里云百炼，可继续执行：
+如已启用 DeepSeek、阿里云百炼或 Kimi，可继续执行：
 ```bash
 MODE=prod bash scripts/smoke-test-deepseek.sh
 MODE=prod bash scripts/smoke-test-aliyun.sh
+MODE=prod bash scripts/smoke-test-kimi.sh
 ```
 
 ### 第四步：健康检查

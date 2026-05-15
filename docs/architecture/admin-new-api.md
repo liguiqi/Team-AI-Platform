@@ -63,7 +63,7 @@
 
 重要结论：
 - `NEW-API` 用户表没有单独的 unlimited 开关，因此部署脚本会把 `NEW_API_SERVICE_TOKEN_QUOTA` 固定为大额基准。
-- 成本与费用上限统一交由智谱、DeepSeek、阿里云百炼等上游模型平台控制。
+- 成本与费用上限统一交由智谱、DeepSeek、阿里云百炼、Kimi 等上游模型平台控制。
 
 ### 3. 服务 token
 默认名称：
@@ -80,7 +80,7 @@
 - `NEW_API_TOKEN_MODEL_LIMITS_ENABLED=false`
 - `NEW_API_RATE_LIMIT_ENABLED=false`
 - 让 `NEW-API /v1/models` 返回当前服务 token 可访问的真实模型集合
-- LibreChat 侧按 `API-zhipu` / `API-deepseek` / `API-aliyun` 分组渲染对应供应商模型
+- LibreChat 侧按 `API-zhipu` / `API-deepseek` / `API-aliyun` / `API-kimi` 分组渲染对应供应商模型
 - 如果前端只想显示部分模型，再由 LibreChat 侧用 `LIBRECHAT_VISIBLE_MODELS` 做展示过滤
 
 ### 4. 智谱渠道
@@ -116,6 +116,18 @@
 - `base_url=https://dashscope.aliyuncs.com/compatible-mode`
 - `models` 由 `scripts/sync-provider-models.sh` 从百炼模型 API 动态刷新
 - `test_model=qwen-plus`
+- `model_mapping={}`（保持直通模型名）
+- `balance=NEW_API_PROVIDER_CHANNEL_BALANCE`（项目内不限额显示/校正值）
+
+### 7. Kimi 渠道（可选）
+默认名称：
+- `kimi-primary`
+
+关键字段：
+- `type=1`
+- `base_url=https://api.moonshot.cn`
+- `models` 由 `scripts/sync-provider-models.sh` 从 Kimi 模型 API 动态刷新
+- `test_model=kimi-k2.6`
 - `model_mapping={}`（保持直通模型名）
 - `balance=NEW_API_PROVIDER_CHANNEL_BALANCE`（项目内不限额显示/校正值）
 
@@ -228,7 +240,7 @@ make bootstrap
 2. 看服务 token 是否保持 `unlimited_quota=true`
 3. 看供应商渠道 `balance` 是否被后台手工改小
 4. 看服务 token 是否被禁用
-5. 若本项目状态正常，则到智谱、DeepSeek 或阿里云百炼官方平台检查上游账号额度与限流
+5. 若本项目状态正常，则到智谱、DeepSeek、阿里云百炼或 Kimi 官方平台检查上游账号额度与限流
 
 推荐修复：
 ```bash

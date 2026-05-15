@@ -55,7 +55,7 @@
 ## 使用场景
 
 ### 场景 1：普通员工通过网页发起对话
-普通员工打开 LibreChat 页面，先通过 Casdoor 完成邮箱或手机号真实认证，再在 `API-zhipu` / `API-deepseek` / `API-aliyun` 等供应商分组下选择平台允许暴露的模型，输入问题后得到对话结果。用户不持有供应商密钥，只使用平台已经开放的模型集合。
+普通员工打开 LibreChat 页面，先通过 Casdoor 完成邮箱或手机号真实认证，再在 `API-zhipu` / `API-deepseek` / `API-aliyun` / `API-kimi` 等供应商分组下选择平台允许暴露的模型，输入问题后得到对话结果。用户不持有供应商密钥，只使用平台已经开放的模型集合。
 
 ### 场景 2：管理员新增或调整模型渠道
 管理员登录 `NEW-API` 后台，查看渠道配置、额度和日志，必要时替换上游密钥、调整模型映射、禁用异常渠道或修改限流参数。
@@ -97,7 +97,7 @@
 ### 网关治理
 - `NEW-API` 必须作为唯一模型网关。
 - 必须支持智谱 `ZhipuV4` 渠道。
-- 必须支持 DeepSeek 与阿里云百炼 OpenAI 兼容渠道。
+- 必须支持 DeepSeek、阿里云百炼与 Kimi OpenAI 兼容渠道。
 - 必须支持智谱全量 19 个模型（13 chat + 6 vision）。
 - 必须支持服务 token、可选模型白名单与多模型矩阵。
 - 必须支持模型请求限流配置。
@@ -116,7 +116,7 @@
 ### 运维能力
 - 必须具备应用层健康检查脚本。
 - 必须具备主链路 smoke test 和智谱真实联调脚本。
-- 必须具备 DeepSeek 与阿里云百炼真实联调脚本。
+- 必须具备 DeepSeek、阿里云百炼与 Kimi 真实联调脚本。
 - 必须具备前端模型同步脚本。
 - 必须具备备份和恢复脚本。
 - 必须具备基础敏感信息扫描能力。
@@ -144,7 +144,7 @@
 - 运维脚本和文档中不得要求用户把真实密钥写入仓库跟踪文件。
 
 ## 安全与合规要求
-- `ZHIPU_API_KEY`、`DEEPSEEK_API_KEY`、`ALIYUN_API_KEY` 只允许出现在本地或生产环境变量、容器环境与 `NEW-API` 渠道配置中。
+- `ZHIPU_API_KEY`、`DEEPSEEK_API_KEY`、`ALIYUN_API_KEY`、`KIMI_API_KEY` 只允许出现在本地或生产环境变量、容器环境与 `NEW-API` 渠道配置中。
 - 短信与 SMTP 凭据只允许出现在本地或生产环境变量、Casdoor 配置与容器环境中。
 - LibreChat 只持有 `NEW_API_SERVICE_TOKEN`，不持有智谱官方采购密钥。
 - LibreChat 默认关闭本地邮箱登录，避免绕过统一认证。
@@ -167,7 +167,7 @@
 - `NEW-API` 管理后台可访问。
 - LibreChat 页面可访问。
 - `make up` 后自动 bootstrap 完成，平台立即可用。
-- `NEW-API /v1/models` 能返回当前智谱、DeepSeek 与阿里云百炼渠道同步后的模型集合。
+- `NEW-API /v1/models` 能返回当前智谱、DeepSeek、阿里云百炼与 Kimi 渠道同步后的模型集合。
 - LibreChat 中可见所有授权模型，并能完成一次真实问答。
 - 网络搜索功能在 LibreChat 中可用。
 - 所有容器内存使用在限制范围内。

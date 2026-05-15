@@ -1,7 +1,7 @@
 # 多模型供应商接入指南
 
 ## 文档目标
-本文档说明如何在当前平台中接入除智谱以外的其他大模型供应商，包括 DeepSeek、阿里云百炼 DashScope、火山豆包、OpenAI 等。平台架构已设计为可扩展；其中 DeepSeek 与阿里云百炼已经被纳入当前 bootstrap 自动化，其它供应商仍可按本文方式继续扩展。
+本文档说明如何在当前平台中接入除智谱以外的其他大模型供应商，包括 DeepSeek、阿里云百炼 DashScope、Kimi、火山豆包、OpenAI 等。平台架构已设计为可扩展；其中 DeepSeek、阿里云百炼与 Kimi 已经被纳入当前 bootstrap 自动化，其它供应商仍可按本文方式继续扩展。
 
 ## 架构前提
 
@@ -24,6 +24,7 @@ LibreChat -> NEW-API (统一网关) -> 各供应商渠道
 | 智谱 Zhipu | 26 | ZhipuV4 | 已接入 |
 | DeepSeek | 1 | OpenAI 兼容 | base_url 改为 DeepSeek 地址 |
 | 阿里云百炼 DashScope | 1 | OpenAI 兼容 | base_url 使用 `/compatible-mode` |
+| Kimi / Moonshot | 1 | OpenAI 兼容 | base_url 使用 `https://api.moonshot.cn` |
 | 火山/豆包 Volcengine | 1 或 33 | OpenAI 兼容 | 火山引擎方舟平台 |
 | OpenAI | 1 | 原生 | 直连 OpenAI |
 | Azure OpenAI | 3 | Azure | 需额外配置 |
@@ -79,7 +80,7 @@ bootstrap 会自动创建或更新 `deepseek-primary` 渠道，并同步本项�
 - 服务 token 保持 `NEW_API_SERVICE_TOKEN_UNLIMITED=true`
 - token 模型白名单保持关闭
 - 供应商渠道 `balance` 校正为 `NEW_API_PROVIDER_CHANNEL_BALANCE`
-- LibreChat 按 `API-zhipu` / `API-deepseek` / `API-aliyun` 分组展示模型
+- LibreChat 按 `API-zhipu` / `API-deepseek` / `API-aliyun` / `API-kimi` 分组展示模型
 
 每日动态同步可执行：
 ```bash
@@ -149,6 +150,34 @@ ALIYUN_MODEL_EXCLUDE_REGEX='(embedding|rerank|tts|asr|audio|image|video|vl|omni|
 - 当前仓库自动化使用 `ALIYUN_*` 前缀和 `API-aliyun` LibreChat 分组
 - 不使用原生 DashScope 格式，避免与 `NEW-API` 适配器类型差异耦合
 
+### Kimi / Moonshot
+
+```dotenv
+KIMI_ENABLED=true
+KIMI_API_KEY=sk-xxxxx
+KIMI_API_BASE_URL=https://api.moonshot.cn
+KIMI_DEFAULT_MODEL=kimi-k2.6
+KIMI_TEST_MODEL=kimi-k2.6
+KIMI_EXPOSED_MODEL=kimi-k2.6,kimi-k2.5,moonshot-v1-128k,moonshot-v1-32k,moonshot-v1-8k
+KIMI_CHANNEL_NAME=kimi-primary
+KIMI_CHANNEL_TYPE=1
+KIMI_CHANNEL_GROUP=default
+KIMI_MODEL_MAPPING_JSON='{}'
+KIMI_LIBRECHAT_ENDPOINT_NAME=API-kimi
+KIMI_MODEL_ORDER=kimi-k2.6,kimi-k2.5,kimi-k2-thinking-turbo,kimi-k2-thinking,moonshot-v1-128k,moonshot-v1-32k,moonshot-v1-8k
+KIMI_MODEL_LIST_URLS=https://api.moonshot.cn/v1/models
+```
+
+渠道配置：
+- 类型：`1`（OpenAI 兼容）
+- 模型：由 Kimi 模型 API 动态刷新，当前优先使用 `kimi-k2.6`
+- Base URL：`https://api.moonshot.cn`
+- 模型列表 URL：`https://api.moonshot.cn/v1/models`
+
+注意：
+- Kimi 官方 SDK Base URL 带 `/v1`，但 NEW-API 渠道 Base URL 不带 `/v1`
+- 当前仓库自动化使用 `KIMI_*` 前缀和 `API-kimi` LibreChat 分组
+
 ### 火山/豆包 Volcengine
 
 ```dotenv
@@ -199,6 +228,7 @@ OPENAI_API_BASE_URL=https://api.openai.com
 - 智谱渠道
 - DeepSeek 渠道
 - 阿里云百炼渠道
+- Kimi 渠道
 
 如果需要将更多供应商也纳入自动化管理，可以：
 

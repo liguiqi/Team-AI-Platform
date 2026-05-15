@@ -23,3 +23,9 @@ if [[ "$(normalize_bool "${ALIYUN_ENABLED:-false}")" == "true" ]] && ! is_placeh
 else
   warn "未检测到真实 ALIYUN_API_KEY，跳过阿里云百炼真实联调，仅完成健康检查"
 fi
+
+if [[ "$(normalize_bool "${KIMI_ENABLED:-false}")" == "true" ]] && ! is_placeholder "${KIMI_API_KEY:-}"; then
+  bash "$ROOT_DIR/scripts/smoke-test-kimi.sh"
+else
+  warn "未检测到真实 KIMI_API_KEY，跳过 Kimi 真实联调，仅完成健康检查"
+fi
