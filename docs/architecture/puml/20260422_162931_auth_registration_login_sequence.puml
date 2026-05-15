@@ -16,6 +16,7 @@ participant "Casdoor PostgreSQL\n逻辑库: CASDOOR_DB_NAME" as CasDB
 participant "SMTP Relay / SMTP" as Mail
 participant "Alibaba Cloud PNVS SMS" as Sms
 database "LibreChat MongoDB" as Mongo
+database "Redis\nLibreChat OIDC session" as Redis
 
 User -> LCUI : 打开 /login
 LCUI -> LCPatch : 加载 index.html 注入脚本
@@ -27,6 +28,7 @@ else 手工点击
 end
 
 LCUI -> LCApi : 发起 OpenID 登录
+LCApi -> Redis : 保存 state / code_verifier
 LCApi -> Casdoor : /oauth/authorize\nclient_id + redirect_uri + scope + PKCE
 Casdoor -> User : 展示登录/注册页\n(themeData + formCss + logo + favicon 已仓库化)
 
@@ -44,6 +46,7 @@ Casdoor -> CasDB : 校验或创建业务用户\n组织 = CASDOOR_USER_ORGANIZATI
 Casdoor --> User : 认证成功\n302 redirect 到 LibreChat callback
 
 User -> LCApi : GET /oauth/openid/callback?code=...&state=...
+LCApi -> Redis : 校验并恢复 state / code_verifier
 LCApi -> Casdoor : /token\ncode + code_verifier
 Casdoor --> LCApi : access_token + id_token + refresh_token
 LCApi -> Casdoor : /userinfo
@@ -63,6 +66,11 @@ else Mongo 已有本地同邮箱账号且允许关联
   LCApi -> Mongo : provider=openid + openidId 迁移关联
 else 已有 OpenID 用户
   LCApi -> Mongo : 读取并更新 OpenID 用户资料
+end
+
+alt 浏览器命中 LibreChat 重启前的旧 callback
+  LCApi -> LCApi : 识别 state 校验失败
+  LCApi --> User : 302 /oauth/openid\n自动重发授权
 end
 
 LCApi -> LCApi : 写入 JWT / refresh token /\nopenid_id_token cookie

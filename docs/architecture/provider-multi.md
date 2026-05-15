@@ -15,6 +15,7 @@ LibreChat -> NEW-API (统一网关) -> 各供应商渠道
 - 每个供应商对应一个或多个渠道
 - 渠道类型（type）决定了 `NEW-API` 使用哪个适配器
 - LibreChat 不直接接触供应商，只通过 `NEW-API` 的 OpenAI 兼容接口访问
+- 当前主线默认保持 `NEW_API_SYNC_CHANNEL_MODELS_FROM_ENV=true`，也就是 `.env` 仍是标准渠道矩阵的首要来源；新增多供应商时建议沿用这一套同步方式
 
 ## NEW-API 渠道类型对照表
 

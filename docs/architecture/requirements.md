@@ -55,7 +55,7 @@
 ## 使用场景
 
 ### 场景 1：普通员工通过网页发起对话
-普通员工打开 LibreChat 页面，先通过 Casdoor 完成邮箱或手机号真实认证，再选择平台允许暴露的模型别名，例如 `zhipu-primary`，输入问题后得到对话结果。用户不关心智谱真实模型名，也不持有供应商密钥。
+普通员工打开 LibreChat 页面，先通过 Casdoor 完成邮箱或手机号真实认证，再选择平台允许暴露的模型，例如 `glm-4-flash-250414`，输入问题后得到对话结果。用户不持有供应商密钥，只使用平台已经开放的模型集合。
 
 ### 场景 2：管理员新增或调整模型渠道
 管理员登录 `NEW-API` 后台，查看渠道配置、额度和日志，必要时替换上游密钥、调整模型映射、禁用异常渠道或修改限流参数。
@@ -74,7 +74,9 @@
 - `NEW-API` 接入智谱原生 `ZhipuV4` 渠道。
 - `Casdoor` 接入邮箱 SMTP 与阿里云 `PNVS SMS`。
 - `LibreChat` 通过 `NEW-API` 的 OpenAI 兼容接口访问模型。
+- 本地环境内置 LibreChat Admin Panel，用于角色与权限管理。
 - 服务 token、限流配置、模型映射自动化。
+- LibreChat OIDC state / session 跨重启持久化。
 - 备份恢复、健康检查、联调、诊断、密钥校验脚本。
 - 面向管理员和验收人员的完整中文文档。
 
@@ -95,7 +97,7 @@
 ### 网关治理
 - `NEW-API` 必须作为唯一模型网关。
 - 必须支持智谱 `ZhipuV4` 渠道。
-- 必须支持智谱全量 19 个模型（14 chat + 5 vision）。
+- 必须支持智谱全量 19 个模型（13 chat + 6 vision）。
 - 必须支持服务 token、可选模型白名单与多模型矩阵。
 - 必须支持模型请求限流配置。
 - 必须支持自动 bootstrap，一键完成部署。
@@ -106,6 +108,8 @@
 - 用户必须能通过邮箱或手机号完成真实认证。
 - LibreChat 必须只通过 `NEW-API` 自定义端点访问模型。
 - LibreChat 必须支持从 `NEW-API /v1/models` 动态获取模型列表。
+- Casdoor 登录页必须支持 light / dark 自适应，并屏蔽当前不用的 `WebAuthn` / `Face ID` 登录方式。
+- LibreChat 重启后，OIDC 链路不应长期停留在 state 校验失败页。
 - LibreChat 必须支持网络搜索功能（Serper + Firecrawl + Jina）。
 
 ### 运维能力

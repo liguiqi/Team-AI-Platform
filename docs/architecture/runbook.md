@@ -13,6 +13,7 @@ make health
 ### 建议每日巡检项
 - 检查容器是否都在 `Up` 状态
 - 检查 `NEW-API`、LibreChat 和 Casdoor 是否可访问
+- 若本地启用了 Admin Panel，顺手确认 `http://localhost:3001` 可访问
 - 检查磁盘空间，尤其是 `runtime/` 与 `backups/`
 - 检查 `NEW-API` 是否还能成功调用智谱
 - 检查容器内存使用是否在限制内
@@ -29,6 +30,9 @@ make health
 - `NEW-API /api/status`
 - `Casdoor /.well-known/openid-configuration`
 - `LibreChat /health`
+
+补充：
+- `make health` 当前不覆盖本地 `librechat-admin`；如本地启用了 Admin Panel，请额外做一次浏览器访问确认。
 
 ### 主链路联调
 ```bash
@@ -104,6 +108,11 @@ docker compose --env-file .env -f deploy/docker-compose.local.yml logs -f new-ap
 docker compose --env-file .env -f deploy/docker-compose.local.yml logs -f librechat
 ```
 
+### LibreChat Admin Panel（本地）
+```bash
+docker compose --env-file .env -f deploy/docker-compose.local.yml logs -f librechat-admin
+```
+
 ### MongoDB
 ```bash
 docker compose --env-file .env -f deploy/docker-compose.local.yml logs -f librechat-mongodb
@@ -124,8 +133,9 @@ docker compose --env-file .env -f deploy/docker-compose.local.yml logs -f casdoo
 4. 看 `NEW-API` 日志
 5. 看 Casdoor 日志
 6. 看 LibreChat 日志
-7. 视情况执行 `make bootstrap`
-8. 再执行 `make smoke-zhipu`
+7. 若本地启用了 Admin Panel，再看 `librechat-admin` 日志
+8. 视情况执行 `make bootstrap`
+9. 再执行 `make smoke-zhipu`
 
 这个顺序的目的是先判断是：
 - 环境配置错误
@@ -162,6 +172,17 @@ docker compose --env-file .env -f deploy/docker-compose.local.yml logs -f casdoo
 2. 查看 `docker compose ... logs -f casdoor`
 3. 确认 `CASDOOR_PUBLIC_URL` 与实际入口一致
 4. 确认 `runtime/local/casdoor/init_data.json` 中的回调地址是 `http://localhost:3080/oauth/openid/callback`
+5. 确认 LibreChat 已启用 RedisStore，`REDIS_URI` 指向 `new-api-redis:6379/1`
+
+### 场景 3.5：LibreChat 重启后又要求做一次统一认证
+排查：
+1. 查看 `docker compose ... logs -f librechat`，确认是否出现 `Unable to verify authorization request state`
+2. 确认 Redis DB 1 中存在 `librechat:` 前缀 session key
+3. 确认浏览器是否命中了重启前已经失效的旧 callback
+
+说明：
+- 当前运行时 patch 会把这类 stale callback 自动重定向回 `/oauth/openid`
+- 若仍稳定落到错误页，通常是 Redis session 未生效或 `connect.sid` 未正常保存
 
 ### 场景 3.1：注册时报 built-in 组织禁止新增用户
 排查：
@@ -212,7 +233,8 @@ docker compose --env-file .env -f deploy/docker-compose.local.yml logs -f casdoo
 2. NEW-API
 3. Casdoor
 4. LibreChat
-5. Caddy（仅生产）
+5. LibreChat Admin Panel（仅本地）
+6. Caddy（仅生产）
 
 ### 使用仓库脚本重启
 ```bash

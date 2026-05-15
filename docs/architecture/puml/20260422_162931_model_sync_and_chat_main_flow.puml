@@ -44,11 +44,11 @@ group 用户打开模型下拉框
 end
 
 group 聊天请求主链路
-  User -> Libre : 发送消息 + 选择外部模型别名
+  User -> Libre : 发送消息 + 选择当前开放模型
   Libre -> NewAPI : POST /v1/chat/completions
   NewAPI -> Redis : 处理请求计数 / 缓存辅助
   NewAPI -> PG : 校验 token 状态 / 用户额度 /\n渠道状态 / 模型映射 / 系统选项
-  NewAPI -> NewAPI : 外部别名 -> 实际模型\n例如 zhipu-primary -> glm-4-flash
+  NewAPI -> NewAPI : 当前主线使用直通模型名\n必要时再做别名 -> 实际模型映射
   NewAPI -> LLM : 转发到真实供应商 API
   LLM --> NewAPI : 返回标准响应或错误
   NewAPI --> Libre : OpenAI-compatible 响应
@@ -60,7 +60,7 @@ note right of NewAPI
 当前分支的关键治理策略:
 - LibreChat 不直接接触 ZHIPU_API_KEY
 - 服务 token 是 LibreChat 调用 NEW-API 的唯一内部凭证
-- 真实模型矩阵以 NEW-API 后台维护结果为准
+- 当前主配置以 .env / bootstrap 同步的 19 模型矩阵为准
 - 前端若只展示部分模型, 只做“显示过滤”, 不改变 NEW-API 真正权限边界
 end note
 

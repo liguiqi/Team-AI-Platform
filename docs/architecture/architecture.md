@@ -28,6 +28,12 @@ NEW-API OpenAI 兼容接口
 - 不直接持有智谱采购密钥。
 - 通过自定义 OpenAI 兼容端点调用 `NEW-API /v1/*`。
 - 在当前方案中，模型列表由 `NEW-API /v1/models` 动态提供，而不是在前端静态写死。
+- 当前还把 OIDC state / session 持久化到 Redis，避免 LibreChat 重启后丢失认证上下文。
+
+### LibreChat Admin Panel
+- 当前仅在本地 compose 中启用的独立管理界面。
+- 通过 LibreChat 的 `/api/admin/*` API 管理用户、角色、权限和配置。
+- 生产 compose 默认未包含该服务，避免未规划入口时直接暴露。
 
 ### Casdoor
 - 统一身份认证入口。
@@ -35,6 +41,8 @@ NEW-API OpenAI 兼容接口
 - 通过 SMTP Provider 发送邮件验证码。
 - 通过阿里云 `PNVS SMS` Provider 发送短信验证码。
 - 通过 OIDC 向 LibreChat 提供登录能力。
+- 登录页样式由仓库脚本统一生成，并随浏览器 `light / dark` 主题自适应。
+- 当前登录方式只保留 `Password` 与 `Verification code`。
 
 ### NEW-API
 - 统一模型网关。
@@ -49,8 +57,9 @@ NEW-API OpenAI 兼容接口
 
 ### Redis
 - 作为 `NEW-API` 的缓存与部分运行态存储。
-- 用于加速 token、用户、渠道等查询。
-- 也会影响限流、缓存一致性和部分运行时能力。
+- DB 0 主要服务 `NEW-API` 的 token、用户、渠道查询与限流缓存。
+- DB 1 由 LibreChat 使用，保存 OIDC state / session，`REDIS_KEY_PREFIX=librechat`。
+- 因此 Redis 现在同时承担网关缓存和认证会话持久化两类职责。
 
 ### MongoDB
 - 作为 LibreChat 的会话、用户、历史消息和上传信息存储。
@@ -89,7 +98,8 @@ NEW-API OpenAI 兼容接口
 3. 用户跳转到 Casdoor。
 4. Casdoor 使用邮箱 SMTP 或阿里云 `PNVS SMS` 完成验证码发送。
 5. Casdoor 登录成功后，通过 OIDC 回调 `LibreChat /oauth/openid/callback`。
-6. LibreChat 建立自身会话，随后用户才能进入聊天界面。
+6. LibreChat 从 RedisStore 中校验并恢复 OIDC state / session，随后建立自身会话。
+7. 若浏览器带回的是 LibreChat 重启前已经失效的旧 callback，运行时 patch 会自动回到 `/oauth/openid` 重新发起授权。
 
 ### 主链路
 1. 用户在 LibreChat 页面发起对话。
@@ -106,6 +116,7 @@ NEW-API OpenAI 兼容接口
 2. 管理员使用 `NEW_API_SETUP_USERNAME` / `NEW_API_SETUP_PASSWORD` 登录。
 3. 在后台查看渠道、token、日志、用户和系统配置。
 4. 必要时通过 UI 或脚本进行限流、模型映射、渠道启停或密钥更换。
+5. 本地如需管理 LibreChat 用户角色，可访问 `librechat-admin`。
 
 ## 模型策略
 
@@ -205,11 +216,13 @@ NEW-API OpenAI 兼容接口
 4. Casdoor
 5. MongoDB
 6. LibreChat
+7. LibreChat Admin Panel（仅本地）
 
 ### 原因
 - `NEW-API` 启动依赖 PostgreSQL 和 Redis。
 - Casdoor 启动依赖 PostgreSQL，并在启动时回放认证初始化数据。
-- LibreChat 启动依赖 MongoDB、Casdoor 和已经可访问的 `NEW-API`。
+- LibreChat 启动依赖 MongoDB、Redis、Casdoor 和已经可访问的 `NEW-API`。
+- Admin Panel 仅在本地启用，依赖 LibreChat 已启动。
 - bootstrap 只能在 `NEW-API /api/status` 可用后执行。
 
 ## 搜索能力

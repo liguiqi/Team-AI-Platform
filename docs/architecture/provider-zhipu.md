@@ -21,7 +21,7 @@
 
 ### 当前已接入的 19 个智谱模型
 
-#### Chat 模型（14 个）
+#### Chat 模型（13 个）
 | 模型 ID | 说明 |
 |---------|------|
 | `glm-5.1` | 智谱最新旗舰 |
@@ -38,7 +38,7 @@
 | `glm-4-flashx-250414` | 极速模型 |
 | `glm-4-flash-250414` | 默认/测试模型 |
 
-#### Vision 多模态模型（5 个）
+#### Vision 多模态模型（6 个）
 | 模型 ID | 说明 |
 |---------|------|
 | `glm-5v-turbo` | 旗舰多模态高速版 |
@@ -136,8 +136,8 @@ glm-4-flash-250414
 7. 查询名为 `zhipu-primary` 的渠道是否已存在
 8. 若不存在，则创建渠道
 9. 若已存在，则按 `.env` 配置校正：
-   - 当 `NEW_API_SYNC_CHANNEL_MODELS_FROM_ENV=true` 时，同步 `models`、`group`、`test_model`、`model_mapping`
-   - 当 `NEW_API_SYNC_CHANNEL_MODELS_FROM_ENV=false` 时，保留后台现有模型矩阵
+   - 当前主配置 `NEW_API_SYNC_CHANNEL_MODELS_FROM_ENV=true`，会同步 `models`、`group`、`test_model`、`model_mapping`
+   - 若显式改成 `false`，则保留后台现有模型矩阵
 10. 通过 PostgreSQL 创建或校正服务 token
 11. 把 `NEW_API_SERVICE_TOKEN` 回写 `.env`
 12. 重新渲染 LibreChat 配置并重启 LibreChat

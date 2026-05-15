@@ -140,8 +140,8 @@
 因为本项目已经把“标准状态”定义进脚本中。手工改动虽然能临时解决问题，但如果没有同步到 `.env` 或文档，下次 bootstrap 可能覆盖或失配。
 
 补充说明：
-- 当前脚本默认会保留后台现有渠道模型矩阵，不会再把渠道强行压回单模型。
-- 这意味着你可以把 `NEW-API` 后台作为模型矩阵的主要维护入口。
+- 当前主配置 `NEW_API_SYNC_CHANNEL_MODELS_FROM_ENV=true`，bootstrap 会把 `.env` 中的 19 模型矩阵同步到渠道配置。
+- 若你希望长期以 `NEW-API` 后台为主维护入口，可显式把 `NEW_API_SYNC_CHANNEL_MODELS_FROM_ENV` 改回 `false`。
 
 ## 管理员常见操作
 
@@ -151,7 +151,7 @@
 - 类型是否为 `26`
 - 分组是否符合你的实际授权策略
 - 模型矩阵是否包含你当前希望在 LibreChat 暴露的模型
-- 测试模型是否为 `glm-4-flash`
+- 测试模型是否为 `glm-4-flash-250414`
 - `model_mapping` 是否正确
 - 状态是否启用
 
@@ -248,13 +248,13 @@ make sync-librechat-models
 - 是否允许 token 模型白名单生效
 - 服务 token 配额策略
 
-以下内容当前允许主要在后台维护，不要求每次同步 `.env`：
+以下内容在**当前主配置**下会由 `.env` / bootstrap 驱动，若只改后台而不改 `.env`，后续可能再次被同步覆盖：
 - 已存在渠道上的模型矩阵
-- 已存在渠道上的模型分组
-- 已存在渠道上的模型映射细节
+- `test_model`
+- `model_mapping`
 
-前提：
-- `.env` 中保持 `NEW_API_SYNC_CHANNEL_MODELS_FROM_ENV=false`
+如果你希望这些内容长期主要在后台维护，再显式把：
+- `.env` 中 `NEW_API_SYNC_CHANNEL_MODELS_FROM_ENV=false`
 
 ## 推荐操作闭环
 标准闭环如下：

@@ -6,7 +6,7 @@
 ## 本地部署适用范围
 - 单台开发机、测试机、验收机。
 - 使用 Docker Engine 与 Docker Compose v2。
-- 目标是启动 `NEW-API + Casdoor + LibreChat + PostgreSQL + Redis + MongoDB`。
+- 目标是启动 `NEW-API + Casdoor + LibreChat + LibreChat Admin Panel + PostgreSQL + Redis + MongoDB`。
 
 ## 前置依赖
 - Docker Engine 24+
@@ -80,9 +80,14 @@ CASDOOR_SMS_TEMPLATE_CODE=短信模板编号
 - `NEW_API_TOKEN_MODEL_LIMITS_ENABLED`
 - `NEW_API_SYNC_CHANNEL_MODELS_FROM_ENV`
 - `LIBRECHAT_PORT`
+- `LIBRECHAT_ADMIN_PANEL_PORT`
 - `CASDOOR_PORT`
 - `LIBRECHAT_FETCH_MODELS`
 - `LIBRECHAT_VISIBLE_MODELS`
+- `PLATFORM_THEME_MODE`
+- `PLATFORM_THEME_LOCK`
+- `PLATFORM_HIDE_THEME_SELECTOR`
+- `BOOTSTRAP_AUTOCONFIGURE`
 - `LIBRECHAT_MONGODB_LOCAL_PORT`
 - `NEW_API_PORT`
 
@@ -94,11 +99,15 @@ CASDOOR_SMS_TEMPLATE_CODE=短信模板编号
 - 当前仓库默认把注册用户放到独立业务组织 `CASDOOR_USER_ORGANIZATION_NAME`，不会放到 `built-in`。
 - 本地模板默认 `LIBRECHAT_OPENID_ALLOW_INSECURE_HTTP=true`，用于允许 `http://localhost` 下的 OIDC 调试。
 - `make init` / `make up` 会把本地 `LIBRECHAT_PUBLIC_URL`、`NEW_API_PUBLIC_URL`、`CASDOOR_PUBLIC_URL` 从默认 `localhost` 自动迁移为宿主机 IP，避免容器内访问不到宿主机回调地址。
-- 推荐默认保持：
+- 当前主配置建议保持：
   - `NEW_API_TOKEN_MODEL_LIMITS_ENABLED=false`
-  - `NEW_API_SYNC_CHANNEL_MODELS_FROM_ENV=false`
+  - `NEW_API_SYNC_CHANNEL_MODELS_FROM_ENV=true`
   - `LIBRECHAT_FETCH_MODELS=true`
   - `LIBRECHAT_VISIBLE_MODELS=` 留空
+  - `PLATFORM_THEME_MODE=system`
+  - `PLATFORM_THEME_LOCK=false`
+  - `PLATFORM_HIDE_THEME_SELECTOR=false`
+  - `BOOTSTRAP_AUTOCONFIGURE=true`
 
 ## 初始化流程
 
@@ -129,17 +138,20 @@ make up
 
 ### 这一步会做什么
 - 先读取 `.env`
+- 本地模式下先按需启动宿主机 SMTP relay
 - 执行 `scripts/render-librechat-config.sh`
 - 执行 `scripts/render-casdoor-config.sh`
 - 生成 `runtime/local/librechat/librechat.yaml`
 - 生成 `runtime/local/casdoor/app.conf` 与 `runtime/local/casdoor/init_data.json`
 - 启动本地 compose 中的核心服务
+- 当前会同时启动 `librechat-admin`
 - 将 Casdoor 业务组织与应用配置同步到 PostgreSQL 持久化表
 - 将 Casdoor 邮件与短信 Provider 同步到 PostgreSQL 持久化表
-- 若启用 `LOCAL_SMTP_RELAY_ENABLED=true`，同时启动宿主机 SMTP relay
+- LibreChat 会连接 `new-api-redis` 的 DB 1 持久化 OIDC state / session
 
 ### 正常启动后入口
 - LibreChat：`http://localhost:3080`
+- Admin Panel：`http://localhost:3001`
 - NEW-API：`http://localhost:13000`
 - Casdoor：`http://localhost:18000`
 
@@ -168,6 +180,10 @@ bash scripts/bootstrap-new-api.sh
 9. 通过 PostgreSQL 创建或校正服务 token（48 字符强随机）
 10. 把 `NEW_API_SERVICE_TOKEN` 回写 `.env`
 11. 重新渲染 LibreChat 配置并重启 LibreChat
+
+补充说明：
+- 当前 LibreChat 使用 RedisStore 保存 OIDC state / session，重启后不会再因内存 session 丢失而要求重复登录。
+- 若浏览器命中 LibreChat 重启前的旧 OIDC callback，运行时 patch 会自动回到 `/oauth/openid` 重新发起授权，而不是停留在错误页。
 
 ## 前端模型同步
 
@@ -276,11 +292,14 @@ ss -ltn | grep 18000
 5. 必要时再执行 `make bootstrap`
 6. `docker compose --env-file .env -f deploy/docker-compose.local.yml logs -f librechat`
 
-### 统一认证按钮点击后失败
+### 统一认证按钮点击后失败，或重启后要求再次登录
 重点检查：
 - `curl http://localhost:18000/.well-known/openid-configuration`
 - `runtime/local/casdoor/init_data.json` 中 `redirectUris` 是否包含 `http://localhost:3080/oauth/openid/callback`
 - `.env` 中 `CASDOOR_PUBLIC_URL` 是否与本地入口一致
+- `deploy/docker-compose.local.yml` 中 LibreChat 是否启用了 `USE_REDIS=true`
+- `REDIS_URI` 是否指向 `new-api-redis:6379/1`，且 Redis DB 1 中能看到 `librechat:` 前缀 session key
+- 若浏览器仍落到 `/oauth/error`，优先查看 LibreChat 日志中是否存在 `Unable to verify authorization request state`
 
 ### 收不到邮箱或短信验证码
 重点检查：

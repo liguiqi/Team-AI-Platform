@@ -76,7 +76,7 @@
 目标：让最终用户入口真正可用。
 
 主要工作：
-- 固定 `LibreChat v0.8.4`
+- 固定 `LibreChat v0.8.5`
 - 编写自定义端点模板
 - 实现运行时配置渲染脚本 `render-librechat-config.sh`
 - 调整 compose，挂载渲染后的真实配置文件
@@ -188,6 +188,24 @@
 - bootstrap 只做一次 root 登录
 - 服务 token 改为通过 PostgreSQL 直连维护，避免第二次登录
 
+### 问题 8：Casdoor 登录页主题与浏览器主题不一致
+表现：
+- 浏览器 dark / light 主题切换后，Casdoor 登录页背景、Logo 或语言选择器配色不协调
+
+处理：
+- 将 Casdoor 登录页样式统一收口到 `scripts/render-casdoor-config.sh`
+- 通过 `formCss` 生成 light / dark 自适应样式
+- 同时移除 `WebAuthn` / `Face ID` 登录方式，保持登录面板简洁
+
+### 问题 9：LibreChat 重启后 OIDC 需要重复登录
+表现：
+- Casdoor 认证成功后先落到错误页，再做一次统一认证才能进入聊天页
+
+处理：
+- 为 LibreChat 启用 RedisStore，持久化 OIDC state / session
+- 在运行时 patch 中增加 stale callback 自动重试逻辑
+- 让 local / prod compose 都统一接入 `new-api-redis` 的 DB 1
+
 ## 依赖关系
 - `.env` 与真实 `ZHIPU_API_KEY` 先于真实 smoke test。
 - Compose 启动先于 bootstrap。
@@ -213,3 +231,6 @@
 - M9：systemd 开机自启动完成。
 - M10：2C2G ECS 内存优化完成。
 - M11：多供应商可扩展文档完成。
+- M12：Casdoor 登录页 light / dark 自适应与登录方式收敛完成。
+- M13：LibreChat OIDC Redis session 持久化与 stale callback 自动恢复完成。
+- M14：Admin Panel 本地集成与文档刷新完成。

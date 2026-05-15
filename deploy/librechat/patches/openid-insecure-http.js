@@ -2,6 +2,7 @@ const Module = require('module');
 const cookie = require('cookie');
 
 const originalLoad = Module._load;
+const OPENID_STATE_VERIFICATION_ERROR = 'Unable to verify authorization request state';
 
 function escapeForInlineScript(value) {
   return String(value)
@@ -22,6 +23,80 @@ function getDomainClientPath() {
   }
 }
 
+function getServerDomain() {
+  return String(process.env.DOMAIN_SERVER || process.env.DOMAIN_CLIENT || '').replace(/\/+$/, '');
+}
+
+function getRequestOrigin(req) {
+  if (getServerDomain()) {
+    return getServerDomain();
+  }
+
+  const protocol = req?.protocol || 'http';
+  const host = typeof req?.get === 'function' ? req.get('host') : req?.headers?.host;
+  return host ? `${protocol}://${host}` : '';
+}
+
+function isOpenIdCallbackRequest(req) {
+  const requestPath = String(req?.originalUrl || req?.url || req?.path || '').split('?')[0];
+  return requestPath.endsWith('/oauth/openid/callback') || requestPath.endsWith('/openid/callback');
+}
+
+function getRedirectPath(redirectUrl, req) {
+  if (typeof redirectUrl !== 'string' || !redirectUrl) {
+    return '';
+  }
+
+  try {
+    const baseUrl = getRequestOrigin(req) || 'http://localhost';
+    return new URL(redirectUrl, baseUrl).pathname.replace(/\/+$/, '') || '/';
+  } catch {
+    return '';
+  }
+}
+
+function isOpenIdStartRedirect(redirectUrl, req) {
+  return getRedirectPath(redirectUrl, req).endsWith('/oauth/openid');
+}
+
+function isOAuthErrorRedirect(redirectUrl, req) {
+  return getRedirectPath(redirectUrl, req).endsWith('/oauth/error');
+}
+
+function isOpenIdStateVerificationError(err) {
+  return String(err?.message || err || '').includes(OPENID_STATE_VERIFICATION_ERROR);
+}
+
+function retryOpenIdAfterLostState(req, err) {
+  if (!isOpenIdCallbackRequest(req) || !isOpenIdStateVerificationError(err)) {
+    return false;
+  }
+
+  if (!req?.res || typeof req.res.redirect !== 'function') {
+    return false;
+  }
+
+  if (req.session?.teamAiOpenIdStateRetry) {
+    console.warn('[TeamAI OpenID Patch] OpenID state recovery already attempted for this session');
+    return false;
+  }
+
+  req.session = req.session || {};
+  req.session.teamAiOpenIdStateRetry = true;
+  req.session.messages = [];
+
+  const serverDomain = getRequestOrigin(req);
+  const retryUrl = serverDomain ? `${serverDomain}/oauth/openid` : '/oauth/openid';
+
+  console.warn('[TeamAI OpenID Patch] Recovering missing OpenID state with a fresh auth request', {
+    sessionId: req.sessionID,
+    retryUrl,
+  });
+
+  req.res.redirect(retryUrl);
+  return true;
+}
+
 function buildPlatformBootstrapScript() {
   const serverDomain = String(process.env.DOMAIN_SERVER || process.env.DOMAIN_CLIENT || '').replace(
     /\/+$/,
@@ -36,8 +111,9 @@ function buildPlatformBootstrapScript() {
   const shouldAutoRedirect = process.env.OPENID_AUTO_REDIRECT === 'true' && !!serverDomain;
   const oauthTarget = shouldAutoRedirect ? `${serverDomain}/oauth/openid` : '';
   const platformCss = [
-    ':root { color-scheme: dark; }',
-    'html, body { background: #0d0d0d !important; }',
+    ':root { color-scheme: dark light; }',
+    '@media (prefers-color-scheme: dark) { html, body { background: #0d0d0d !important; } }',
+    '@media (prefers-color-scheme: light) { html, body { background: #ffffff !important; } }',
     hideThemeSelector ? '[aria-keyshortcuts="Ctrl+Shift+T"] { display: none !important; }' : '',
     hideThemeSelector ? '#theme-selector-label { display: none !important; }' : '',
     hideThemeSelector ? '[aria-labelledby="theme-selector-label"] { display: none !important; }' : '',
@@ -287,8 +363,8 @@ function patchAuthService(authService) {
     res.cookie('openid_id_token', tokenset.id_token, {
       expires: expirationDate,
       httpOnly: true,
-      secure: !allowInsecureHttp,
-      sameSite: 'strict',
+      secure: false,
+      sameSite: 'lax',
     });
 
     console.info('[TeamAI OpenID Patch] Persisted openid_id_token cookie for logout fallback');
@@ -430,18 +506,14 @@ function patchExpressSession(sessionFactory) {
 
     console.info('[TeamAI OpenID Patch] Patching express-session options for OpenID flow');
 
-    const shouldForceInsecureCookie =
-      process.env.OPENID_ALLOW_INSECURE_HTTP === 'true' ||
-      String(process.env.DOMAIN_SERVER || '').startsWith('http://');
-
     const patchedOptions = {
       ...options,
       saveUninitialized: true,
-      store: undefined,
       cookie: {
         ...(options.cookie ?? {}),
-        secure: shouldForceInsecureCookie ? false : options?.cookie?.secure,
+        secure: false,
         sameSite: 'lax',
+        path: '/',
       },
     };
 
@@ -490,6 +562,74 @@ function patchOpenIdPassport(passportModule) {
       beforeSessionKeys,
       sessionId: req?.sessionID,
     });
+
+    const requestError = this.error;
+    if (typeof requestError === 'function') {
+      this.error = function patchedRequestError(err) {
+        if (retryOpenIdAfterLostState(req, err)) {
+          return;
+        }
+        return requestError.call(this, err);
+      };
+    }
+
+    const requestFail = this.fail;
+    if (typeof requestFail === 'function') {
+      this.fail = function patchedRequestFail(challenge, status) {
+        if (retryOpenIdAfterLostState(req, challenge)) {
+          return;
+        }
+        return requestFail.call(this, challenge, status);
+      };
+    }
+
+    // Patch res.redirect to force session save before redirecting
+    // This ensures OIDC state (state, code_verifier) is persisted
+    // before the browser follows the 302 to the IdP
+    const originalRedirect = req?.res?.redirect;
+    if (req?.res && typeof req.res.redirect === 'function' && !req.res.__teamAiPatchedRedirect) {
+      req.res.redirect = function patchedRedirect(status, url) {
+        // Handle (url) and (status, url) argument forms
+        const redirectUrl = typeof status === 'string' ? status : url;
+        if (
+          req.session?.teamAiOpenIdStateRetry &&
+          isOpenIdCallbackRequest(req) &&
+          !isOAuthErrorRedirect(redirectUrl, req) &&
+          !isOpenIdStartRedirect(redirectUrl, req)
+        ) {
+          delete req.session.teamAiOpenIdStateRetry;
+        }
+        if (req.session && typeof req.session.save === 'function') {
+          console.info('[TeamAI OpenID Patch] Force-saving session before redirect', {
+            sessionId: req.sessionID,
+            sessionKeys: Object.keys(req.session),
+            redirectUrl: typeof redirectUrl === 'string' ? redirectUrl.substring(0, 80) : '?',
+          });
+          req.session.save((err) => {
+            if (err) {
+              console.error('[TeamAI OpenID Patch] Session save before redirect failed:', err);
+            }
+            // Unpatch to avoid recursion
+            req.res.redirect = originalRedirect;
+            if (typeof status === 'string') {
+              return originalRedirect.call(this, status);
+            }
+            return originalRedirect.call(this, status, url);
+          });
+          return;
+        }
+        if (typeof status === 'string') {
+          return originalRedirect.call(this, status);
+        }
+        return originalRedirect.call(this, status, url);
+      };
+      Object.defineProperty(req.res, '__teamAiPatchedRedirect', {
+        value: true,
+        enumerable: false,
+        configurable: true,
+      });
+    }
+
     const result = originalAuthenticate.call(this, req, options);
     Promise.resolve(result)
       .then(() => {

@@ -138,32 +138,93 @@ EOF
 
 casdoor_form_css_content=$(cat <<EOF
 :root {
-  color-scheme: dark;
+  color-scheme: light dark;
+  --team-auth-primary: ${casdoor_app_theme_color_primary};
+  --team-auth-primary-hover: #0c8b6c;
+  --team-auth-page-bg: #2a2a2f;
+  --team-auth-page-bg-deep: #242428;
+  --team-auth-panel-bg: #181818;
+  --team-auth-panel-border: rgba(255, 255, 255, 0.08);
+  --team-auth-panel-shadow: 0 30px 90px rgba(0, 0, 0, 0.5);
+  --team-auth-field-bg: #111827;
+  --team-auth-field-border: #2b3440;
+  --team-auth-text: #f8fafc;
+  --team-auth-text-secondary: #cbd5e1;
+  --team-auth-muted: #94a3b8;
+  --team-auth-icon: #cbd5e1;
+  --team-auth-tab-border: rgba(255, 255, 255, 0.24);
+  --team-auth-language-bg: rgba(24, 24, 24, 0.92);
+  --team-auth-language-hover-bg: #303035;
+  --team-auth-language-border: rgba(255, 255, 255, 0.12);
+  --team-auth-language-text: #d1d5db;
+  --team-auth-dropdown-bg: #242428;
+  --team-auth-dropdown-hover-bg: #303035;
+  --team-auth-dropdown-text: #e5e7eb;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --team-auth-page-bg: #f3f4f6;
+    --team-auth-page-bg-deep: #e9edf2;
+    --team-auth-panel-bg: #ffffff;
+    --team-auth-panel-border: rgba(15, 23, 42, 0.08);
+    --team-auth-panel-shadow: 0 30px 90px rgba(15, 23, 42, 0.16);
+    --team-auth-field-bg: #f8fafc;
+    --team-auth-field-border: #d7dee8;
+    --team-auth-text: #0f172a;
+    --team-auth-text-secondary: #475569;
+    --team-auth-muted: #64748b;
+    --team-auth-icon: #475569;
+    --team-auth-tab-border: rgba(15, 23, 42, 0.16);
+    --team-auth-language-bg: rgba(255, 255, 255, 0.92);
+    --team-auth-language-hover-bg: #eef2f7;
+    --team-auth-language-border: rgba(15, 23, 42, 0.12);
+    --team-auth-language-text: #334155;
+    --team-auth-dropdown-bg: #ffffff;
+    --team-auth-dropdown-hover-bg: #eef2f7;
+    --team-auth-dropdown-text: #0f172a;
+  }
 }
 
 html,
 body,
-#root {
+#root,
+#parent-area,
+#parent-area.ant-layout,
+.ant-layout,
+.ant-layout-content,
+.loginBackground,
+.loginBackgroundDark {
+  min-height: 100vh;
   background:
-    radial-gradient(circle at top left, rgba(16, 163, 127, 0.22), transparent 28%),
-    radial-gradient(circle at 82% 10%, rgba(45, 212, 191, 0.14), transparent 24%),
-    #0d0d0d !important;
-  color: #f8fafc !important;
+    radial-gradient(circle at 50% 42%, rgba(255, 255, 255, 0.06), transparent 46%),
+    linear-gradient(180deg, var(--team-auth-page-bg), var(--team-auth-page-bg-deep)) !important;
+  color: var(--team-auth-text) !important;
 }
 
 body {
   min-height: 100vh;
+  margin: 0;
 }
 
 .login-content {
   max-width: 460px !important;
   margin: 48px auto !important;
-  padding: 28px 32px !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+.login-panel,
+.login-panel-dark,
+.forget-content {
   border-radius: 24px !important;
-  background: rgba(18, 18, 18, 0.92) !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.5) !important;
-  color: #f8fafc !important;
+  background: var(--team-auth-panel-bg) !important;
+  border: 1px solid var(--team-auth-panel-border) !important;
+  box-shadow: var(--team-auth-panel-shadow) !important;
+  color: var(--team-auth-text) !important;
+  overflow: hidden !important;
 }
 
 .login-content img {
@@ -181,8 +242,27 @@ body {
 .login-content .ant-typography a,
 .login-content a,
 .login-content span,
-.login-content label {
-  color: #f8fafc !important;
+.login-content label,
+.login-signup-link {
+  color: var(--team-auth-text) !important;
+}
+
+.login-signup-link {
+  color: var(--team-auth-text-secondary) !important;
+}
+
+.login-content a,
+.login-content .ant-typography a,
+.login-forget-password a,
+.login-signup-link a {
+  color: var(--team-auth-primary) !important;
+}
+
+.login-content a:hover,
+.login-content .ant-typography a:hover,
+.login-forget-password a:hover,
+.login-signup-link a:hover {
+  color: var(--team-auth-primary-hover) !important;
 }
 
 .login-content .ant-input,
@@ -191,16 +271,16 @@ body {
 .login-content .ant-select-selector,
 .login-content .ant-input-number,
 .login-content .ant-input-number-input {
-  background: #111827 !important;
-  border-color: #2b3440 !important;
-  color: #f8fafc !important;
+  background: var(--team-auth-field-bg) !important;
+  border-color: var(--team-auth-field-border) !important;
+  color: var(--team-auth-text) !important;
   box-shadow: none !important;
 }
 
 .login-content .ant-input::placeholder,
 .login-content .ant-input-affix-wrapper input::placeholder,
 .login-content .ant-input-number-input::placeholder {
-  color: #94a3b8 !important;
+  color: var(--team-auth-muted) !important;
 }
 
 .login-content .ant-input-affix-wrapper .anticon,
@@ -208,22 +288,22 @@ body {
 .login-content .ant-input-suffix,
 .login-content .ant-select-arrow,
 .login-content .ant-checkbox-inner::after {
-  color: #cbd5e1 !important;
+  color: var(--team-auth-icon) !important;
 }
 
 .login-content .ant-tabs-ink-bar,
 .login-content .ant-checkbox-checked .ant-checkbox-inner,
 .login-content .ant-radio-checked .ant-radio-inner,
 .login-content .ant-switch-checked {
-  background: ${casdoor_app_theme_color_primary} !important;
-  border-color: ${casdoor_app_theme_color_primary} !important;
+  background: var(--team-auth-primary) !important;
+  border-color: var(--team-auth-primary) !important;
 }
 
 .login-content .ant-btn-primary,
 .login-content button.ant-btn-primary {
-  background: ${casdoor_app_theme_color_primary} !important;
-  border-color: ${casdoor_app_theme_color_primary} !important;
-  color: #f8fafc !important;
+  background: var(--team-auth-primary) !important;
+  border-color: var(--team-auth-primary) !important;
+  color: var(--team-auth-text) !important;
   box-shadow: none !important;
 }
 
@@ -231,13 +311,92 @@ body {
 .login-content .ant-btn-primary:focus,
 .login-content button.ant-btn-primary:hover,
 .login-content button.ant-btn-primary:focus {
-  background: #0c8b6c !important;
-  border-color: #0c8b6c !important;
+  background: var(--team-auth-primary-hover) !important;
+  border-color: var(--team-auth-primary-hover) !important;
 }
 
 .login-content .ant-divider,
 .login-content .ant-form-item {
-  border-color: rgba(255, 255, 255, 0.08) !important;
+  border-color: var(--team-auth-panel-border) !important;
+}
+
+.login-content .ant-tabs-top > .ant-tabs-nav::before,
+.login-content .ant-tabs-bottom > .ant-tabs-nav::before,
+.login-content .ant-tabs-top > div > .ant-tabs-nav::before,
+.login-content .ant-tabs-bottom > div > .ant-tabs-nav::before {
+  border-color: var(--team-auth-tab-border) !important;
+}
+
+.login-content .ant-checkbox-inner {
+  background: transparent !important;
+  border-color: var(--team-auth-icon) !important;
+}
+
+.login-languages {
+  position: fixed !important;
+  top: 16px !important;
+  right: 16px !important;
+  z-index: 9999 !important;
+}
+
+.login-languages .select-box {
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 10px !important;
+  background: var(--team-auth-language-bg) !important;
+  border: 1px solid var(--team-auth-language-border) !important;
+  color: var(--team-auth-language-text) !important;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28) !important;
+}
+
+.login-languages .select-box:hover,
+.login-languages .select-box:focus {
+  background: var(--team-auth-language-hover-bg) !important;
+  color: var(--team-auth-text) !important;
+}
+
+.login-languages .select-box .anticon,
+.login-languages .select-box svg {
+  color: inherit !important;
+  fill: currentColor !important;
+}
+
+.ant-dropdown,
+.ant-dropdown .ant-dropdown-menu,
+.ant-dropdown-menu {
+  background: var(--team-auth-dropdown-bg) !important;
+  border: 1px solid var(--team-auth-language-border) !important;
+  border-radius: 10px !important;
+  color: var(--team-auth-dropdown-text) !important;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.36) !important;
+}
+
+.ant-dropdown .ant-dropdown-menu-item,
+.ant-dropdown-menu .ant-dropdown-menu-item,
+.ant-dropdown-menu-submenu-title {
+  color: var(--team-auth-dropdown-text) !important;
+  background: transparent !important;
+}
+
+.ant-dropdown .ant-dropdown-menu-item:hover,
+.ant-dropdown .ant-dropdown-menu-item-active,
+.ant-dropdown-menu .ant-dropdown-menu-item:hover,
+.ant-dropdown-menu .ant-dropdown-menu-item-active {
+  background: var(--team-auth-dropdown-hover-bg) !important;
+  color: var(--team-auth-text) !important;
+}
+
+.ant-dropdown-menu-item-selected,
+.ant-dropdown-menu-item-selected:hover {
+  background: rgba(16, 163, 127, 0.18) !important;
+  color: var(--team-auth-primary) !important;
+}
+
+.side-image,
+.ant-layout-footer,
+#footer,
+footer {
+  display: none !important;
 }
 EOF
 )
@@ -384,16 +543,6 @@ jq -n \
             name: "Verification code",
             displayName: "Verification code",
             rule: "All"
-          },
-          {
-            name: "WebAuthn",
-            displayName: "WebAuthn",
-            rule: "None"
-          },
-          {
-            name: "Face ID",
-            displayName: "Face ID",
-            rule: "None"
           }
         ],
         signupItems: [

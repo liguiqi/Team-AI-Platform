@@ -114,6 +114,8 @@ services:
     depends_on:
       librechat-mongodb:
         condition: service_started
+      new-api-redis:
+        condition: service_started
       new-api:
         condition: service_started
       casdoor:
@@ -122,6 +124,10 @@ services:
       HOST: ${LIBRECHAT_HOST}
       PORT: "3080"
       MONGO_URI: mongodb://librechat-mongodb:27017/LibreChat
+      USE_REDIS: "true"
+      USE_REDIS_STREAMS: "false"
+      REDIS_URI: "redis://:${NEW_API_REDIS_PASSWORD}@new-api-redis:6379/1"
+      REDIS_KEY_PREFIX: librechat
       CONFIG_PATH: /app/librechat.yaml
       DOMAIN_CLIENT: ${LIBRECHAT_PUBLIC_URL}
       DOMAIN_SERVER: ${LIBRECHAT_PUBLIC_URL}

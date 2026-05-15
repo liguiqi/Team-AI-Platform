@@ -68,10 +68,19 @@
 - `LIBRECHAT_OPENID_BUTTON_LABEL`
 - `LIBRECHAT_OPENID_ALLOW_INSECURE_HTTP`：仅本地 `http://localhost` 调试时设为 `true`，生产必须保持 `false`。
 
+### OIDC state 与 Redis 会话持久化
+- 当前 local / prod compose 都会为 LibreChat 注入：
+  - `USE_REDIS=true`
+  - `USE_REDIS_STREAMS=false`
+  - `REDIS_URI=redis://:${NEW_API_REDIS_PASSWORD}@new-api-redis:6379/1`
+  - `REDIS_KEY_PREFIX=librechat`
+- 目的不是把 LibreChat 业务数据迁到 Redis，而是持久化 OIDC state / session，避免 LibreChat 重启后出现 `Unable to verify authorization request state`。
+- 当前运行时 patch 还会在浏览器命中“重启前旧 callback”时自动回到 `/oauth/openid` 重发授权，避免用户卡在错误页。
+
 ### 平台主题与品牌统一
-- `PLATFORM_THEME_MODE`：平台统一主题，建议固定为 `dark`。
-- `PLATFORM_THEME_LOCK`：是否强制 LibreChat 固定主题，建议保持 `true`。
-- `PLATFORM_HIDE_THEME_SELECTOR`：是否隐藏 LibreChat 主题切换入口，建议保持 `true`。
+- `PLATFORM_THEME_MODE`：LibreChat 平台主题模式，当前主配置为 `system`。
+- `PLATFORM_THEME_LOCK`：是否强制 LibreChat 固定主题，当前主配置为 `false`。
+- `PLATFORM_HIDE_THEME_SELECTOR`：是否隐藏 LibreChat 主题切换入口，当前主配置为 `false`。
 - `PLATFORM_BRAND_NAME`：统一品牌名。
 - `PLATFORM_BRAND_LOGO_PATH`：统一品牌 Logo 路径，默认 `/images/team-ai-platform-logo.svg`。
 - `PLATFORM_BRAND_FAVICON_PATH`：统一品牌图标路径，默认 `/images/team-ai-platform-mark.svg`。
@@ -79,8 +88,10 @@
 说明：
 - Casdoor 的 `theme_data`、`logo`、`favicon`、`form_css` 现在都由仓库脚本统一下发。
 - Casdoor 的 `form_css` 字段本质上是“插入登录页的 HTML 片段”，如果要写样式，必须用 `<style>...</style>` 包裹，不能直接写裸 CSS 文本。
-- LibreChat 登录前和登录后主题不再依赖用户浏览器“跟随系统”，而是由平台配置锁定。
-- 管理员不应再单独在 Casdoor UI 或 LibreChat 前端里手工改主题，否则下次重启会被仓库配置覆盖。
+- Casdoor 登录页当前会随浏览器 `prefers-color-scheme` 在 `light / dark` 间自适应，背景、登录面板、语言选择器和注册链接颜色都会一并切换。
+- 当前登录方式只保留 `Password` 与 `Verification code`，已屏蔽 `WebAuthn` / `Face ID`。
+- LibreChat 是否锁定主题取决于 `PLATFORM_*`；当前主配置允许跟随系统，并保留主题切换入口。
+- 管理员不应只在 Casdoor UI 或 LibreChat 前端里手工改主题，否则下次重启会被仓库配置覆盖。
 
 ## 首次启用步骤
 
@@ -110,6 +121,8 @@ MODE=prod bash scripts/healthcheck.sh
 - 将邮件和短信 Provider 同步到 PostgreSQL 持久化表
 - 重建或校正 `built-in/admin` 管理员账号
 - 本地模式下可选启动宿主机 SMTP relay，规避容器直连企业邮箱的兼容问题
+- 渲染并同步 Casdoor 登录页 `formCss`，统一 light/dark 主题和语言选择器样式
+- 让 LibreChat 使用 RedisStore 持久化 OIDC state / session
 
 说明：
 - 当前默认 `CASDOOR_INIT_DATA_NEW_ONLY=false`，表示仓库中的认证配置会在服务启动时持续回放。
@@ -181,8 +194,8 @@ docker compose -f deploy/docker-compose.prod.yml --env-file deploy/env/prod/.env
 
 效果：
 - Casdoor 登录页会同步新的深浅主题、主色、Logo、favicon 与表单样式。
-- LibreChat 会在页面初始化阶段锁定主题，并隐藏主题切换入口。
-- `LibreChat -> Casdoor` 的登录跳转保持单入口自动跳转，不再回退到旧的双页面点击流程。
+- LibreChat 的主题行为由当前 `PLATFORM_*` 决定；当前主配置允许跟随系统并保留切换入口。
+- `LibreChat -> Casdoor` 的登录跳转保持单入口自动跳转；若浏览器命中重启前旧 callback，会自动回到 `/oauth/openid` 重新发起授权。
 
 ### 本地启用 SMTP relay
 适用场景：
@@ -218,6 +231,14 @@ docker compose -f deploy/docker-compose.prod.yml --env-file deploy/env/prod/.env
 - `curl $CASDOOR_PUBLIC_URL/.well-known/openid-configuration`
 - 检查 Casdoor 健康检查状态：`docker inspect ai-gateway-casdoor | jq '.[0].State.Health'`
 
+### 重启后需要再次登录，或落到 `/oauth/error`
+排查：
+- `deploy/docker-compose.local.yml` / `deploy/docker-compose.prod.yml` 中 LibreChat 是否启用了 `USE_REDIS=true`
+- `REDIS_URI` 是否指向 `new-api-redis:6379/1`
+- Redis 中是否存在 `librechat:` 前缀 session key
+- LibreChat 日志是否出现 `Unable to verify authorization request state`
+- 浏览器是否命中了重启前已经失效的旧 callback 地址
+
 ### LibreChat 点击统一认证后报错
 排查：
 - `CASDOOR_PUBLIC_URL` 是否正确。
@@ -242,7 +263,7 @@ docker compose -f deploy/docker-compose.prod.yml --env-file deploy/env/prod/.env
 ## 安全建议
 - 不要把 `.env` 与生产密钥放进 Git。
 - 不要重新开启 LibreChat 本地邮箱登录，避免绕过统一认证。
-- 你本轮提供过真实云凭据，建议在验收完成后尽快轮换一遍。
+- 若曾在测试过程中暴露过真实 SMTP / 短信 / OIDC 凭据，建议在验收完成后做一次统一轮换。
 
 ## 建议联读
 1. [architecture.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/architecture.md)

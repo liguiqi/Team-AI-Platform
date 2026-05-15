@@ -18,7 +18,7 @@
 - `NEW-API` 能通过智谱完成真实模型调用。
 - LibreChat 已接入 `NEW-API` 自定义端点。
 - LibreChat 已接入 Casdoor OIDC，且本地登录入口已关闭。
-- 19 个智谱模型全部可访问（14 chat + 5 vision + 1 chat 总计）。
+- 19 个智谱模型全部可访问（13 chat + 6 vision）。
 - 自动 bootstrap 在 `make up` 时正确执行。
 - 网络搜索功能已配置（Serper + Firecrawl + Jina）。
 - 所有容器配置了内存限制。
@@ -26,12 +26,14 @@
 - 健康检查脚本可执行。
 - 文档已填写到可直接操作的程度。
 - 真实密钥未进入 Git 跟踪文件。
+- LibreChat 重启后，统一认证链路不应长期卡在 `Unable to verify authorization request state`。
 
 ## Should 条件
 - 服务用户额度和服务 token 配额有效。
 - 服务 token 使用 48 字符强随机值。
 - `NEW-API` 模型请求限流已生效。
 - LibreChat 模型动态同步行为符合预期。
+- 本地 Admin Panel 可访问并可用于管理员角色验证。
 - 备份恢复脚本可跑通。
 - 管理员手册可直接指导后续接手人。
 - systemd 开机自启动服务可正常安装和运行。
@@ -42,6 +44,7 @@
 - `NEW-API` 无法调用智谱。
 - LibreChat 无法通过 `NEW-API` 访问模型。
 - `zhipu-primary` 不可用，或模型同步结果与预期明显不符。
+- LibreChat 每次重启后都需要用户额外重复一次统一认证才能进入聊天页。
 - 真实密钥进入 Git 跟踪范围。
 - 文档与脚本明显不一致。
 - 本地按文档无法复现启动。
@@ -89,6 +92,7 @@ bash scripts/bootstrap-new-api.sh
 6. 确认端点中存在 `NEW-API`
 7. 确认模型列表包含 19 个智谱模型
 8. 至少选择一个可用模型发起真实对话，建议优先验证 `glm-4-flash-250414`
+9. 重启 LibreChat 后再次走一次统一认证，确认不会稳定复现 state 校验失败页
 
 ## 通过标准
 

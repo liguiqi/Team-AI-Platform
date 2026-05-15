@@ -85,7 +85,7 @@ cp deploy/env/prod/.env.example deploy/env/prod/.env
 - 生产必须保持 `LIBRECHAT_OPENID_ALLOW_INSECURE_HTTP=false`，不要为了省事把 HTTP 调试开关带到公网环境。
 - 推荐默认保持：
   - `NEW_API_TOKEN_MODEL_LIMITS_ENABLED=false`
-  - `NEW_API_SYNC_CHANNEL_MODELS_FROM_ENV=false`
+  - `NEW_API_SYNC_CHANNEL_MODELS_FROM_ENV=true`
   - `LIBRECHAT_FETCH_MODELS=true`
   - `LIBRECHAT_VISIBLE_MODELS=` 留空
 
@@ -126,6 +126,9 @@ MODE=prod bash scripts/up.sh
 - 渲染 `runtime/prod/casdoor/app.conf`
 - 渲染 `runtime/prod/casdoor/init_data.json`
 - 启动 Caddy、NEW-API、Casdoor、LibreChat、PostgreSQL、Redis、MongoDB
+- 将 Casdoor 业务组织 / 应用 / Provider 配置回放到 PostgreSQL 持久化表
+- 让 LibreChat 接入 `new-api-redis` 的 DB 1，用于 OIDC state / session 持久化
+- 当前生产 compose **不包含** Admin Panel 服务
 
 ### 第二步：初始化 NEW-API
 ```bash
@@ -170,10 +173,11 @@ MODE=prod bash scripts/sync-librechat-models.sh
 ### 注意
 - `NEW-API` 后台与 OpenAI 兼容 API 共用同一个服务实例。
 - 若只允许内网或 VPN 管理，建议在 Caddy 之外再加防火墙白名单。
+- 如需生产启用 Admin Panel，需要额外扩展 `deploy/docker-compose.prod.yml` 与 Caddy 路由；当前仓库默认未开放。
 
 ## 首次上线建议流程
 1. 准备服务器与域名。
-2. 填写生产 `.env`（设置 `BOOTSTRAP_AUTOCONFIGURE=true`）。
+2. 填写生产 `.env`（默认保持 `BOOTSTRAP_AUTOCONFIGURE=false`；如需首次一键上线再临时改为 `true`）。
 3. 执行 `MODE=prod bash scripts/up.sh`。
 4. 检查容器状态。
 5. 若未启用自动 bootstrap，执行 `MODE=prod bash scripts/bootstrap-new-api.sh`。

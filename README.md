@@ -25,7 +25,7 @@
 
 ## 版本矩阵
 - `calciumion/new-api:v0.12.1`
-- `ghcr.io/danny-avila/librechat:v0.8.4`
+- `ghcr.io/danny-avila/librechat:v0.8.5`
 - `postgres:16-alpine`
 - `redis:7.4.2-alpine`
 - `mongo:8.0.20`
@@ -33,7 +33,7 @@
 
 版本选择依据：
 - `NEW-API v0.12.1` 来自官方 GitHub Release / Docker Hub tag。
-- `LibreChat v0.8.4` 来自官方 Git tag 与 GHCR 镜像 tag。
+- `LibreChat v0.8.5` 来自官方 Git tag 与 GHCR 镜像 tag。
 - 其余基础镜像均固定为可用的明确版本，避免 `latest` 漂移。
 
 ## 快速开始
@@ -62,6 +62,9 @@
 说明：
 - `make smoke-zhipu` 会调用 `scripts/bootstrap-new-api.sh`，自动完成 `NEW-API` 初始化、限流参数写入、智谱渠道创建、LibreChat 服务用户与 token 生成。
 - bootstrap 过程会把自动生成的 `NEW_API_SERVICE_TOKEN` 回写到本地 `.env`，无需手工复制 token。
+- 本地 compose 当前默认带上 `LibreChat Admin Panel`，入口为 `http://localhost:3001`。
+- LibreChat 的 OIDC state / session 当前持久化到 `new-api-redis` 的 DB 1，重启后不会再因为内存 session 丢失而要求重复登录。
+- Casdoor 登录页样式由脚本渲染并随浏览器 `light/dark` 主题自适应。
 
 ## 目录结构
 ```text
@@ -96,12 +99,12 @@ runtime/                  本地与生产运行期数据目录（不入库）
 ZHIPU_ENABLED=true
 ZHIPU_API_KEY=__FILL_BY_USER__
 ZHIPU_API_BASE_URL=https://open.bigmodel.cn
-ZHIPU_DEFAULT_MODEL=glm-4-flash
-ZHIPU_TEST_MODEL=glm-4-flash
-ZHIPU_EXPOSED_MODEL=zhipu-primary
+ZHIPU_DEFAULT_MODEL=glm-4-flash-250414
+ZHIPU_TEST_MODEL=glm-4-flash-250414
+ZHIPU_EXPOSED_MODEL=glm-5.1,glm-5,glm-5-turbo,glm-4.7,glm-4.7-flash,glm-4.7-flashx,glm-4.6,glm-4.5-air,glm-4.5-airx,glm-4.5-flash,glm-4-long,glm-4-flashx-250414,glm-4-flash-250414,glm-5v-turbo,glm-4.6v,glm-4.6v-flash,glm-4.1v-thinking-flashx,glm-4.1v-thinking-flash,glm-4v-flash
 ```
 
-本仓库默认把 `zhipu-primary -> glm-4-flash` 做成 `NEW-API` 模型映射，并让 LibreChat 通过 `NEW-API /v1/models` 动态获取当前可见模型，从而实现：
+当前主配置直接把 19 个智谱模型暴露给 `NEW-API`，并让 LibreChat 通过 `NEW-API /v1/models` 动态获取当前可见模型，从而实现：
 - 前端不直接持有官方采购密钥
 - LibreChat 只看见 `NEW-API` 当前授权给服务 token 的模型
 - NEW-API 可继续扩展其它上游而不改前端
@@ -116,11 +119,11 @@ ZHIPU_EXPOSED_MODEL=zhipu-primary
 
 推荐默认策略：
 - `NEW_API_TOKEN_MODEL_LIMITS_ENABLED=false`
-- `NEW_API_SYNC_CHANNEL_MODELS_FROM_ENV=false`
+- `NEW_API_SYNC_CHANNEL_MODELS_FROM_ENV=true`
 - `LIBRECHAT_FETCH_MODELS=true`
 - `LIBRECHAT_VISIBLE_MODELS=` 留空
 
-这样可以把 `NEW-API` 后台作为模型矩阵的主维护入口，而把 LibreChat 作为展示层。
+这样可以把 `.env` 中的模型矩阵、`NEW-API` 渠道配置和 LibreChat 前端展示保持一致。
 
 ## smoke test
 - 通用检查：
@@ -145,6 +148,7 @@ ZHIPU_EXPOSED_MODEL=zhipu-primary
 - 智谱接入说明：[docs/architecture/provider-zhipu.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/provider-zhipu.md)
 - NEW-API 管理员手册：[docs/architecture/admin-new-api.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/admin-new-api.md)
 - LibreChat 管理员手册：[docs/architecture/admin-librechat.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/admin-librechat.md)
+- Admin Panel 管理说明：[docs/architecture/admin-panel.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/admin-panel.md)
 - 运行手册：[docs/architecture/runbook.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/runbook.md)
 - 验收标准：[docs/architecture/acceptance-criteria.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/acceptance-criteria.md)
 - 自测报告：[docs/architecture/self-test-report.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/self-test-report.md)

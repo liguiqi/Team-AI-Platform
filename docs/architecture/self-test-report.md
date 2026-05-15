@@ -6,7 +6,7 @@
 ## 自测环境
 - 操作系统：Linux 开发环境（Ubuntu）
 - 部署模式：`MODE=local`
-- 测试日期：2026-05-07（v0.8.5 升级后自测）
+- 测试日期：2026-05-15（登录页样式与 OIDC 重启恢复修复后复测）
 - 运行组件：
   - `calciumion/new-api:v0.12.1`
   - `ghcr.io/danny-avila/librechat:v0.8.5`
@@ -24,6 +24,9 @@
 - LibreChat 动态模型同步
 - 网络搜索配置（Serper + Firecrawl + Jina）
 - Casdoor SSO 统一认证（含健康检查）
+- LibreChat OIDC state / session 持久化到 Redis DB 1
+- Casdoor 登录页 light / dark 自适应与语言选择器样式统一
+- 本地 Admin Panel 集成
 - 自动 bootstrap（`BOOTSTRAP_AUTOCONFIGURE=true`）
 - systemd 开机自启动服务
 - 2C2G ECS 内存优化配置
@@ -33,14 +36,15 @@
 ### 1. 容器状态
 结果：**通过**
 
-所有 6 个容器正常运行：
+所有 7 个容器正常运行：
 ```
-ai-gateway-librechat         Up 5 minutes             0.0.0.0:3080->3080/tcp
-ai-gateway-new-api           Up 23 hours              0.0.0.0:13000->3000/tcp
-ai-gateway-casdoor           Up 23 hours (healthy)    0.0.0.0:18000->8000/tcp
-ai-gateway-new-api-postgres  Up 23 hours              5432/tcp
-ai-gateway-new-api-redis     Up 23 hours              6379/tcp
-ai-gateway-librechat-mongodb Up 23 hours              127.0.0.1:27017->27017/tcp
+ai-gateway-librechat         Up                      0.0.0.0:3080->3080/tcp
+ai-gateway-librechat-admin   Up                      0.0.0.0:3001->3000/tcp
+ai-gateway-new-api           Up                      0.0.0.0:13000->3000/tcp
+ai-gateway-casdoor           Up (healthy)            0.0.0.0:18000->8000/tcp
+ai-gateway-new-api-postgres  Up                      5432/tcp
+ai-gateway-new-api-redis     Up                      6379/tcp
+ai-gateway-librechat-mongodb Up                      127.0.0.1:27017->27017/tcp
 ```
 
 ### 2. Casdoor SSO
@@ -51,6 +55,18 @@ GET http://localhost:18000/.well-known/openid-configuration
 - issuer: http://__YOUR_SERVER_IP__:18000
 - 19 OIDC endpoints 可用
 - 健康检查: healthy
+- 登录页支持浏览器 light / dark 自适应
+- 登录方式仅保留 Password / Verification code
+```
+
+### 2.1 OIDC 重启恢复
+结果：**通过**
+
+```
+- LibreChat 使用 RedisStore 保存 OIDC state / session
+- Redis DB 1 中存在 librechat 前缀 session key
+- LibreChat recreate 后旧 session key 仍可见
+- 浏览器命中旧 callback 时会自动 302 回 /oauth/openid
 ```
 
 ### 3. NEW-API 状态
@@ -108,13 +124,14 @@ JINA_API_KEY=jina_72ce...（已配置）
 
 各容器实际内存占用在限制内：
 ```
-librechat        257.4MiB / 512MiB (50.3%)
-new-api           21.4MiB / 128MiB (16.7%)
-casdoor           92.8MiB / 128MiB (72.5%)
-new-api-postgres  68.0MiB / 128MiB (53.1%)
-new-api-redis      3.9MiB /  64MiB (6.1%)
-librechat-mongodb 137.4MiB / 256MiB (53.7%)
-总计约 581MiB
+librechat         223.5MiB / 512MiB (43.65%)
+librechat-admin    79.86MiB / 256MiB (31.20%)
+new-api            43.95MiB / 128MiB (34.34%)
+casdoor            70.31MiB / 128MiB (54.93%)
+new-api-postgres  116.7MiB / 128MiB (91.20%)
+new-api-redis       8.91MiB /  64MiB (13.93%)
+librechat-mongodb 106.9MiB / 256MiB (41.77%)
+总计约 650MiB
 ```
 
 ### 9. Auto-bootstrap
@@ -174,6 +191,7 @@ BOOTSTRAP_AUTOCONFIGURE=true
 - 19 个智谱模型全部可用
 - 自动 bootstrap 一次部署即可使用
 - 搜索功能（Serper/Firecrawl/Jina）已配置
-- 内存使用适合 2C2G ECS 部署（总计约 581MiB）
+- 内存使用适合 2C2G ECS 部署（总计约 650MiB）
 - 统一认证通过 Casdoor OIDC 正常工作
-- Admin Panel 使用文档已就绪（待按需部署独立容器）
+- Admin Panel 已在本地 compose 中集成，生产仍按需扩展
+- LibreChat 重启后，OIDC state 不再因内存 session 丢失而强制用户二次登录

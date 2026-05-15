@@ -14,7 +14,7 @@ package "身份与认证域" {
 
 package "模型治理域" {
   database "NEW-API DB\nPostgreSQL:NEW_API_DB_NAME" as NewApiDB2
-  database "Redis\n缓存 / 限流辅助" as Redis2
+  database "Redis\nNEW-API 缓存 / LibreChat OIDC session" as Redis2
   rectangle "主数据归属: NEW-API" as NewApiOwner
 }
 
@@ -39,6 +39,7 @@ NewApiOwner --> Redis2 : 缓存
 NewApiOwner --> NewApiLogs : 写日志
 
 LibreOwner --> Mongo2 : 保存
+LibreOwner --> Redis2 : OIDC state / session
 LibreOwner --> UploadVolume : 文件上传
 LibreOwner --> LibreLogs : 写日志
 

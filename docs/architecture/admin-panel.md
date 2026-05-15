@@ -1,11 +1,11 @@
 # LibreChat Admin Panel 管理员手册
 
 ## 文档目标
-本文档面向平台管理员，说明 LibreChat v0.8.5 引入的 Admin Panel（管理后台）的功能、部署方式、权限体系与日常运维操作。
+本文档面向平台管理员，说明 LibreChat v0.8.5 对应的 Admin Panel（管理后台）在当前仓库中的实际部署状态、权限体系与日常运维操作。
 
 ## 概述
 
-LibreChat Admin Panel 是一个**独立 Web 服务**（独立容器），提供图形化界面来管理 LibreChat 的用户、角色、权限和系统配置。它不嵌入在 LibreChat 主容器中，而是通过 API 与 LibreChat 交互。
+LibreChat Admin Panel 是一个**独立 Web 服务**（独立容器），提供图形化界面来管理 LibreChat 的用户、角色、权限和系统配置。当前仓库已经在本地 compose 中内置该服务，生产 compose 默认未启用；它始终通过 API 与 LibreChat 主服务交互。
 
 ### 核心能力
 
@@ -33,92 +33,45 @@ LibreChat Admin Panel 是一个**独立 Web 服务**（独立容器），提供�
 - Admin Panel 通过 LibreChat 的 `/api/admin/*` API 端点进行操作
 - Admin Panel 有自己的 Session 管理，与 LibreChat 登录状态独立
 
-## 部署方式
+## 当前部署方式
 
-### Docker 环境变量
+### 当前状态
+- 本地 `deploy/docker-compose.local.yml` 已内置 `librechat-admin` 服务。
+- 使用镜像：`ghcr.io/clickhouse/librechat-admin-panel:${LIBRECHAT_ADMIN_PANEL_VERSION:-latest}`。
+- Admin Panel 通过 `VITE_API_BASE_URL=${LIBRECHAT_PUBLIC_URL}` 面向浏览器，通过 `API_SERVER_URL=http://librechat:3080` 访问 Docker 内部 LibreChat。
+- 当前 `deploy/docker-compose.prod.yml` **没有**启用 Admin Panel；生产如需暴露，需要额外扩展 compose 和反向代理。
 
-Admin Panel 容器需要以下环境变量：
+### 当前相关环境变量
 
-| 变量 | 必填 | 说明 |
-|------|------|------|
-| `SESSION_SECRET` | 是 | Admin Panel 自身的会话密钥，至少 32 字符 |
-| `VITE_API_BASE_URL` | 是 | 浏览器可访问的 LibreChat 地址（如 `http://__YOUR_SERVER_IP__:3080`） |
-| `API_SERVER_URL` | 否 | 服务端调用 LibreChat 的地址（默认同 `VITE_API_BASE_URL`） |
-| `PORT` | 否 | Admin Panel 监听端口，默认 `3000` |
-| `ADMIN_SSO_ONLY` | 否 | 设为 `true` 则禁用本地账号登录，仅允许 SSO |
-| `ADMIN_SESSION_IDLE_TIMEOUT_MS` | 否 | 会话空闲超时（毫秒） |
+| 变量 | 说明 |
+|------|------|
+| `LIBRECHAT_ADMIN_PANEL_VERSION` | Admin Panel 镜像版本，当前主配置为 `latest` |
+| `LIBRECHAT_ADMIN_PANEL_PORT` | 本地映射端口，当前主配置为 `3001` |
+| `LIBRECHAT_ADMIN_PANEL_SESSION_SECRET` | Admin Panel 自身的 Session Secret |
+| `LIBRECHAT_PUBLIC_URL` | 浏览器访问 LibreChat 的公网/本机地址，Admin Panel 前端会复用它 |
 
-### .env 新增配置
+### 启动方式
 
-在项目 `.env` 中添加以下配置：
-
-```dotenv
-# Admin Panel
-ADMIN_PANEL_ENABLED=true
-ADMIN_PANEL_VERSION=latest
-ADMIN_PANEL_PORT=3001
-ADMIN_PANEL_SESSION_SECRET=<32字符以上的随机字符串>
-ADMIN_PANEL_VITE_API_BASE_URL=http://__YOUR_SERVER_IP__:3080
-ADMIN_PANEL_API_SERVER_URL=http://librechat:3080
-```
-
-说明：
-- `ADMIN_PANEL_VITE_API_BASE_URL`：浏览器访问 LibreChat 的地址，用于前端 API 调用
-- `ADMIN_PANEL_API_SERVER_URL`：Docker 内部网络访问 LibreChat 的地址，用于服务端 API 调用
-
-### Docker Compose 集成
-
-在 `deploy/docker-compose.local.yml` 中添加 Admin Panel 服务：
-
-```yaml
-admin-panel:
-  image: ghcr.io/librechat/admin-panel:${ADMIN_PANEL_VERSION:-latest}
-  container_name: ${CONTAINER_NAME_PREFIX:-ai-gateway}-admin-panel
-  restart: unless-stopped
-  ports:
-    - "${ADMIN_PANEL_PORT:-3001}:3000"
-  environment:
-    SESSION_SECRET: ${ADMIN_PANEL_SESSION_SECRET}
-    VITE_API_BASE_URL: ${ADMIN_PANEL_VITE_API_BASE_URL}
-    API_SERVER_URL: ${ADMIN_PANEL_API_SERVER_URL:-http://librechat:3080}
-  extra_hosts:
-    - "host.docker.internal:host-gateway"
-  depends_on:
-    librechat:
-      condition: service_healthy
-  networks:
-    - default
-  deploy:
-    resources:
-      limits:
-        memory: 256M
-```
-
-注意：
-- `extra_hosts` 在 Linux 上是必要的，否则容器无法解析 `host.docker.internal`
-- Admin Panel 必须在 LibreChat 健康之后启动（`depends_on: condition: service_healthy`）
-- 建议设置内存限制为 256M，Admin Panel 资源消耗不大
-
-### 启动
+本地环境直接执行：
 
 ```bash
-# 在 .env 中配置好变量后
 make up
 ```
 
-或手动启动：
+如只想单独重建 Admin Panel：
+
 ```bash
-docker compose --env-file .env -f deploy/docker-compose.local.yml up -d admin-panel
+docker compose --env-file .env -f deploy/docker-compose.local.yml up -d librechat-admin
 ```
 
 ## 访问 Admin Panel
 
 ### 本地访问
-- 地址：`http://localhost:3001`（端口取决于 `ADMIN_PANEL_PORT` 配置）
+- 地址：`http://localhost:3001`（端口取决于 `LIBRECHAT_ADMIN_PANEL_PORT` 配置）
 
 ### 生产访问
-- 地址：`https://$PUBLIC_CHAT_DOMAIN/admin`（如果配置了反向代理）
-- 或独立端口：`https://admin.example.com`
+- 当前生产 compose 默认**没有**该入口。
+- 如需上生产，建议单独规划子域名或内网入口，再扩展 compose / Caddy 配置。
 
 ### 登录方式
 
@@ -309,20 +262,19 @@ Admin Panel 与 NEW-API 后台是两个独立的管理界面：
 - MongoDB 可通过容器内或本地端口访问
 - 网络搜索功能（Serper + Firecrawl + Jina）已配置
 
-### 待部署（按需）
-- Admin Panel 独立容器（需在 docker-compose 中添加服务）
-- Admin Panel 环境变量（需在 .env 中添加）
-- 管理员角色设置（需通过 MongoDB 授权首个管理员）
+### 本地已启用
+- `deploy/docker-compose.local.yml` 已内置 `librechat-admin`
+- `.env.example` / 本地主配置已补齐 Admin Panel 相关变量
+- 本地默认访问入口为 `http://localhost:3001`
 
-### 快速启用步骤
+### 生产仍需按需扩展
+- 当前 `deploy/docker-compose.prod.yml` 未包含 Admin Panel 服务
+- 如要在生产开放，需补充服务定义、反向代理入口和管理员访问控制
 
-如需立即启用 Admin Panel：
+### 当前建议
 
-1. 在 `.env` 中添加 Admin Panel 变量
-2. 在 `deploy/docker-compose.local.yml` 中添加 Admin Panel 服务定义
-3. 执行 `make up`
-4. 通过 MongoDB 设置首个管理员用户
-5. 访问 `http://localhost:3001` 登录
+1. 本地调试和角色配置优先使用当前已集成的 Admin Panel。
+2. 若要生产启用，先在测试环境验证 `ADMIN` 角色、反向代理和访问控制，再复制到生产编排。
 
 ## 推荐联读
 1. [admin-librechat.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/admin-librechat.md) — LibreChat 主服务运维

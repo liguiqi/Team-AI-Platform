@@ -19,9 +19,11 @@
 
 ### 本地
 - 地址：`http://localhost:3080`
+- Admin Panel：`http://localhost:3001`
 
 ### 生产
 - 地址：`https://$PUBLIC_CHAT_DOMAIN`
+- Admin Panel：当前生产 compose 默认未启用
 
 ## 当前项目中的 LibreChat 角色
 
@@ -35,6 +37,12 @@
 - 验证端点和模型是否可见
 - 验证用户能否发起真实对话
 - 处理用户侧页面故障、上传目录、日志和容器问题
+
+## 当前与 Admin Panel 的关系
+
+- 当前本地 compose 已内置 `librechat-admin` 容器，适合做角色和权限调整。
+- LibreChat 主服务仍是聊天入口；Admin Panel 只是额外管理界面，不负责模型网关治理。
+- 生产环境默认未启用 Admin Panel，因此生产故障排查仍以 LibreChat 主服务、MongoDB、Redis 和 Casdoor / NEW-API 链路为主。
 
 ## 本项目如何给 LibreChat 配置模型端点
 
@@ -72,6 +80,7 @@
 - 默认情况下，LibreChat 会向 `NEW-API /v1/models` 动态拉取模型列表。
 - 因此前端实际可选模型，取决于 `NEW-API` 当前返回给服务 token 的模型集合。
 - `LIBRECHAT_DEFAULT_MODELS` 只作为默认模型或兜底模型，不再是唯一可见模型。
+- 当前模板里若把 `LIBRECHAT_DEFAULT_MODELS=` 留空，渲染脚本会回退使用 `ZHIPU_EXPOSED_MODEL` 作为 default 列表，同时保持 `LIBRECHAT_FETCH_MODELS=true`，所以实际可见模型仍以 `NEW-API /v1/models` 为准。
 
 ### 模型显示标签
 - `Team AI`
@@ -110,6 +119,8 @@
 - 若用户无法登录，不要先查 LibreChat 本地用户库。
 - 应优先检查 Casdoor OIDC、SMTP、短信 Provider 与回调地址。
 - 认证配置的详细说明见 [admin-auth-sso.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/admin-auth-sso.md)
+- 当前 compose 已为 LibreChat 开启 RedisStore（DB 1，`REDIS_KEY_PREFIX=librechat`），用于持久化 OIDC state / session。
+- 若 LibreChat 重启后浏览器带回旧 callback，运行时 patch 会自动重发授权，正常情况下不应再要求用户做“第二次统一认证登录”。
 
 ## 管理员日常检查项
 
@@ -154,6 +165,12 @@ curl -fsS "$NEW_API_PUBLIC_URL/v1/models" \
 
 ### 5. 搜索功能可用
 在 LibreChat 对话中启用搜索，确认 Serper/Firecrawl/Jina 正常工作。
+
+### 6. OIDC 会话已落到 Redis
+可关注以下事实：
+- LibreChat 容器环境中启用了 `USE_REDIS=true`
+- `REDIS_URI` 指向 `new-api-redis:6379/1`
+- 认证发起后，Redis DB 1 中可看到 `librechat:` 前缀的 session key
 
 ## 常见维护动作
 
@@ -270,12 +287,12 @@ docker compose --env-file .env -f deploy/docker-compose.local.yml logs -f librec
 ### 动态模型同步建议
 - 推荐保持 `LIBRECHAT_FETCH_MODELS=true`
 - 推荐保持 `NEW_API_TOKEN_MODEL_LIMITS_ENABLED=false`
-- 推荐保持 `NEW_API_SYNC_CHANNEL_MODELS_FROM_ENV=false`
+- 推荐保持 `NEW_API_SYNC_CHANNEL_MODELS_FROM_ENV=true`
 
 这样做的效果是：
 - LibreChat 不再写死模型列表
 - 服务 token 不再额外把模型收窄成单模型
-- `make bootstrap` 不会覆盖你在 `NEW-API` 后台手工维护的现有模型矩阵
+- `.env` 中的模型矩阵会在 bootstrap 时同步到 `NEW-API`，前后端展示保持一致
 
 ## 多模型动态同步运维说明
 
@@ -287,7 +304,7 @@ docker compose --env-file .env -f deploy/docker-compose.local.yml logs -f librec
 - `LIBRECHAT_FETCH_MODELS=true`
 - `LIBRECHAT_VISIBLE_MODELS=` 保持为空
 - `NEW_API_TOKEN_MODEL_LIMITS_ENABLED=false`
-- `NEW_API_SYNC_CHANNEL_MODELS_FROM_ENV=false`
+- `NEW_API_SYNC_CHANNEL_MODELS_FROM_ENV=true`
 
 运维动作：
 1. 在 `NEW-API` 后台维护渠道模型矩阵

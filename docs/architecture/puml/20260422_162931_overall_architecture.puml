@@ -1,5 +1,5 @@
 @startuml
-title Team AI Platform 当前整体架构总览\n审计基线: Git branch = casdoor-login-fit
+title Team AI Platform 当前整体架构总览\n审计基线: Git branch = main
 
 left to right direction
 skinparam shadowing false
@@ -29,7 +29,7 @@ node "Docker Compose Stack\nnetwork = gateway" {
 
   node "NEW-API\n容器端口 3000\n模型网关 / 治理中心" as NewAPI
   database "PostgreSQL\n同一实例承载两套逻辑库\n- NEW_API_DB_NAME\n- CASDOOR_DB_NAME" as PG
-  database "Redis\n缓存 / 限流辅助 / 运行态" as Redis
+  database "Redis\nNEW-API 缓存 / 限流辅助\nLibreChat OIDC session" as Redis
 }
 
 package "运行时配置与补丁" {
@@ -62,6 +62,7 @@ Chat2DB --> Mongo : 127.0.0.1:${LIBRECHAT_MONGODB_LOCAL_PORT}\nNo Authentication
 
 Libre --> Casdoor : OpenID Connect\n/authorize /token /userinfo /end_session\nPKCE + callback(/oauth/openid/callback)
 Libre --> Mongo : 用户 / 会话 / 对话 / 消息 /\n智能体 / Prompt / 上传文件
+Libre --> Redis : OIDC state / session 持久化
 Libre --> NewAPI : GET /v1/models\nPOST /v1/chat/completions\nBearer NEW_API_SERVICE_TOKEN
 
 NewAPI --> PG : NEW-API 主数据\n用户 / Token / 渠道 / 额度 / 系统选项 / 审计
@@ -101,8 +102,9 @@ Bootstrap --> Libre : restart / reload 最新 token
 note right of OpenIdPatch
 运行时补丁当前承担的关键能力:
 - 登录页自动跳转 /login -> /oauth/openid
-- 平台品牌 Logo / favicon / 深色主题注入
-- 锁定 LibreChat 主题并隐藏主题切换入口
+- 平台品牌 Logo / favicon 注入
+- Casdoor stale callback 自动重试恢复
+- 根据 PLATFORM_* 控制 LibreChat 主题是否锁定 / 隐藏切换入口
 - 本地 http 环境下 cookie secure 兼容
 - OpenID 注销时补齐 id_token_hint 兜底
 - OpenID 与本地账号按邮箱关联
