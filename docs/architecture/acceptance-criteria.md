@@ -18,7 +18,7 @@
 - `NEW-API` 能通过智谱完成真实模型调用。
 - LibreChat 已接入 `NEW-API` 自定义端点。
 - LibreChat 已接入 Casdoor OIDC，且本地登录入口已关闭。
-- 智谱、DeepSeek、阿里云百炼与 Kimi 模型能按 `API-zhipu` / `API-deepseek` / `API-aliyun` / `API-kimi` 分组访问。
+- 智谱、DeepSeek、阿里云百炼、Kimi 与火山方舟豆包模型能按 `API-zhipu` / `API-deepseek` / `API-aliyun` / `API-kimi` / `API-doubao` 分组访问。
 - 自动 bootstrap 在 `make up` 时正确执行。
 - 网络搜索功能已配置（Serper + Firecrawl + Jina）。
 - 所有容器配置了内存限制。
@@ -55,7 +55,7 @@
 ### 一、环境准备
 1. 确认 `.env` 已存在。
 2. 确认 `ZHIPU_API_KEY` 为真实可用值。
-3. 如启用 DeepSeek、阿里云百炼或 Kimi，确认 `DEEPSEEK_API_KEY` / `ALIYUN_API_KEY` / `KIMI_API_KEY` 为真实可用值。
+3. 如启用 DeepSeek、阿里云百炼、Kimi 或火山方舟豆包，确认 `DEEPSEEK_API_KEY` / `ALIYUN_API_KEY` / `KIMI_API_KEY` / `DOUBAO_API_KEY` 为真实可用值。
 4. 确认 Casdoor SMTP 与短信变量已填写。
 5. 确认 Docker 与 Docker Compose 可用。
 
@@ -90,7 +90,7 @@ bash scripts/bootstrap-new-api.sh
 3. 点击进入 Casdoor
 4. 至少验证一次邮箱真实登录
 5. 至少验证一次手机号真实登录
-6. 确认端点中存在 `API-zhipu`，启用 DeepSeek 时存在 `API-deepseek`，启用阿里云百炼时存在 `API-aliyun`，启用 Kimi 时存在 `API-kimi`
+6. 确认端点中存在 `API-zhipu`，启用 DeepSeek 时存在 `API-deepseek`，启用阿里云百炼时存在 `API-aliyun`，启用 Kimi 时存在 `API-kimi`，启用火山方舟豆包时存在 `API-doubao`
 7. 确认模型列表按供应商拆分并高阶优先排序
 8. 至少选择一个可用模型发起真实对话，建议优先验证 `glm-5.1` 与 `deepseek-v4-flash`
 9. 重启 LibreChat 后再次走一次统一认证，确认不会稳定复现 state 校验失败页
@@ -100,7 +100,7 @@ bash scripts/bootstrap-new-api.sh
 ### 脚本层
 - `make health` 输出成功
 - `make smoke-zhipu` 输出成功
-- 启用 DeepSeek / 阿里云百炼 / Kimi 时，`make smoke-deepseek` / `make smoke-aliyun` / `make smoke-kimi` 输出成功
+- 启用 DeepSeek / 阿里云百炼 / Kimi / 火山方舟豆包时，`make smoke-deepseek` / `make smoke-aliyun` / `make smoke-kimi` / `make smoke-doubao` 输出成功；若豆包返回上游未开通模型服务，需要先在火山方舟控制台开通模型或配置推理接入点
 
 ### API 层
 - `GET /v1/models` 返回当前已启用供应商同步后的模型集合

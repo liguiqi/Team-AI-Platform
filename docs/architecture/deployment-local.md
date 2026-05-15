@@ -56,10 +56,11 @@ cp .env.example .env
 
 ```dotenv
 ZHIPU_API_KEY=你的真实智谱密钥
-# 如启用 DeepSeek / 阿里云百炼 / Kimi，也填写对应密钥
+# 如启用 DeepSeek / 阿里云百炼 / Kimi / 火山方舟豆包，也填写对应密钥
 DEEPSEEK_API_KEY=你的真实 DeepSeek 密钥
 ALIYUN_API_KEY=你的真实阿里云百炼密钥
 KIMI_API_KEY=你的真实 Kimi 密钥
+DOUBAO_API_KEY=你的真实火山方舟豆包密钥
 CASDOOR_EMAIL_SMTP_HOST=你的 SMTP 主机
 CASDOOR_EMAIL_SMTP_USERNAME=你的 SMTP 账号
 CASDOOR_EMAIL_SMTP_PASSWORD=你的 SMTP 密码
@@ -188,10 +189,11 @@ bash scripts/bootstrap-new-api.sh
 9. 创建或校正 DeepSeek 渠道（启用时）
 10. 创建或校正阿里云百炼渠道（启用时）
 11. 创建或校正 Kimi 渠道（启用时）
-12. 将供应商渠道余额校正为 `NEW_API_PROVIDER_CHANNEL_BALANCE`
-13. 通过 PostgreSQL 创建或校正服务 token（48 字符强随机，unlimited）
-14. 把 `NEW_API_SERVICE_TOKEN` 回写 `.env`
-15. 重新渲染 LibreChat 配置并重启 LibreChat
+12. 创建或校正火山方舟豆包渠道（启用时）
+13. 将供应商渠道余额校正为 `NEW_API_PROVIDER_CHANNEL_BALANCE`
+14. 通过 PostgreSQL 创建或校正服务 token（48 字符强随机，unlimited）
+15. 把 `NEW_API_SERVICE_TOKEN` 回写 `.env`
+16. 重新渲染 LibreChat 配置并重启 LibreChat
 
 补充说明：
 - 当前 LibreChat 使用 RedisStore 保存 OIDC state / session，重启后不会再因内存 session 丢失而要求重复登录。
@@ -212,7 +214,7 @@ make sync-provider-models
 ### 这一步会做什么
 - 读取当前 `.env`
 - 调用供应商模型 API 检测当前模型矩阵
-- 更新 `ZHIPU_EXPOSED_MODEL` / `DEEPSEEK_EXPOSED_MODEL` / `ALIYUN_EXPOSED_MODEL` / `KIMI_EXPOSED_MODEL`
+- 更新 `ZHIPU_EXPOSED_MODEL` / `DEEPSEEK_EXPOSED_MODEL` / `ALIYUN_EXPOSED_MODEL` / `KIMI_EXPOSED_MODEL` / `DOUBAO_EXPOSED_MODEL`
 - 按 `*_MODEL_ORDER` 做高阶优先排序
 - 回放 bootstrap，把模型矩阵写入 `NEW-API` 渠道并重渲染 LibreChat
 
@@ -240,11 +242,12 @@ make smoke-zhipu
 - 输出“智谱 smoke test 通过”
 - 不出现 `401`、`404`、`429`、`insufficient_user_quota`
 
-如已启用 DeepSeek、阿里云百炼或 Kimi，可分别执行：
+如已启用 DeepSeek、阿里云百炼、Kimi 或火山方舟豆包，可分别执行：
 ```bash
 make smoke-deepseek
 make smoke-aliyun
 make smoke-kimi
+make smoke-doubao
 ```
 
 ## 健康检查
@@ -345,7 +348,7 @@ ss -ltn | grep 18000
 重点检查：
 - 重新执行 `make bootstrap`
 - 查看服务用户额度、服务 token unlimited 状态、渠道余额是否被后台手工改小
-- 若本项目状态正常，则到智谱、DeepSeek、阿里云百炼或 Kimi 官方平台检查上游账号额度与限流
+- 若本项目状态正常，则到智谱、DeepSeek、阿里云百炼、Kimi 或火山方舟豆包官方平台检查上游账号额度与限流
 
 ## 调试命令
 

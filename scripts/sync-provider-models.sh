@@ -44,6 +44,11 @@ provider_model_list_urls() {
         "${base_url}/v1/models" \
         "${base_url}/models"
       ;;
+    DOUBAO)
+      printf '%s\n' \
+        "${base_url}/api/v3/models" \
+        "${base_url}/models"
+      ;;
     *)
       printf '%s\n' \
         "${base_url}/models" \
@@ -54,16 +59,21 @@ provider_model_list_urls() {
 
 extract_model_ids() {
   jq -r '
+    def model_available:
+      if type == "object" then
+        ((.deprecated? // false) != true)
+        and (((.status // .state // "") | tostring | test("(?i)shutdown|offline|deleted|disabled|deprecated")) | not)
+      else true end;
     def model_id:
       if type == "string" then .
       elif type == "object" then (.id // .name // .model // empty)
       else empty end;
     if type == "object" and (.data? | type == "array") then
-      .data[] | model_id
+      .data[] | select(model_available) | model_id
     elif type == "object" and (.models? | type == "array") then
-      .models[] | model_id
+      .models[] | select(model_available) | model_id
     elif type == "array" then
-      .[] | model_id
+      .[] | select(model_available) | model_id
     else
       empty
     end

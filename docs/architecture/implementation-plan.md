@@ -84,13 +84,13 @@
 关键细节：
 - 不能直接把带 `${...}` 的模板文件给容器使用。
 - 服务 token 变更后必须自动重渲染并重启 LibreChat。
-- LibreChat 默认按供应商拆分为 `API-zhipu` / `API-deepseek` / `API-aliyun` / `API-kimi` 端点。
+- LibreChat 默认按供应商拆分为 `API-zhipu` / `API-deepseek` / `API-aliyun` / `API-kimi` / `API-doubao` 端点。
 - 若配置前端白名单，则只展示白名单与 `NEW-API` 模型集合的交集。
 - LibreChat 不暴露真实上游模型名，只暴露平台批准的模型名或别名。
 
 完成标准：
 - LibreChat 可访问。
-- LibreChat 已识别 `API-zhipu` / `API-deepseek` / `API-aliyun` / `API-kimi` 自定义端点。
+- LibreChat 已识别 `API-zhipu` / `API-deepseek` / `API-aliyun` / `API-kimi` / `API-doubao` 自定义端点。
 - 最终用户可以在 UI 中按供应商看到当前授权模型。
 - 管理员可通过 `make sync-provider-models` 同步供应商模型列表与前端模型列表。
 
@@ -211,8 +211,8 @@
 - LibreChat 模型选择中不同上游模型混在单一 `NEW-API` 入口下
 
 处理：
-- 使用 `provider_prefixes()` 管理 `ZHIPU`、`DEEPSEEK`、`ALIYUN`、`KIMI`
-- LibreChat 渲染为 `API-zhipu`、`API-deepseek`、`API-aliyun`、`API-kimi`
+- 使用 `provider_prefixes()` 管理 `ZHIPU`、`DEEPSEEK`、`ALIYUN`、`KIMI`、`DOUBAO`
+- LibreChat 渲染为 `API-zhipu`、`API-deepseek`、`API-aliyun`、`API-kimi`、`API-doubao`
 - `scripts/sync-provider-models.sh` 每日检测供应商模型 API 并按 `*_MODEL_ORDER` 高阶优先排序
 
 ## 依赖关系

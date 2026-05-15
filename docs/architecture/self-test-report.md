@@ -6,7 +6,7 @@
 ## 自测环境
 - 操作系统：Linux 开发环境（Ubuntu）
 - 部署模式：`MODE=local`
-- 测试日期：2026-05-15（登录页样式、OIDC 重启恢复、DeepSeek、阿里云百炼与 Kimi 接入后复测）
+- 测试日期：2026-05-15（登录页样式、OIDC 重启恢复、DeepSeek、阿里云百炼、Kimi 与火山方舟豆包接入后复测）
 - 运行组件：
   - `calciumion/new-api:v0.12.1`
   - `ghcr.io/danny-avila/librechat:v0.8.5`
@@ -22,6 +22,7 @@
 - DeepSeek 官方模型矩阵接入（OpenAI 兼容模式）
 - 阿里云百炼 DashScope 模型矩阵接入（OpenAI 兼容模式）
 - Kimi 开放平台模型矩阵接入（OpenAI 兼容模式）
+- 火山方舟豆包模型矩阵接入（NEW-API VolcEngine 原生适配器）
 - 服务用户与服务 token 自动化（强随机 token）
 - LibreChat 运行时配置渲染
 - LibreChat 动态模型同步
@@ -196,6 +197,28 @@ runtime/local/librechat/librechat.yaml
 - 已渲染 API-kimi
 ```
 
+### 13. 火山方舟豆包接入
+结果：**渠道与模型同步通过；真实 chat 受上游模型开通状态阻塞**
+
+```
+make sync-provider-models
+- 火山方舟豆包模型 API 检测完成
+- DOUBAO_EXPOSED_MODEL 已按 chat 模型规则过滤并按高阶优先排序
+
+make smoke-doubao
+- 创建/更新 doubao-primary 渠道
+- 渠道 type=45，base_url=https://ark.cn-beijing.volces.com
+- 渠道 balance 校正为 999999999999
+- model_mapping 校正为 {}
+- NEW-API /v1/models 已返回豆包模型
+- runtime/local/librechat/librechat.yaml 已渲染 API-doubao
+- chat/completions 已到达火山方舟上游，但当前 API key 账号未开通测试模型，返回 ModelNotOpen
+```
+
+补充结论：
+- 当前项目侧转发链路和 LibreChat 分组已完成
+- 火山方舟账号侧需开通目标模型服务，或将 `DOUBAO_TEST_MODEL` / `DOUBAO_EXPOSED_MODEL` 配置为控制台可调用的 `ep-*` 推理接入点
+
 ## 关键修复记录
 
 ### 修复 1：PostgreSQL 主版本不兼容
@@ -229,7 +252,7 @@ runtime/local/librechat/librechat.yaml
 ## 当前已知结论
 - 平台主链路已完全打通
 - LibreChat 已升级到 v0.8.5（支持 Admin Panel、自定义角色、分级权限等）
-- 智谱、DeepSeek、阿里云百炼与 Kimi 模型按供应商分组可用
+- 智谱、DeepSeek、阿里云百炼、Kimi 与火山方舟豆包模型按供应商分组可见；豆包真实 chat 需先在火山方舟账号侧开通模型服务或配置推理接入点
 - 自动 bootstrap 一次部署即可使用
 - 搜索功能（Serper/Firecrawl/Jina）已配置
 - 内存使用适合 2C2G ECS 部署（总计约 650MiB）

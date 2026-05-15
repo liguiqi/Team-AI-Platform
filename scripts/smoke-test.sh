@@ -29,3 +29,9 @@ if [[ "$(normalize_bool "${KIMI_ENABLED:-false}")" == "true" ]] && ! is_placehol
 else
   warn "未检测到真实 KIMI_API_KEY，跳过 Kimi 真实联调，仅完成健康检查"
 fi
+
+if [[ "$(normalize_bool "${DOUBAO_ENABLED:-false}")" == "true" ]] && ! is_placeholder "${DOUBAO_API_KEY:-}"; then
+  bash "$ROOT_DIR/scripts/smoke-test-doubao.sh"
+else
+  warn "未检测到真实 DOUBAO_API_KEY，跳过火山方舟豆包真实联调，仅完成健康检查"
+fi
