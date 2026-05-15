@@ -147,6 +147,7 @@ services:
       OPENID_USE_PKCE: "true"
       OPENID_USE_END_SESSION_ENDPOINT: "true"
       OPENID_POST_LOGOUT_REDIRECT_URI: "${LIBRECHAT_PUBLIC_URL}/login?redirect=false"
+      OPENID_ADMIN_ROLE: ${LIBRECHAT_ADMIN_ROLE:-ADMIN}
       PLATFORM_THEME_MODE: ${PLATFORM_THEME_MODE:-dark}
       PLATFORM_THEME_LOCK: ${PLATFORM_THEME_LOCK:-true}
       PLATFORM_HIDE_THEME_SELECTOR: ${PLATFORM_HIDE_THEME_SELECTOR:-true}
@@ -180,6 +181,29 @@ services:
       - "127.0.0.1:${LIBRECHAT_MONGODB_LOCAL_PORT}:27017"
     volumes:
       - ../runtime/local/librechat/mongodb:/data/db
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    networks:
+      - gateway
+
+  librechat-admin:
+    image: ghcr.io/clickhouse/librechat-admin-panel:${LIBRECHAT_ADMIN_PANEL_VERSION:-latest}
+    container_name: ai-gateway-librechat-admin
+    restart: always
+    depends_on:
+      librechat:
+        condition: service_started
+    ports:
+      - "${LIBRECHAT_ADMIN_PANEL_PORT:-3001}:3000"
+    environment:
+      SESSION_SECRET: ${LIBRECHAT_ADMIN_PANEL_SESSION_SECRET}
+      VITE_API_BASE_URL: ${LIBRECHAT_PUBLIC_URL}
+      API_SERVER_URL: http://librechat:3080
+      SESSION_COOKIE_SECURE: "false"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     deploy:
       resources:
         limits:

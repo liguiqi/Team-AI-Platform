@@ -101,8 +101,8 @@ interface:
   agents:
     use: true
     create: true
-    share: false
-    public: false
+    share: true
+    public: true
 
 registration:
   socialLogins:
