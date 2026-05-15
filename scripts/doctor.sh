@@ -26,8 +26,14 @@ if [[ "$MODE" == "local" ]]; then
   done
 fi
 
+while IFS= read -r prefix; do
+  api_key_var="${prefix}_API_KEY"
+  if [[ "$(provider_is_enabled_env "$prefix")" == "true" ]] && is_placeholder "${!api_key_var:-}"; then
+    warn "$api_key_var 仍为占位值"
+  fi
+done < <(provider_prefixes)
+
 for key in \
-  ZHIPU_API_KEY \
   NEW_API_SETUP_PASSWORD \
   NEW_API_SERVICE_PASSWORD \
   CASDOOR_CLIENT_SECRET \

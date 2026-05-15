@@ -437,7 +437,7 @@ append_csv_values() {
 }
 
 provider_prefixes() {
-  printf '%s\n' ZHIPU DEEPSEEK
+  printf '%s\n' ZHIPU DEEPSEEK ALIYUN
 }
 
 provider_slug() {
@@ -448,6 +448,7 @@ provider_display_label() {
   case "$1" in
     ZHIPU) printf '智谱' ;;
     DEEPSEEK) printf 'DeepSeek' ;;
+    ALIYUN) printf '阿里云百炼' ;;
     *) provider_slug "$1" ;;
   esac
 }

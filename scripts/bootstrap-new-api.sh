@@ -246,6 +246,7 @@ ensure_known_provider_channel_balances() {
     case "$prefix" in
       ZHIPU) provider_label="智谱" ;;
       DEEPSEEK) provider_label="DeepSeek" ;;
+      ALIYUN) provider_label="阿里云百炼" ;;
       *) provider_label="$prefix" ;;
     esac
 
@@ -332,6 +333,7 @@ fi
 
 upsert_channel_from_env ZHIPU "智谱"
 upsert_channel_from_env DEEPSEEK "DeepSeek"
+upsert_channel_from_env ALIYUN "阿里云百炼"
 ensure_known_provider_channel_balances
 
 token_name_sql="$(sql_escape "${NEW_API_SERVICE_TOKEN_NAME}")"

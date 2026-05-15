@@ -1,7 +1,7 @@
 # 多模型供应商接入指南
 
 ## 文档目标
-本文档说明如何在当前平台中接入除智谱以外的其他大模型供应商，包括 DeepSeek、阿里通义/百炼、火山豆包、OpenAI 等。平台架构已设计为可扩展；其中 DeepSeek 已经被纳入当前 bootstrap 自动化，其它供应商仍可按本文方式继续扩展。
+本文档说明如何在当前平台中接入除智谱以外的其他大模型供应商，包括 DeepSeek、阿里云百炼 DashScope、火山豆包、OpenAI 等。平台架构已设计为可扩展；其中 DeepSeek 与阿里云百炼已经被纳入当前 bootstrap 自动化，其它供应商仍可按本文方式继续扩展。
 
 ## 架构前提
 
@@ -23,7 +23,7 @@ LibreChat -> NEW-API (统一网关) -> 各供应商渠道
 |--------|----------------|---------|------|
 | 智谱 Zhipu | 26 | ZhipuV4 | 已接入 |
 | DeepSeek | 1 | OpenAI 兼容 | base_url 改为 DeepSeek 地址 |
-| 阿里通义/百炼 DashScope | 26 或 40 | 兼容 | 部分模型走 type=26 |
+| 阿里云百炼 DashScope | 1 | OpenAI 兼容 | base_url 使用 `/compatible-mode` |
 | 火山/豆包 Volcengine | 1 或 33 | OpenAI 兼容 | 火山引擎方舟平台 |
 | OpenAI | 1 | 原生 | 直连 OpenAI |
 | Azure OpenAI | 3 | Azure | 需额外配置 |
@@ -79,7 +79,7 @@ bootstrap 会自动创建或更新 `deepseek-primary` 渠道，并同步本项�
 - 服务 token 保持 `NEW_API_SERVICE_TOKEN_UNLIMITED=true`
 - token 模型白名单保持关闭
 - 供应商渠道 `balance` 校正为 `NEW_API_PROVIDER_CHANNEL_BALANCE`
-- LibreChat 按 `API-zhipu` / `API-deepseek` 分组展示模型
+- LibreChat 按 `API-zhipu` / `API-deepseek` / `API-aliyun` 分组展示模型
 
 每日动态同步可执行：
 ```bash
@@ -122,18 +122,32 @@ DEEPSEEK_API_BASE_URL=https://api.deepseek.com
 ### 阿里通义/百炼 DashScope
 
 ```dotenv
-DASHSCOPE_API_KEY=sk-xxxxx
-DASHSCOPE_API_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode
+ALIYUN_ENABLED=true
+ALIYUN_API_KEY=sk-xxxxx
+ALIYUN_API_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode
+ALIYUN_DEFAULT_MODEL=qwen-plus
+ALIYUN_TEST_MODEL=qwen-plus
+ALIYUN_EXPOSED_MODEL=qwen3.6-max-preview,qwen3-max,qwen-max-latest,qwen-max,qwen-plus-latest,qwen-plus
+ALIYUN_CHANNEL_NAME=aliyun-bailian-primary
+ALIYUN_CHANNEL_TYPE=1
+ALIYUN_CHANNEL_GROUP=default
+ALIYUN_MODEL_MAPPING_JSON='{}'
+ALIYUN_LIBRECHAT_ENDPOINT_NAME=API-aliyun
+ALIYUN_MODEL_ORDER=qwen3.6-max-preview,qwen3-max-preview,qwen3-max,qwen-max-latest,qwen-max,qwen-plus-latest,qwen-plus
+ALIYUN_MODEL_LIST_URLS=https://dashscope.aliyuncs.com/compatible-mode/v1/models
+ALIYUN_MODEL_EXCLUDE_REGEX='(embedding|rerank|tts|asr|audio|image|video|vl|omni|mt|deep-search|deep-research|character|ocr)'
 ```
 
 渠道配置：
 - 类型：`1`（OpenAI 兼容模式）
-- 模型：`qwen-turbo,qwen-plus,qwen-max,qwen-long`
-- Base URL：`https://dashscope.aliyuncs.com/compatible-mode/v1`
+- 模型：由百炼模型 API 动态刷新，常用模型包括 `qwen-plus`、`qwen-max`、`qwen3-max` 等
+- Base URL：`https://dashscope.aliyuncs.com/compatible-mode`
+- 模型列表 URL：`https://dashscope.aliyuncs.com/compatible-mode/v1/models`
 
 注意：
 - 百炼提供 OpenAI 兼容模式，推荐使用
-- 也可使用原生 DashScope 格式（type=26 或 40）
+- 当前仓库自动化使用 `ALIYUN_*` 前缀和 `API-aliyun` LibreChat 分组
+- 不使用原生 DashScope 格式，避免与 `NEW-API` 适配器类型差异耦合
 
 ### 火山/豆包 Volcengine
 
@@ -184,6 +198,7 @@ OPENAI_API_BASE_URL=https://api.openai.com
 当前 bootstrap 脚本已处理：
 - 智谱渠道
 - DeepSeek 渠道
+- 阿里云百炼渠道
 
 如果需要将更多供应商也纳入自动化管理，可以：
 

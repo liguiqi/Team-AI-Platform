@@ -6,7 +6,7 @@
 ## 自测环境
 - 操作系统：Linux 开发环境（Ubuntu）
 - 部署模式：`MODE=local`
-- 测试日期：2026-05-15（登录页样式与 OIDC 重启恢复修复后复测）
+- 测试日期：2026-05-15（登录页样式、OIDC 重启恢复、DeepSeek 与阿里云百炼接入后复测）
 - 运行组件：
   - `calciumion/new-api:v0.12.1`
   - `ghcr.io/danny-avila/librechat:v0.8.5`
@@ -18,7 +18,9 @@
 ## 已完成实施范围
 - 根仓骨架与目录结构
 - 本地与生产编排文件（含内存限制）
-- 智谱全量 19 模型矩阵接入（直通模式）
+- 智谱模型矩阵接入（直通模式）
+- DeepSeek 官方模型矩阵接入（OpenAI 兼容模式）
+- 阿里云百炼 DashScope 模型矩阵接入（OpenAI 兼容模式）
 - 服务用户与服务 token 自动化（强随机 token）
 - LibreChat 运行时配置渲染
 - LibreChat 动态模型同步
@@ -91,8 +93,8 @@ GET http://localhost:13000/v1/models
 结果：**通过**
 
 ```
-POST /v1/chat/completions (model: glm-5.1 / deepseek-v4-flash)
-- Response: "Hello 👋! I'm ChatGLM"
+POST /v1/chat/completions (model: glm-5.1 / deepseek-v4-flash / qwen-plus)
+- Response: 包含 choices
 - HTTP 200
 ```
 
@@ -155,6 +157,26 @@ BOOTSTRAP_AUTOCONFIGURE=true
 
 服务 token 使用 48 字符强随机值（由 `random_alnum` 生成），不再使用 fallback 弱 token。
 
+### 11. 阿里云百炼接入
+结果：**通过**
+
+```
+make sync-provider-models
+- 阿里云百炼模型 API 检测完成
+- ALIYUN_EXPOSED_MODEL 已按 chat 模型规则过滤并按高阶优先排序
+
+make smoke-aliyun
+- 创建/更新 aliyun-bailian-primary 渠道
+- 渠道 balance 校正为 999999999999
+- model_mapping 校正为 {}
+- 使用 qwen-plus 完成真实 chat/completions 调用
+
+runtime/local/librechat/librechat.yaml
+- 已渲染 API-zhipu
+- 已渲染 API-deepseek
+- 已渲染 API-aliyun
+```
+
 ## 关键修复记录
 
 ### 修复 1：PostgreSQL 主版本不兼容
@@ -188,7 +210,7 @@ BOOTSTRAP_AUTOCONFIGURE=true
 ## 当前已知结论
 - 平台主链路已完全打通
 - LibreChat 已升级到 v0.8.5（支持 Admin Panel、自定义角色、分级权限等）
-- 智谱与 DeepSeek 模型按供应商分组可用
+- 智谱、DeepSeek 与阿里云百炼模型按供应商分组可用
 - 自动 bootstrap 一次部署即可使用
 - 搜索功能（Serper/Firecrawl/Jina）已配置
 - 内存使用适合 2C2G ECS 部署（总计约 650MiB）

@@ -84,13 +84,13 @@
 关键细节：
 - 不能直接把带 `${...}` 的模板文件给容器使用。
 - 服务 token 变更后必须自动重渲染并重启 LibreChat。
-- LibreChat 默认按供应商拆分为 `API-zhipu` / `API-deepseek` 端点。
+- LibreChat 默认按供应商拆分为 `API-zhipu` / `API-deepseek` / `API-aliyun` 端点。
 - 若配置前端白名单，则只展示白名单与 `NEW-API` 模型集合的交集。
 - LibreChat 不暴露真实上游模型名，只暴露平台批准的模型名或别名。
 
 完成标准：
 - LibreChat 可访问。
-- LibreChat 已识别 `API-zhipu` / `API-deepseek` 自定义端点。
+- LibreChat 已识别 `API-zhipu` / `API-deepseek` / `API-aliyun` 自定义端点。
 - 最终用户可以在 UI 中按供应商看到当前授权模型。
 - 管理员可通过 `make sync-provider-models` 同步供应商模型列表与前端模型列表。
 
@@ -205,6 +205,15 @@
 - 为 LibreChat 启用 RedisStore，持久化 OIDC state / session
 - 在运行时 patch 中增加 stale callback 自动重试逻辑
 - 让 local / prod compose 都统一接入 `new-api-redis` 的 DB 1
+
+### 问题 10：多供应商模型入口混杂
+表现：
+- LibreChat 模型选择中不同上游模型混在单一 `NEW-API` 入口下
+
+处理：
+- 使用 `provider_prefixes()` 管理 `ZHIPU`、`DEEPSEEK`、`ALIYUN`
+- LibreChat 渲染为 `API-zhipu`、`API-deepseek`、`API-aliyun`
+- `scripts/sync-provider-models.sh` 每日检测供应商模型 API 并按 `*_MODEL_ORDER` 高阶优先排序
 
 ## 依赖关系
 - `.env` 与真实 `ZHIPU_API_KEY` 先于真实 smoke test。

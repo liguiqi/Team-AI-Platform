@@ -17,3 +17,9 @@ if [[ "$(normalize_bool "${DEEPSEEK_ENABLED:-false}")" == "true" ]] && ! is_plac
 else
   warn "未检测到真实 DEEPSEEK_API_KEY，跳过 DeepSeek 真实联调，仅完成健康检查"
 fi
+
+if [[ "$(normalize_bool "${ALIYUN_ENABLED:-false}")" == "true" ]] && ! is_placeholder "${ALIYUN_API_KEY:-}"; then
+  bash "$ROOT_DIR/scripts/smoke-test-aliyun.sh"
+else
+  warn "未检测到真实 ALIYUN_API_KEY，跳过阿里云百炼真实联调，仅完成健康检查"
+fi

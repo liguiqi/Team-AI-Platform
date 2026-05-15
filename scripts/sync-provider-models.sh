@@ -34,6 +34,11 @@ provider_model_list_urls() {
         "${base_url}/models" \
         "${base_url}/v1/models"
       ;;
+    ALIYUN)
+      printf '%s\n' \
+        "${base_url}/v1/models" \
+        "${base_url}/models"
+      ;;
     *)
       printf '%s\n' \
         "${base_url}/models" \

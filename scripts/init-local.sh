@@ -60,8 +60,12 @@ else
   die "compose 配置校验失败，请检查 .env"
 fi
 
-if is_placeholder "$(current_env_value ZHIPU_API_KEY "$ROOT_DIR/.env")"; then
-  warn "ZHIPU_API_KEY 仍是占位值，后续执行 make smoke-zhipu 前需要填写真实值"
-fi
+load_env
+while IFS= read -r prefix; do
+  api_key_var="${prefix}_API_KEY"
+  if [[ "$(provider_is_enabled_env "$prefix")" == "true" ]] && is_placeholder "${!api_key_var:-}"; then
+    warn "$api_key_var 仍是占位值，后续执行对应 smoke test 前需要填写真实值"
+  fi
+done < <(provider_prefixes)
 
 info "初始化完成"

@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: init up down restart bootstrap render-auth sync-casdoor-auth sync-casdoor-providers sync-provider-models install-model-sync-cron sync-librechat-models health smoke smoke-zhipu smoke-deepseek backup restore doctor verify-no-secrets
+.PHONY: init up down restart bootstrap render-auth sync-casdoor-auth sync-casdoor-providers sync-provider-models install-model-sync-cron sync-librechat-models health smoke smoke-zhipu smoke-deepseek smoke-aliyun backup restore doctor verify-no-secrets
 
 init:
 	bash scripts/init-local.sh
@@ -46,6 +46,9 @@ smoke-zhipu:
 
 smoke-deepseek:
 	bash scripts/smoke-test-deepseek.sh
+
+smoke-aliyun:
+	bash scripts/smoke-test-aliyun.sh
 
 backup:
 	bash scripts/backup.sh

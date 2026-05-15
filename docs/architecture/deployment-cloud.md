@@ -54,6 +54,8 @@ cp deploy/env/prod/.env.example deploy/env/prod/.env
 - `NEW_API_ADMIN_DOMAIN`
 - `ACME_EMAIL`
 - `ZHIPU_API_KEY`
+- `DEEPSEEK_API_KEY`（启用 DeepSeek 时）
+- `ALIYUN_API_KEY`（启用阿里云百炼时）
 - `NEW_API_SETUP_USERNAME`
 - `NEW_API_SETUP_PASSWORD`
 - `NEW_API_SERVICE_PASSWORD`
@@ -144,12 +146,19 @@ MODE=prod bash scripts/bootstrap-new-api.sh
 - 配置限流
 - 创建或校正服务用户
 - 创建或校正智谱渠道
+- 创建或校正 DeepSeek / 阿里云百炼渠道（启用时）
 - 创建或校正服务 token
 - 重渲染 LibreChat 配置并重启 LibreChat
 
 ### 第三步：真实联调
 ```bash
 MODE=prod bash scripts/smoke-test-zhipu.sh
+```
+
+如已启用 DeepSeek 或阿里云百炼，可继续执行：
+```bash
+MODE=prod bash scripts/smoke-test-deepseek.sh
+MODE=prod bash scripts/smoke-test-aliyun.sh
 ```
 
 ### 第四步：健康检查
@@ -160,7 +169,7 @@ MODE=prod bash scripts/healthcheck.sh
 ### 第五步：按需同步前端模型列表
 当你后续在 `NEW-API` 后台维护了模型矩阵，或修改了生产 `.env` 中的 `LIBRECHAT_VISIBLE_MODELS` 时，执行：
 ```bash
-MODE=prod bash scripts/sync-librechat-models.sh
+MODE=prod bash scripts/sync-provider-models.sh
 ```
 
 ## 对外入口

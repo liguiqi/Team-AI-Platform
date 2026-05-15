@@ -5,21 +5,21 @@
 ## 责任边界
 - Codex 负责完整实施、结构整理、文档交付、脚本生成、配置模板、联调路径设计、自测与问题收敛。
 - 用户Project Owner最后只负责验收。
-- 用户会提供明确可用的智谱或 DeepSeek API Key。
+- 用户会提供明确可用的智谱、DeepSeek 或阿里云百炼 API Key。
 - 最终验收以智谱 API 渠道为主验收渠道。
 - 除填写真实密钥和执行最终验收外，用户不负责补做工程集成。
 
 ## 架构
 ```text
-智谱 / DeepSeek / 其他上游模型
+智谱 / DeepSeek / 阿里云百炼 / 其他上游模型
     -> NEW-API
     -> LibreChat
     -> 部门用户
 ```
 
 本仓库默认采用：
-- `NEW-API` 原生 `ZhipuV4` 渠道 + DeepSeek OpenAI 兼容渠道
-- `LibreChat` 自定义 OpenAI 兼容端点按供应商拆分为 `API-zhipu` / `API-deepseek`，底层仍统一走 `NEW-API`
+- `NEW-API` 原生 `ZhipuV4` 渠道 + DeepSeek / 阿里云百炼 OpenAI 兼容渠道
+- `LibreChat` 自定义 OpenAI 兼容端点按供应商拆分为 `API-zhipu` / `API-deepseek` / `API-aliyun`，底层仍统一走 `NEW-API`
 - `Docker Compose` 作为本地与单机生产的统一编排方式
 - `Caddy` 作为生产反向代理
 
@@ -41,8 +41,8 @@
    ```bash
    cp .env.example .env
    ```
-   必填项：`ZHIPU_API_KEY` 或 `DEEPSEEK_API_KEY`
-   如果当前只想接 DeepSeek，不再使用智谱，请同时把 `ZHIPU_ENABLED=false`。
+   必填项：`ZHIPU_API_KEY`、`DEEPSEEK_API_KEY` 或 `ALIYUN_API_KEY`
+   如果当前只想接 DeepSeek 或阿里云百炼，不再使用智谱，请同时把 `ZHIPU_ENABLED=false`。
 2. 初始化本地目录并自动生成非敏感随机密钥：
    ```bash
    make init
@@ -59,18 +59,22 @@
    ```bash
    make smoke-deepseek
    ```
+   如已启用阿里云百炼，也可执行：
+   ```bash
+   make smoke-aliyun
+   ```
 5. 如果你后续调整了上游模型矩阵，或配置了 LibreChat 前端白名单，执行：
    ```bash
    make sync-provider-models
    ```
 
 说明：
-- `make smoke-zhipu` / `make smoke-deepseek` 都会先调用 `scripts/bootstrap-new-api.sh`，自动完成 `NEW-API` 初始化、限流参数写入、已启用供应商渠道创建、LibreChat 服务用户与 token 生成。
+- `make smoke-zhipu` / `make smoke-deepseek` / `make smoke-aliyun` 都会先调用 `scripts/bootstrap-new-api.sh`，自动完成 `NEW-API` 初始化、限流参数写入、已启用供应商渠道创建、LibreChat 服务用户与 token 生成。
 - bootstrap 过程会把自动生成的 `NEW_API_SERVICE_TOKEN` 回写到本地 `.env`，无需手工复制 token。
 - 本地 compose 当前默认带上 `LibreChat Admin Panel`，入口为 `http://localhost:3001`。
 - LibreChat 的 OIDC state / session 当前持久化到 `new-api-redis` 的 DB 1，重启后不会再因为内存 session 丢失而要求重复登录。
 - Casdoor 登录页样式由脚本渲染并随浏览器 `light/dark` 主题自适应。
-- 当 `ZHIPU_ENABLED=true` 与 `DEEPSEEK_ENABLED=true` 同时开启时，`make bootstrap` 会同时创建/更新 `zhipu-primary` 与 `deepseek-primary` 两条渠道；LibreChat 展示为 `API-zhipu` / `API-deepseek` 两个入口，底层共用同一个 `NEW_API_SERVICE_TOKEN`。
+- 当 `ZHIPU_ENABLED=true`、`DEEPSEEK_ENABLED=true`、`ALIYUN_ENABLED=true` 同时开启时，`make bootstrap` 会同时创建/更新 `zhipu-primary`、`deepseek-primary` 与 `aliyun-bailian-primary` 渠道；LibreChat 展示为 `API-zhipu` / `API-deepseek` / `API-aliyun` 三个入口，底层共用同一个 `NEW_API_SERVICE_TOKEN`。
 
 ## 目录结构
 ```text
@@ -94,6 +98,7 @@ runtime/                  本地与生产运行期数据目录（不入库）
 - `make smoke`：执行通用 smoke test。
 - `make smoke-zhipu`：执行智谱验收通道 smoke test。
 - `make smoke-deepseek`：执行 DeepSeek 验收通道 smoke test。
+- `make smoke-aliyun`：执行阿里云百炼验收通道 smoke test。
 - `make doctor`：诊断依赖、端口、env、compose 配置。
 - `make verify-no-secrets`：扫描已纳入 Git 的文件，检查明显密钥风险。
 
@@ -139,12 +144,31 @@ DEEPSEEK_LIBRECHAT_ENDPOINT_NAME=API-deepseek
 - DeepSeek 官方文档当前给出的 OpenAI 兼容 `base_url` 是 `https://api.deepseek.com`，不需要额外手工补 `/v1`。
 - `make sync-provider-models` 会从 DeepSeek 模型 API 动态刷新 `DEEPSEEK_EXPOSED_MODEL`；当前真实 API 返回 `deepseek-v4-pro` / `deepseek-v4-flash`。
 
+## 阿里云百炼配置说明
+根目录 `.env` 启用百炼时至少填写以下字段：
+```dotenv
+ALIYUN_ENABLED=true
+ALIYUN_API_KEY=__FILL_BY_USER__
+ALIYUN_API_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode
+ALIYUN_DEFAULT_MODEL=qwen-plus
+ALIYUN_TEST_MODEL=qwen-plus
+ALIYUN_EXPOSED_MODEL=qwen3.6-max-preview,qwen3-max,qwen-max-latest,qwen-max,qwen-plus-latest,qwen-plus
+ALIYUN_LIBRECHAT_ENDPOINT_NAME=API-aliyun
+```
+
+说明：
+- 当前仓库使用 `type=1` 的 OpenAI 兼容渠道接入阿里云百炼 DashScope。
+- `make bootstrap` 会在 `ALIYUN_ENABLED=true` 时自动创建/更新 `aliyun-bailian-primary` 渠道。
+- `ALIYUN_API_BASE_URL` 写到 `https://dashscope.aliyuncs.com/compatible-mode`，模型检测接口由 `ALIYUN_MODEL_LIST_URLS=https://dashscope.aliyuncs.com/compatible-mode/v1/models` 单独配置。
+- `make sync-provider-models` 会从百炼模型 API 动态刷新 `ALIYUN_EXPOSED_MODEL`，并按 `ALIYUN_MODEL_ORDER` 高阶优先排序。
+
 ## 模型同步说明
 当前默认策略是按供应商拆分 LibreChat 模型入口：
 
 - `API-zhipu`：只显示智谱模型，并按 `ZHIPU_MODEL_ORDER` 高阶优先排序。
 - `API-deepseek`：只显示 DeepSeek 模型，并按 `DEEPSEEK_MODEL_ORDER` 高阶优先排序。
-- 两个入口底层都使用同一个 `NEW_API_SERVICE_TOKEN` 请求 `NEW-API /v1/*`。
+- `API-aliyun`：只显示阿里云百炼模型，并按 `ALIYUN_MODEL_ORDER` 高阶优先排序。
+- 所有入口底层都使用同一个 `NEW_API_SERVICE_TOKEN` 请求 `NEW-API /v1/*`。
 
 推荐默认策略：
 - `NEW_API_SERVICE_TOKEN_QUOTA=1000000000000`
@@ -177,6 +201,10 @@ make install-model-sync-cron
   ```bash
   make smoke-deepseek
   ```
+- 阿里云百炼主验收通道：
+  ```bash
+  make smoke-aliyun
+  ```
 - 应用层健康检查：
   ```bash
   make health
@@ -190,6 +218,7 @@ make install-model-sync-cron
 - 云端部署说明：[docs/architecture/deployment-cloud.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/deployment-cloud.md)
 - 智谱接入说明：[docs/architecture/provider-zhipu.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/provider-zhipu.md)
 - DeepSeek 接入说明：[docs/architecture/provider-deepseek.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/provider-deepseek.md)
+- 阿里云百炼接入说明：[docs/architecture/provider-aliyun.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/provider-aliyun.md)
 - NEW-API 管理员手册：[docs/architecture/admin-new-api.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/admin-new-api.md)
 - LibreChat 管理员手册：[docs/architecture/admin-librechat.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/admin-librechat.md)
 - Admin Panel 管理说明：[docs/architecture/admin-panel.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/admin-panel.md)
