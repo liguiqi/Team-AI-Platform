@@ -59,6 +59,7 @@ cp deploy/env/prod/.env.example deploy/env/prod/.env
 - `KIMI_API_KEY`（启用 Kimi 时）
 - `DOUBAO_API_KEY`（启用火山方舟豆包时）
 - `MIMO_API_KEY`（启用小米 MiMo 时）
+- `MINIMAX_API_KEY`（启用 MiniMax 时）
 - `NEW_API_SETUP_USERNAME`
 - `NEW_API_SETUP_PASSWORD`
 - `NEW_API_SERVICE_PASSWORD`
@@ -150,7 +151,7 @@ MODE=prod bash scripts/bootstrap-new-api.sh
 - 配置限流
 - 创建或校正服务用户
 - 创建或校正智谱渠道
-- 创建或校正 DeepSeek / 阿里云百炼 / Kimi / 火山方舟豆包 / 小米 MiMo 渠道（启用时）
+- 创建或校正 DeepSeek / 阿里云百炼 / Kimi / 火山方舟豆包 / 小米 MiMo / MiniMax 渠道（启用时）
 - 创建或校正服务 token
 - 重渲染 LibreChat 配置并重启 LibreChat
 - 创建或校正 LibreChat 默认管理员
@@ -160,13 +161,14 @@ MODE=prod bash scripts/bootstrap-new-api.sh
 MODE=prod bash scripts/smoke-test-zhipu.sh
 ```
 
-如已启用 DeepSeek、阿里云百炼、Kimi、火山方舟豆包或小米 MiMo，可继续执行：
+如已启用 DeepSeek、阿里云百炼、Kimi、火山方舟豆包、小米 MiMo 或 MiniMax，可继续执行：
 ```bash
 MODE=prod bash scripts/smoke-test-deepseek.sh
 MODE=prod bash scripts/smoke-test-aliyun.sh
 MODE=prod bash scripts/smoke-test-kimi.sh
 MODE=prod bash scripts/smoke-test-doubao.sh
 MODE=prod bash scripts/smoke-test-mimo.sh
+MODE=prod bash scripts/smoke-test-minimax.sh
 ```
 
 ### 第四步：健康检查

@@ -462,7 +462,7 @@ append_csv_values() {
 }
 
 provider_prefixes() {
-  printf '%s\n' ZHIPU DEEPSEEK ALIYUN KIMI DOUBAO MIMO
+  printf '%s\n' ZHIPU DEEPSEEK ALIYUN KIMI DOUBAO MIMO MINIMAX
 }
 
 provider_slug() {
@@ -477,6 +477,7 @@ provider_display_label() {
     KIMI) printf 'Kimi' ;;
     DOUBAO) printf '火山方舟豆包' ;;
     MIMO) printf '小米 MiMo' ;;
+    MINIMAX) printf 'MiniMax' ;;
     *) provider_slug "$1" ;;
   esac
 }

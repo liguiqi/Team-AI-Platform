@@ -54,6 +54,11 @@ provider_model_list_urls() {
         "${base_url}/v1/models" \
         "${base_url}/models"
       ;;
+    MINIMAX)
+      printf '%s\n' \
+        "${base_url}/v1/models" \
+        "${base_url}/models"
+      ;;
     *)
       printf '%s\n' \
         "${base_url}/models" \

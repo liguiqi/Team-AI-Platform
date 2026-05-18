@@ -77,13 +77,14 @@
 - `API-kimi`
 - `API-doubao`
 - `API-mimo`
+- `API-minimax`
 
 ### 实际调用基址
 - 容器内部：`http://new-api:3000/v1`
 
 ### 模型来源
 - 默认情况下，`scripts/render-librechat-config.sh` 会按供应商分别读取 `*_EXPOSED_MODEL`。
-- `API-zhipu` 只渲染 `ZHIPU_EXPOSED_MODEL`，`API-deepseek` 只渲染 `DEEPSEEK_EXPOSED_MODEL`，`API-aliyun` 只渲染 `ALIYUN_EXPOSED_MODEL`，`API-kimi` 只渲染 `KIMI_EXPOSED_MODEL`，`API-doubao` 只渲染 `DOUBAO_EXPOSED_MODEL`，`API-mimo` 只渲染 `MIMO_EXPOSED_MODEL`。
+- `API-zhipu` 只渲染 `ZHIPU_EXPOSED_MODEL`，`API-deepseek` 只渲染 `DEEPSEEK_EXPOSED_MODEL`，`API-aliyun` 只渲染 `ALIYUN_EXPOSED_MODEL`，`API-kimi` 只渲染 `KIMI_EXPOSED_MODEL`，`API-doubao` 只渲染 `DOUBAO_EXPOSED_MODEL`，`API-mimo` 只渲染 `MIMO_EXPOSED_MODEL`，`API-minimax` 只渲染 `MINIMAX_EXPOSED_MODEL`。
 - 每个列表会按 `*_MODEL_ORDER` 做高阶优先排序。
 - `scripts/sync-provider-models.sh` 会定期从供应商模型 API 更新 `*_EXPOSED_MODEL`，再回放 bootstrap。
 
@@ -94,6 +95,7 @@
 - `API-kimi`
 - `API-doubao`
 - `API-mimo`
+- `API-minimax`
 
 这意味着用户在 LibreChat 中不再看到混杂的 `NEW-API` 单入口，而是按供应商选择模型；底层仍由 `NEW-API` 统一鉴权、计量和转发。
 
@@ -169,6 +171,7 @@ curl http://localhost:3080/api/endpoints
 - `API-kimi`（启用 Kimi 时）
 - `API-doubao`（启用火山方舟豆包时）
 - `API-mimo`（启用小米 MiMo 时）
+- `API-minimax`（启用 MiniMax 时）
 
 如需验证模型是否已同步，继续检查：
 ```bash
@@ -228,6 +231,9 @@ make bootstrap
 - `make smoke-deepseek`
 - `make smoke-aliyun`
 - `make smoke-kimi`
+- `make smoke-doubao`
+- `make smoke-mimo`
+- `make smoke-minimax`
 - `NEW-API /v1/models`
 - `NEW-API /v1/chat/completions`
 
@@ -323,7 +329,7 @@ docker compose --env-file .env -f deploy/docker-compose.local.yml logs -f librec
 
 ### 模式 1：按供应商拆分动态同步
 适用场景：
-- 希望 LibreChat 前端按 `API-zhipu` / `API-deepseek` / `API-aliyun` / `API-kimi` / `API-doubao` / `API-mimo` 分组展示当前供应商模型
+- 希望 LibreChat 前端按 `API-zhipu` / `API-deepseek` / `API-aliyun` / `API-kimi` / `API-doubao` / `API-mimo` / `API-minimax` 分组展示当前供应商模型
 
 推荐配置：
 - `LIBRECHAT_SPLIT_PROVIDER_ENDPOINTS=true`

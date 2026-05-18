@@ -24,6 +24,7 @@
 - Kimi 开放平台模型矩阵接入（OpenAI 兼容模式）
 - 火山方舟豆包模型矩阵接入（NEW-API VolcEngine 原生适配器）
 - 小米 MiMo 模型矩阵接入（OpenAI 兼容模式）
+- MiniMax 模型矩阵接入（OpenAI 兼容模式）
 - 服务用户与服务 token 自动化（强随机 token）
 - LibreChat 运行时配置渲染
 - LibreChat 动态模型同步
@@ -100,7 +101,7 @@ GET http://localhost:13000/v1/models
 结果：**通过**
 
 ```
-POST /v1/chat/completions (model: glm-5.1 / deepseek-v4-flash / qwen-plus / kimi-k2.6)
+POST /v1/chat/completions (model: glm-5.1 / deepseek-v4-flash / qwen-plus / kimi-k2.6 / MiniMax-M2.7)
 - Response: 包含 choices
 - HTTP 200
 ```
@@ -243,7 +244,26 @@ runtime/local/librechat/librechat.yaml
 - 已渲染 API-mimo
 ```
 
-### 15. LibreChat 默认管理员与 Admin Panel 登录
+### 15. MiniMax 接入
+结果：**通过**
+
+```
+make sync-provider-models
+- MiniMax 模型 API 检测完成
+- MINIMAX_EXPOSED_MODEL 已按高阶优先顺序同步为 MiniMax-M2.7, MiniMax-M2.7-highspeed, MiniMax-M2.5, MiniMax-M2.5-highspeed, MiniMax-M2.1, MiniMax-M2.1-highspeed, MiniMax-M2
+
+make smoke-minimax
+- 创建/更新 minimax-primary 渠道
+- 渠道 type=1，base_url=https://api.minimaxi.com
+- 渠道 balance 校正为 999999999999
+- model_mapping 校正为 {}
+- 使用 MiniMax-M2.7 完成真实 chat/completions 调用
+
+runtime/local/librechat/librechat.yaml
+- 已渲染 API-minimax
+```
+
+### 16. LibreChat 默认管理员与 Admin Panel 登录
 结果：**通过**
 
 ```
@@ -276,7 +296,7 @@ GET http://localhost:3001
 - Admin Panel Web 入口返回 200
 ```
 
-### 16. Casdoor 手机注册与 LibreChat Logout
+### 17. Casdoor 手机注册与 LibreChat Logout
 结果：**通过**
 
 ```
@@ -345,7 +365,7 @@ Logout stale token fallback
 - 平台主链路已完全打通
 - LibreChat 已升级到 v0.8.5（支持 Admin Panel、自定义角色、分级权限等）
 - 默认管理员 `__PLACEHOLDER_EMAIL__` 可通过 LibreChat 本地登录和 Casdoor 统一认证登录，并可进入 Admin Panel；首个非默认注册用户会自动成为 `ADMIN`
-- 智谱、DeepSeek、阿里云百炼、Kimi、火山方舟豆包与小米 MiMo 模型按供应商分组可见；豆包真实 chat 需先在火山方舟账号侧开通模型服务或配置推理接入点
+- 智谱、DeepSeek、阿里云百炼、Kimi、火山方舟豆包、小米 MiMo 与 MiniMax 模型按供应商分组可见；豆包真实 chat 需先在火山方舟账号侧开通模型服务或配置推理接入点
 - 自动 bootstrap 一次部署即可使用
 - 搜索功能（Serper/Firecrawl/Jina）已配置
 - 内存使用适合 2C2G ECS 部署（总计约 650MiB）

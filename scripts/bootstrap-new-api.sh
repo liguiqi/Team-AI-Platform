@@ -250,6 +250,7 @@ ensure_known_provider_channel_balances() {
       KIMI) provider_label="Kimi" ;;
       DOUBAO) provider_label="火山方舟豆包" ;;
       MIMO) provider_label="小米 MiMo" ;;
+      MINIMAX) provider_label="MiniMax" ;;
       *) provider_label="$prefix" ;;
     esac
 
@@ -340,6 +341,7 @@ upsert_channel_from_env ALIYUN "阿里云百炼"
 upsert_channel_from_env KIMI "Kimi"
 upsert_channel_from_env DOUBAO "火山方舟豆包"
 upsert_channel_from_env MIMO "小米 MiMo"
+upsert_channel_from_env MINIMAX "MiniMax"
 ensure_known_provider_channel_balances
 
 token_name_sql="$(sql_escape "${NEW_API_SERVICE_TOKEN_NAME}")"
