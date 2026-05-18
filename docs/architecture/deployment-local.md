@@ -155,6 +155,7 @@ make up
 - 生成 `runtime/local/librechat/librechat.yaml`
 - 生成 `runtime/local/casdoor/app.conf` 与 `runtime/local/casdoor/init_data.json`
 - 启动本地 compose 中的核心服务
+- 首次纯净部署时，会先等待 PostgreSQL / Redis / MongoDB 健康，再继续拉起 Casdoor / LibreChat，避免 Casdoor 抢先连库导致 `make up` 中断
 - 当前会同时启动 `librechat-admin`
 - 创建或校正 LibreChat 默认管理员，并将第一个非默认注册用户自动提升为 `ADMIN`
 - 将 Casdoor 业务组织与应用配置同步到 PostgreSQL 持久化表

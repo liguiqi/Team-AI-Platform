@@ -86,6 +86,24 @@ docker_compose() {
   docker compose --env-file "$(env_file)" -f "$(compose_file)" "$@"
 }
 
+docker_compose_up_retry() {
+  local attempts="${1:-3}"
+  shift || true
+  local delay="${TEAMAI_DOCKER_UP_RETRY_DELAY:-5}"
+  local attempt
+
+  for attempt in $(seq 1 "$attempts"); do
+    if docker_compose up -d "$@"; then
+      return 0
+    fi
+    if (( attempt == attempts )); then
+      return 1
+    fi
+    warn "docker compose up 第 ${attempt} 次失败，${delay} 秒后重试"
+    sleep "$delay"
+  done
+}
+
 host_new_api_url() {
   if [[ "$MODE" == "local" ]]; then
     printf 'http://127.0.0.1:%s' "${NEW_API_PORT}"

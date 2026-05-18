@@ -27,8 +27,10 @@ services:
     restart: always
     command: --log-dir /app/logs
     depends_on:
-      - new-api-postgres
-      - new-api-redis
+      new-api-postgres:
+        condition: service_healthy
+      new-api-redis:
+        condition: service_healthy
     environment:
       TZ: ${TZ}
       SQL_DSN: postgresql://${NEW_API_DB_USER}:${NEW_API_DB_PASSWORD}@new-api-postgres:5432/${NEW_API_DB_NAME}?sslmode=disable
@@ -56,6 +58,12 @@ services:
       POSTGRES_DB: ${NEW_API_DB_NAME}
       POSTGRES_USER: ${NEW_API_DB_USER}
       POSTGRES_PASSWORD: ${NEW_API_DB_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB || exit 1"]
+      interval: 3s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
     volumes:
       - ../runtime/prod/new-api/postgres:/var/lib/postgresql/data
     deploy:
@@ -70,6 +78,12 @@ services:
     container_name: ai-gateway-new-api-redis
     restart: always
     command: redis-server --appendonly yes --requirepass ${NEW_API_REDIS_PASSWORD} --maxmemory 32mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a ${NEW_API_REDIS_PASSWORD} ping | grep -q PONG"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
     volumes:
       - ../runtime/prod/new-api/redis:/data
     deploy:
@@ -85,17 +99,18 @@ services:
     restart: always
     entrypoint: /bin/sh -c './server --createDatabase=true'
     depends_on:
-      - new-api-postgres
+      new-api-postgres:
+        condition: service_healthy
     environment:
       RUNNING_IN_DOCKER: "true"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8000/.well-known/openid-configuration"]
-      interval: 5s
+      interval: 3s
       timeout: 3s
-      retries: 30
-      start_period: 10s
+      retries: 40
+      start_period: 60s
     volumes:
       - ../runtime/prod/casdoor/app.conf:/conf/app.conf:ro
       - ../runtime/prod/casdoor/init_data.json:/init_data.json:ro
@@ -113,9 +128,9 @@ services:
     restart: always
     depends_on:
       librechat-mongodb:
-        condition: service_started
+        condition: service_healthy
       new-api-redis:
-        condition: service_started
+        condition: service_healthy
       new-api:
         condition: service_started
       casdoor:
@@ -200,6 +215,12 @@ services:
       - mongod
       - --bind_ip_all
       - --wiredTigerCacheSizeGB=0.25
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh LibreChat --quiet --eval 'db.runCommand({ ping: 1 }).ok' | grep -qx 1"]
+      interval: 3s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
     volumes:
       - ../runtime/prod/librechat/mongodb:/data/db
     deploy:

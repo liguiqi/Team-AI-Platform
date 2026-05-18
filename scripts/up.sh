@@ -13,7 +13,7 @@ if [[ "$MODE" == "local" ]]; then
 fi
 bash "$ROOT_DIR/scripts/render-librechat-config.sh"
 bash "$ROOT_DIR/scripts/render-casdoor-config.sh"
-docker_compose up -d
+docker_compose_up_retry 3
 bash "$ROOT_DIR/scripts/sync-casdoor-auth-config.sh"
 bash "$ROOT_DIR/scripts/sync-casdoor-providers.sh"
 bash "$ROOT_DIR/scripts/bootstrap-librechat-admin.sh"

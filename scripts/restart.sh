@@ -15,7 +15,7 @@ docker_compose down
 if [[ "$MODE" == "local" ]]; then
   bash "$ROOT_DIR/scripts/start-local-smtp-relay.sh"
 fi
-docker_compose up -d
+docker_compose_up_retry 3
 bash "$ROOT_DIR/scripts/sync-casdoor-auth-config.sh"
 bash "$ROOT_DIR/scripts/sync-casdoor-providers.sh"
 bash "$ROOT_DIR/scripts/bootstrap-librechat-admin.sh"

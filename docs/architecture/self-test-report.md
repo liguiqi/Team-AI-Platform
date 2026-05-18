@@ -273,6 +273,14 @@ make bootstrap-librechat-admin
 - 当前尚无非默认注册用户，后续首个非默认注册用户会自动提升为 ADMIN
 - ADMIN 角色 access:admin system grant 存在
 
+纯净重部署验证
+- 执行 `make down` + 清空 `runtime/local/new-api`、`runtime/local/casdoor`、`runtime/local/librechat` 后，再执行 `make init && make up`
+- 首次启动会先等待 `new-api-postgres` / `new-api-redis` / `librechat-mongodb` 健康，再继续拉起 Casdoor / LibreChat
+- 默认管理员在 `make up` 阶段即写入 LibreChat MongoDB
+- Casdoor 默认业务管理员 `team-ai/team-ai-admin` 在 `make up` 阶段即写入 Casdoor `user` 表
+- 使用 `POST /api/auth/login` 与 Casdoor `/api/login` 验证默认管理员可立即登录
+- 额外创建首个非默认测试用户 `first-user@team-ai.local`，创建时即自动赋予 `role=ADMIN`；验证后已删除测试用户，当前本地环境恢复为仅保留默认管理员
+
 GET /api/config
 - emailLoginEnabled=true
 - registrationEnabled=false
@@ -364,7 +372,7 @@ Logout stale token fallback
 ## 当前已知结论
 - 平台主链路已完全打通
 - LibreChat 已升级到 v0.8.5（支持 Admin Panel、自定义角色、分级权限等）
-- 默认管理员 `__PLACEHOLDER_EMAIL__` 可通过 LibreChat 本地登录和 Casdoor 统一认证登录，并可进入 Admin Panel；首个非默认注册用户会自动成为 `ADMIN`
+- 纯净部署后默认管理员 `__PLACEHOLDER_EMAIL__` 会在首次 `make up` 即可通过 LibreChat 本地登录和 Casdoor 统一认证登录，并可进入 Admin Panel；首个非默认注册用户会自动成为 `ADMIN`
 - 智谱、DeepSeek、阿里云百炼、Kimi、火山方舟豆包、小米 MiMo 与 MiniMax 模型按供应商分组可见；豆包真实 chat 需先在火山方舟账号侧开通模型服务或配置推理接入点
 - 自动 bootstrap 一次部署即可使用
 - 搜索功能（Serper/Firecrawl/Jina）已配置
