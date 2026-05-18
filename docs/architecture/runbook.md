@@ -71,8 +71,8 @@ docker stats --no-stream --format "table {{.Name}}\t{{.MemUsage}}\t{{.MemPerc}}"
 ```
 
 ### 内存告警阈值
-- LibreChat > 450MiB：关注
-- MongoDB > 220MiB：关注
+- LibreChat > 380MiB：关注
+- MongoDB > 260MiB：关注
 - Casdoor > 110MiB：关注
 
 ## 服务状态查看

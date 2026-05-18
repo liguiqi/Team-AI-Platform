@@ -430,8 +430,8 @@ make smoke-zhipu
 ## 内存限制
 
 本地开发环境已配置容器内存限制：
-- LibreChat: 512M
-- MongoDB: 256M（WiredTiger 缓存 0.25GB）
+- LibreChat: 448M（Node old space 默认限制 384MB）
+- MongoDB: 320M（WiredTiger 缓存 0.25GB，MongoDB 8 当前不支持再往下调）
 - NEW-API: 128M
 - PostgreSQL: 128M
 - Casdoor: 128M

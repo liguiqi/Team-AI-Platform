@@ -211,13 +211,19 @@ MODE=prod bash scripts/sync-provider-models.sh
 
 ### 容器内存限制
 已为所有服务配置内存限制，适合 2C2G ECS：
-- LibreChat: 512M
-- MongoDB: 256M（WiredTiger 缓存 0.25GB）
+- LibreChat: 448M（Node old space 默认限制 384MB）
+- MongoDB: 320M（WiredTiger 缓存 0.25GB，MongoDB 8 当前不支持再往下调）
 - NEW-API: 128M
 - PostgreSQL: 128M
 - Casdoor: 128M
 - Redis: 64M（LRU 淘汰策略）
 - Caddy: 64M
+
+推荐保持以下生产 env 默认值：
+- `LIBRECHAT_NODE_MAX_OLD_SPACE_SIZE_MB=384`
+- `LIBRECHAT_MEMORY_LIMIT=448M`
+- `LIBRECHAT_MONGODB_MEMORY_LIMIT=320M`
+- `LIBRECHAT_MONGODB_WIREDTIGER_CACHE_GB=0.25`
 
 ### 搜索功能配置
 生产环境需配置搜索 API Key：

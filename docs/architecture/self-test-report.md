@@ -134,14 +134,14 @@ JINA_API_KEY=jina_72ce...（已配置）
 
 各容器实际内存占用在限制内：
 ```
-librechat         223.5MiB / 512MiB (43.65%)
-librechat-admin    79.86MiB / 256MiB (31.20%)
-new-api            43.95MiB / 128MiB (34.34%)
-casdoor            70.31MiB / 128MiB (54.93%)
-new-api-postgres  116.7MiB / 128MiB (91.20%)
-new-api-redis       8.91MiB /  64MiB (13.93%)
-librechat-mongodb 106.9MiB / 256MiB (41.77%)
-总计约 650MiB
+librechat-admin   140.6MiB / 256MiB (54.94%)
+librechat         254.9MiB / 448MiB (56.89%)
+casdoor           23.07MiB / 128MiB (18.03%)
+new-api           19.88MiB / 128MiB (15.53%)
+new-api-postgres  45.59MiB / 128MiB (35.62%)
+new-api-redis      3.97MiB /  64MiB (6.20%)
+librechat-mongodb 88.27MiB / 320MiB (27.59%)
+总计约 576MiB
 ```
 
 ### 9. Auto-bootstrap
@@ -376,7 +376,7 @@ Logout stale token fallback
 - 智谱、DeepSeek、阿里云百炼、Kimi、火山方舟豆包、小米 MiMo 与 MiniMax 模型按供应商分组可见；豆包真实 chat 需先在火山方舟账号侧开通模型服务或配置推理接入点
 - 自动 bootstrap 一次部署即可使用
 - 搜索功能（Serper/Firecrawl/Jina）已配置
-- 内存使用适合 2C2G ECS 部署（总计约 650MiB）
+- 内存使用适合 2C2G ECS 部署（当前实测总计约 576MiB）
 - 统一认证通过 Casdoor OIDC 正常工作
 - Admin Panel 已在本地 compose 中集成，生产仍按需扩展
 - LibreChat 重启后，OIDC state 不再因内存 session 丢失而强制用户二次登录

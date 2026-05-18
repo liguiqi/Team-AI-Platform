@@ -250,8 +250,8 @@ LibreChat 集成了网络搜索与内容抓取能力：
 ### 容器内存限制
 | 容器 | 内存限制 |
 |------|---------|
-| LibreChat | 512M |
-| MongoDB | 256M |
+| LibreChat | 448M |
+| MongoDB | 320M |
 | NEW-API | 128M |
 | PostgreSQL | 128M |
 | Casdoor | 128M |
@@ -259,7 +259,8 @@ LibreChat 集成了网络搜索与内容抓取能力：
 | Caddy（生产） | 64M |
 
 ### 数据库缓存优化
-- MongoDB：`--wiredTigerCacheSizeGB=0.25`，适合 2C2G ECS
+- MongoDB：`--wiredTigerCacheSizeGB=0.25` 是 MongoDB 8 当前允许的最低值，因此 2C2G 方案改为给 MongoDB 320M 容器余量，同时压低 LibreChat Node 堆上限
+- LibreChat：`NODE_OPTIONS` 默认附带 `--max-old-space-size=384`，限制 Node 堆上限，避免聊天高峰时挤占整机内存
 - Redis：`--maxmemory 32mb --maxmemory-policy allkeys-lru`
 
 ## 自动 Bootstrap
