@@ -409,8 +409,9 @@ fi
 
 bash "$ROOT_DIR/scripts/render-librechat-config.sh"
 if docker ps -a --format '{{.Names}}' | grep -qx 'ai-gateway-librechat'; then
-  docker_compose restart librechat >/dev/null 2>&1 || true
+  docker_compose up -d --force-recreate librechat >/dev/null 2>&1 || docker_compose restart librechat >/dev/null 2>&1 || true
   info "LibreChat 已按最新 token 重载配置"
+  bash "$ROOT_DIR/scripts/bootstrap-librechat-admin.sh"
 fi
 
 info "bootstrap 完成，NEW_API_SERVICE_TOKEN 已写入 $(env_file)"

@@ -18,4 +18,5 @@ fi
 docker_compose up -d
 bash "$ROOT_DIR/scripts/sync-casdoor-auth-config.sh"
 bash "$ROOT_DIR/scripts/sync-casdoor-providers.sh"
+bash "$ROOT_DIR/scripts/bootstrap-librechat-admin.sh"
 info "服务已重启"

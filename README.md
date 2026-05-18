@@ -84,8 +84,9 @@
 - `make smoke-zhipu` / `make smoke-deepseek` / `make smoke-aliyun` / `make smoke-kimi` / `make smoke-doubao` / `make smoke-mimo` 都会先调用 `scripts/bootstrap-new-api.sh`，自动完成 `NEW-API` 初始化、限流参数写入、已启用供应商渠道创建、LibreChat 服务用户与 token 生成。
 - bootstrap 过程会把自动生成的 `NEW_API_SERVICE_TOKEN` 回写到本地 `.env`，无需手工复制 token。
 - 本地 compose 当前默认带上 `LibreChat Admin Panel`，入口为 `http://localhost:3001`。
+- 默认会创建管理员 `__PLACEHOLDER_EMAIL__` / `__PLACEHOLDER_PASSWORD__`，并同步到 LibreChat 本地用户库与 Casdoor `team-ai` 业务组织，可用于登录 LibreChat、统一认证入口和 Admin Panel；第一个非默认注册用户也会自动提升为 `ADMIN`。
 - LibreChat 的 OIDC state / session 当前持久化到 `new-api-redis` 的 DB 1，重启后不会再因为内存 session 丢失而要求重复登录。
-- Casdoor 登录页样式由脚本渲染并随浏览器 `light/dark` 主题自适应。
+- Casdoor 登录页样式由脚本渲染并随浏览器 `light/dark` 主题自适应，登录/注册页默认中文。
 - 当 `ZHIPU_ENABLED=true`、`DEEPSEEK_ENABLED=true`、`ALIYUN_ENABLED=true`、`KIMI_ENABLED=true`、`DOUBAO_ENABLED=true`、`MIMO_ENABLED=true` 同时开启时，`make bootstrap` 会同时创建/更新 `zhipu-primary`、`deepseek-primary`、`aliyun-bailian-primary`、`kimi-primary`、`doubao-primary` 与 `mimo-primary` 渠道；LibreChat 展示为 `API-zhipu` / `API-deepseek` / `API-aliyun` / `API-kimi` / `API-doubao` / `API-mimo` 六个入口，底层共用同一个 `NEW_API_SERVICE_TOKEN`。
 
 ## 目录结构
@@ -104,6 +105,7 @@ runtime/                  本地与生产运行期数据目录（不入库）
 - `make down`：停止本地 compose。
 - `make restart`：重启本地 compose。
 - `make bootstrap`：初始化 `NEW-API` 并配置已启用供应商渠道。
+- `make bootstrap-librechat-admin`：创建或校正 LibreChat 默认管理员，并把第一个非默认注册用户提升为 `ADMIN`。
 - `make sync-provider-models`：检测供应商模型 API、同步 `NEW-API` 渠道并重渲染 LibreChat 模型列表。
 - `make sync-librechat-models`：兼容入口，默认会调用 `make sync-provider-models` 等价逻辑。
 - `make health`：检查 `NEW-API` 与 `LibreChat` 应用层健康状态。
@@ -258,6 +260,22 @@ make install-model-sync-cron
 ```
 
 默认 cron 为 `17 4 * * *`，会执行 `make sync-provider-models` 等价逻辑：检测供应商模型 API、更新 `*_EXPOSED_MODEL`、回放 bootstrap，并重启 LibreChat。
+
+## LibreChat 默认管理员
+默认部署会启用一个本地管理员账号，用于首次登录 LibreChat 与 Admin Panel：
+```dotenv
+LIBRECHAT_DEFAULT_ADMIN_ENABLED=true
+LIBRECHAT_DEFAULT_ADMIN_EMAIL=__PLACEHOLDER_EMAIL__
+LIBRECHAT_DEFAULT_ADMIN_PASSWORD=__PLACEHOLDER_PASSWORD__
+LIBRECHAT_DEFAULT_ADMIN_CASDOOR_ENABLED=true
+LIBRECHAT_FIRST_USER_ADMIN_ENABLED=true
+```
+
+说明：
+- `make up` 和 `make bootstrap` 会自动执行 `scripts/bootstrap-librechat-admin.sh`。
+- 默认管理员会同时写入 LibreChat MongoDB 和 Casdoor `team-ai` 业务组织，因此既可以走 LibreChat 本地登录，也可以从 Casdoor 统一认证入口登录。
+- 登录 LibreChat 本体时如被自动跳转到统一认证页，可打开 `http://localhost:3080/login?redirect=false` 使用默认管理员账号。
+- 第一个非默认注册用户会自动设置为 `ADMIN`，之后注册的用户保持普通 `USER`，便于在 Admin Panel 中继续调试用户组和权限。
 
 ## smoke test
 - 通用检查：

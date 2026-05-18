@@ -49,6 +49,11 @@ LibreChat Admin Panel 是一个**独立 Web 服务**（独立容器），提供�
 | `LIBRECHAT_ADMIN_PANEL_PORT` | 本地映射端口，当前主配置为 `3001` |
 | `LIBRECHAT_ADMIN_PANEL_SESSION_SECRET` | Admin Panel 自身的 Session Secret |
 | `LIBRECHAT_PUBLIC_URL` | 浏览器访问 LibreChat 的公网/本机地址，Admin Panel 前端会复用它 |
+| `LIBRECHAT_DEFAULT_ADMIN_ENABLED` | 是否自动创建 LibreChat 默认管理员 |
+| `LIBRECHAT_DEFAULT_ADMIN_EMAIL` | 默认管理员登录邮箱，当前默认 `__PLACEHOLDER_EMAIL__` |
+| `LIBRECHAT_DEFAULT_ADMIN_PASSWORD` | 默认管理员登录密码，当前默认 `__PLACEHOLDER_PASSWORD__` |
+| `LIBRECHAT_DEFAULT_ADMIN_CASDOOR_ENABLED` | 是否把默认管理员同步到 Casdoor 业务组织 |
+| `LIBRECHAT_FIRST_USER_ADMIN_ENABLED` | 是否把第一个非默认注册用户自动设置为 `ADMIN` |
 
 ### 启动方式
 
@@ -79,12 +84,14 @@ Admin Panel 支持两种登录方式：
 
 #### 方式一：本地账号登录
 - 使用 LibreChat 中 `role: 'ADMIN'` 的用户凭据
-- 首次注册的用户自动获得 ADMIN 角色
-- 在本项目 Casdoor SSO 场景下，需通过 MongoDB 手动设置管理员角色（见下文）
+- 本项目会自动创建默认管理员：`__PLACEHOLDER_EMAIL__` / `__PLACEHOLDER_PASSWORD__`
+- `make up` / `make bootstrap` 会同步校正该账号在 MongoDB 中的 `role: 'ADMIN'`
 
 #### 方式二：SSO 登录
 - Admin Panel 支持 OpenID Connect / SAML / OAuth 登录
 - 可配置 `ADMIN_SSO_ONLY=true` 强制仅使用 SSO
+- 本项目会把默认管理员同步到 Casdoor `team-ai` 业务组织，因此默认管理员也可以从统一认证入口登录
+- 本项目还会把第一个非默认注册用户自动提升为 `ADMIN`，适合用 Casdoor 注册调试用户组管理功能
 
 ## 权限体系
 
@@ -134,39 +141,62 @@ LibreChat v0.8.5 的权限体系分为三层：
 
 ## 在本项目中设置管理员
 
-### 前提
-本项目使用 Casdoor SSO 统一认证，LibreChat 本地邮箱登录已关闭（`ALLOW_EMAIL_LOGIN=false`）。通过 Casdoor 注册的用户默认角色为 `USER`。
+### 默认策略
+本项目同时保留 Casdoor SSO 与一个本地默认管理员：
 
-### 设置管理员
+- `LIBRECHAT_ALLOW_EMAIL_LOGIN=true`
+- `LIBRECHAT_ALLOW_REGISTRATION=false`
+- `LIBRECHAT_ALLOW_SOCIAL_LOGIN=true`
+- `LIBRECHAT_DEFAULT_ADMIN_ENABLED=true`
+- `LIBRECHAT_DEFAULT_ADMIN_CASDOOR_ENABLED=true`
+- `LIBRECHAT_FIRST_USER_ADMIN_ENABLED=true`
 
-通过 MongoDB 将用户角色提升为 `ADMIN`：
+默认管理员会同时写入 LibreChat MongoDB 与 Casdoor `team-ai` 业务组织，可直接通过统一认证入口登录；如需绕过 Casdoor 使用本地登录，可访问：
 
 ```bash
-# 方法一：通过 docker exec
-docker exec ai-gateway-mongodb mongosh --eval '
+http://localhost:3080/login?redirect=false
+```
+
+### 自动初始化
+
+`make up` 与 `make bootstrap` 会自动执行：
+
+```bash
+scripts/bootstrap-librechat-admin.sh
+```
+
+该脚本会：
+1. 等待 `ai-gateway-librechat-mongodb` 就绪
+2. 使用 LibreChat 容器内的 `bcryptjs` 生成默认管理员密码哈希
+3. 创建或更新默认本地 ADMIN 用户
+4. 创建或更新 Casdoor `team-ai` 业务组织下的默认管理员用户
+5. 将第一个非默认注册用户设置为 `ADMIN`
+6. 补齐 `ADMIN` 角色的 `access:admin` system grant
+
+也可以单独执行：
+
+```bash
+make bootstrap-librechat-admin
+```
+
+### 手动设置管理员
+如果需要临时提升某个用户：
+
+```bash
+docker exec ai-gateway-librechat-mongodb mongosh --eval '
   db = db.getSiblingDB("LibreChat");
   db.users.updateOne(
     { email: "target@example.com" },
-    { $set: { role: "ADMIN" } }
-  );
-'
-```
-
-```bash
-# 方法二：通过本地端口连接（需要 LIBRECHAT_MONGODB_LOCAL_PORT 映射）
-mongosh "mongodb://127.0.0.1:27017/LibreChat" --eval '
-  db.users.updateOne(
-    { email: "target@example.com" },
-    { $set: { role: "ADMIN" } }
+    { $set: { role: "ADMIN", updatedAt: new Date() } }
   );
 '
 ```
 
 验证：
 ```bash
-docker exec ai-gateway-mongodb mongosh --eval '
+docker exec ai-gateway-librechat-mongodb mongosh --eval '
   db = db.getSiblingDB("LibreChat");
-  db.users.find({ role: "ADMIN" }, { name: 1, email: 1, role: 1 });
+  db.users.find({ role: "ADMIN" }, { name: 1, email: 1, provider: 1, role: 1 });
 '
 ```
 
@@ -203,13 +233,13 @@ docker exec ai-gateway-mongodb mongosh --eval '
 
 ### 查看 Admin Panel 日志
 ```bash
-docker compose --env-file .env -f deploy/docker-compose.local.yml logs -f admin-panel
+docker compose --env-file .env -f deploy/docker-compose.local.yml logs -f librechat-admin
 ```
 
 ### 常见问题
 
 #### Admin Panel 打不开
-1. 检查容器是否运行：`docker compose ps admin-panel`
+1. 检查容器是否运行：`docker compose ps librechat-admin`
 2. 检查端口是否正确映射
 3. 检查 `VITE_API_BASE_URL` 是否可从浏览器访问
 4. 查看容器日志是否有报错

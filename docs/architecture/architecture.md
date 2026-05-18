@@ -154,6 +154,10 @@ NEW-API OpenAI 兼容接口
 - 变量名：`NEW_API_SETUP_USERNAME` / `NEW_API_SETUP_PASSWORD`
 - 作用：登录 `NEW-API` 管理后台与执行 bootstrap
 - 风险点：如果后台修改密码但 `.env` 未同步，后续 bootstrap 会失败
+- LibreChat 默认管理员变量：`LIBRECHAT_DEFAULT_ADMIN_EMAIL` / `LIBRECHAT_DEFAULT_ADMIN_PASSWORD`
+- 作用：部署后兜底登录 LibreChat、Casdoor 统一认证入口与 Admin Panel
+- 同步策略：`LIBRECHAT_DEFAULT_ADMIN_CASDOOR_ENABLED=true` 时，同一默认管理员会写入 Casdoor `team-ai` 业务组织
+- 首个注册用户策略：`LIBRECHAT_FIRST_USER_ADMIN_ENABLED=true` 时，第一个非默认注册用户会自动成为 `ADMIN`
 
 ### 统一认证配置
 - 变量名：`CASDOOR_CLIENT_ID` / `CASDOOR_CLIENT_SECRET`

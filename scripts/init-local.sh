@@ -37,6 +37,7 @@ ensure_random_if_placeholder LIBRECHAT_CREDS_IV 'random_hex 32'
 ensure_random_if_placeholder LIBRECHAT_JWT_SECRET 'random_hex 64'
 ensure_random_if_placeholder LIBRECHAT_JWT_REFRESH_SECRET 'random_hex 64'
 ensure_random_if_placeholder LIBRECHAT_OPENID_SESSION_SECRET 'random_alnum 48'
+ensure_random_if_placeholder LIBRECHAT_ADMIN_PANEL_SESSION_SECRET 'random_alnum 48'
 
 mkdir -p \
   "$ROOT_DIR/runtime/local/new-api/data" \

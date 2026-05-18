@@ -243,3 +243,4 @@
 - M12：Casdoor 登录页 light / dark 自适应与登录方式收敛完成。
 - M13：LibreChat OIDC Redis session 持久化与 stale callback 自动恢复完成。
 - M14：Admin Panel 本地集成与文档刷新完成。
+- M15：LibreChat 默认 ADMIN 用户与首个非默认注册用户自动 ADMIN 提权完成。

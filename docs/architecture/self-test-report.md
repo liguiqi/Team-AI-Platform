@@ -6,7 +6,7 @@
 ## 自测环境
 - 操作系统：Linux 开发环境（Ubuntu）
 - 部署模式：`MODE=local`
-- 测试日期：2026-05-15（登录页样式、OIDC 重启恢复、DeepSeek、阿里云百炼、Kimi、火山方舟豆包与小米 MiMo 接入后复测）
+- 测试日期：2026-05-18（登录页样式、OIDC 重启恢复、多供应商接入与 LibreChat 默认管理员初始化后复测）
 - 运行组件：
   - `calciumion/new-api:v0.12.1`
   - `ghcr.io/danny-avila/librechat:v0.8.5`
@@ -31,7 +31,10 @@
 - Casdoor SSO 统一认证（含健康检查）
 - LibreChat OIDC state / session 持久化到 Redis DB 1
 - Casdoor 登录页 light / dark 自适应与语言选择器样式统一
+- 手机号注册用户在 LibreChat 用户菜单中显示手机号而非内部 synthetic email
 - 本地 Admin Panel 集成
+- LibreChat 默认 ADMIN 用户初始化
+- 第一个非默认注册用户自动 ADMIN 提权
 - 自动 bootstrap（`BOOTSTRAP_AUTOCONFIGURE=true`）
 - systemd 开机自启动服务
 - 2C2G ECS 内存优化配置
@@ -61,6 +64,7 @@ GET http://localhost:18000/.well-known/openid-configuration
 - 19 OIDC endpoints 可用
 - 健康检查: healthy
 - 登录页支持浏览器 light / dark 自适应
+- 登录页与注册页默认语言: zh
 - 登录方式仅保留 Password / Verification code
 ```
 
@@ -239,6 +243,62 @@ runtime/local/librechat/librechat.yaml
 - 已渲染 API-mimo
 ```
 
+### 15. LibreChat 默认管理员与 Admin Panel 登录
+结果：**通过**
+
+```
+make bootstrap-librechat-admin
+- 创建或校正默认 ADMIN 用户 __PLACEHOLDER_EMAIL__
+- 创建或校正 Casdoor team-ai 业务组织默认管理员 team-ai-admin
+- 当前尚无非默认注册用户，后续首个非默认注册用户会自动提升为 ADMIN
+- ADMIN 角色 access:admin system grant 存在
+
+GET /api/config
+- emailLoginEnabled=true
+- registrationEnabled=false
+- openidLoginEnabled=true
+- openidAutoRedirect=true
+
+POST /api/auth/login
+- 默认管理员可登录 LibreChat
+- 返回 role=ADMIN
+
+POST /api/admin/login/local
+- 默认管理员可登录 Admin API
+- 返回 role=ADMIN
+
+Casdoor OIDC code 登录
+- Casdoor /api/login 返回授权 code
+- LibreChat /oauth/openid/callback 返回 302 到 http://__YOUR_SERVER_IP__:3080
+- 默认管理员在 LibreChat 中完成 OpenID 关联，role=ADMIN
+
+GET http://localhost:3001
+- Admin Panel Web 入口返回 200
+```
+
+### 16. Casdoor 手机注册与 LibreChat Logout
+结果：**通过**
+
+```
+Casdoor 默认语言
+- runtime/local/casdoor/app.conf 已写入 forceLanguage=zh / defaultLanguage=zh
+- 登录页 Set-Cookie jsonWebConfig 返回 forceLanguage=zh / defaultLanguage=zh
+
+手机/无邮箱 OIDC 用户
+- 临时 Casdoor 用户仅配置 phone，email 为空
+- Casdoor /api/login 返回授权 code
+- LibreChat /oauth/openid/callback 返回 302 到 http://__YOUR_SERVER_IP__:3080
+- LibreChat 自动生成 synthetic email: oidc-<openidId>@casdoor.team-ai.local
+- 未再出现 User validation failed: email: is invalid
+- `/api/user` 对前端返回手机号作为 `email` 展示值，并保留 `teamAiInternalEmail`
+- 默认管理员等邮箱账号的 `/api/user` 仍返回真实邮箱，不增加 `teamAiInternalEmail`
+
+Logout stale token fallback
+- 有 session id_token 时仍返回 Casdoor /api/logout end-session redirect
+- 仅存在 stale openid_id_token cookie 且无当前 session id_token 时，返回 http://__YOUR_SERVER_IP__:3080/login?redirect=false
+- 避免浏览器直达 Casdoor JSON 错误：未查询到对应token, accessToken无效
+```
+
 ## 关键修复记录
 
 ### 修复 1：PostgreSQL 主版本不兼容
@@ -269,9 +329,22 @@ runtime/local/librechat/librechat.yaml
 问题：`/dev/urandom` + `tr` + `head` 管道被 SIGPIPE 中断
 修复：重试机制 + $RANDOM 拼接降级方案
 
+### 修复 8：手机号注册用户缺少合法 email
+问题：Casdoor 手机号注册后 OIDC userinfo 可能没有合法 email，LibreChat 创建用户时报 `email: is invalid`
+修复：LibreChat OpenID patch 在创建/更新 OpenID 用户时为无邮箱账号生成 `oidc-<openidId>@casdoor.team-ai.local`
+
+### 修复 9：Logout stale id_token_hint 导致 Casdoor JSON 错误
+问题：LibreChat logout 在缺少当前 OpenID session id_token 时退回 stale cookie，Casdoor `/api/logout` 返回 `accessToken无效`
+修复：无当前 session id_token 时抑制 Casdoor end-session redirect，回退到 LibreChat 登录页
+
+### 修复 10：手机号注册用户菜单显示内部 synthetic email
+问题：手机号注册账号内部使用 `oidc-<openidId>@casdoor.team-ai.local` 满足 LibreChat 邮箱校验，导致左下角用户菜单显示过长
+修复：`/api/user` 响应层按当前 OpenID token claims 将 synthetic email 展示为手机号；邮箱注册账号仍显示真实邮箱
+
 ## 当前已知结论
 - 平台主链路已完全打通
 - LibreChat 已升级到 v0.8.5（支持 Admin Panel、自定义角色、分级权限等）
+- 默认管理员 `__PLACEHOLDER_EMAIL__` 可通过 LibreChat 本地登录和 Casdoor 统一认证登录，并可进入 Admin Panel；首个非默认注册用户会自动成为 `ADMIN`
 - 智谱、DeepSeek、阿里云百炼、Kimi、火山方舟豆包与小米 MiMo 模型按供应商分组可见；豆包真实 chat 需先在火山方舟账号侧开通模型服务或配置推理接入点
 - 自动 bootstrap 一次部署即可使用
 - 搜索功能（Serper/Firecrawl/Jina）已配置
@@ -279,3 +352,6 @@ runtime/local/librechat/librechat.yaml
 - 统一认证通过 Casdoor OIDC 正常工作
 - Admin Panel 已在本地 compose 中集成，生产仍按需扩展
 - LibreChat 重启后，OIDC state 不再因内存 session 丢失而强制用户二次登录
+- Casdoor 登录/注册页默认中文；手机号注册账号可完成 OIDC 回调并进入 LibreChat
+- LibreChat logout 不再把 stale OpenID token 错误暴露为 Casdoor JSON 页面
+- 手机号注册用户在 LibreChat 左下角用户菜单中显示手机号；邮箱登录用户继续显示邮箱

@@ -112,7 +112,18 @@ host_librechat_url() {
 
 random_hex() {
   local length="$1"
-  LC_ALL=C tr -dc 'a-f0-9' </dev/urandom | head -c "$length"
+  local result="" attempt
+  for attempt in 1 2 3; do
+    result="$(LC_ALL=C tr -dc 'a-f0-9' </dev/urandom 2>/dev/null | head -c "$length" 2>/dev/null)" || true
+    if [[ ${#result} -eq "$length" ]]; then
+      printf '%s' "$result"
+      return 0
+    fi
+  done
+  while (( ${#result} < length )); do
+    result="${result}$(printf '%04x' "$(( RANDOM % 65536 ))")"
+  done
+  printf '%s' "${result:0:$length}"
 }
 
 random_alnum() {
@@ -218,6 +229,19 @@ migrate_legacy_casdoor_version() {
   fi
 }
 
+enforce_librechat_default_admin_policy() {
+  local file="$1"
+  local default_admin_enabled allow_email_login
+
+  default_admin_enabled="$(normalize_bool "$(current_env_value LIBRECHAT_DEFAULT_ADMIN_ENABLED "$file")")"
+  allow_email_login="$(normalize_bool "$(current_env_value LIBRECHAT_ALLOW_EMAIL_LOGIN "$file")")"
+
+  if [[ "$default_admin_enabled" == "true" && "$allow_email_login" != "true" ]]; then
+    replace_or_append_env LIBRECHAT_ALLOW_EMAIL_LOGIN true "$file"
+    info "检测到默认 LibreChat 管理员启用，已开启 LIBRECHAT_ALLOW_EMAIL_LOGIN"
+  fi
+}
+
 detect_local_host_ip() {
   local host_ip
 
@@ -307,6 +331,7 @@ prepare_env_file() {
 
   migrate_legacy_librechat_auth_flags "$file"
   migrate_legacy_casdoor_version "$file"
+  enforce_librechat_default_admin_policy "$file"
   migrate_local_public_urls_for_oidc "$file"
   enforce_project_unlimited_new_api_policy "$file"
 

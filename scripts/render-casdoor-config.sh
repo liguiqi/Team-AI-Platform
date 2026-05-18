@@ -83,6 +83,8 @@ casdoor_app_theme_type="${CASDOOR_APPLICATION_THEME_TYPE:-${casdoor_theme_type}}
 casdoor_app_theme_color_primary="${CASDOOR_APPLICATION_THEME_COLOR_PRIMARY:-${casdoor_theme_color_primary}}"
 casdoor_app_theme_border_radius="${CASDOOR_APPLICATION_THEME_BORDER_RADIUS:-${casdoor_theme_border_radius}}"
 casdoor_app_theme_is_compact="$(normalize_bool "${CASDOOR_APPLICATION_THEME_IS_COMPACT:-${casdoor_theme_is_compact}}")"
+casdoor_force_language="${CASDOOR_FORCE_LANGUAGE:-zh}"
+casdoor_default_language="${CASDOOR_DEFAULT_LANGUAGE:-zh}"
 brand_logo_url="$(resolve_public_asset_url "${librechat_public_url}" "${platform_brand_logo_path}")"
 brand_favicon_url="$(resolve_public_asset_url "${librechat_public_url}" "${platform_brand_favicon_path}")"
 
@@ -110,6 +112,8 @@ originFrontend = ${casdoor_public_url}
 authState = "${compose_project_name}-casdoor"
 verificationCodeTimeout = ${verification_timeout}
 defaultApplication = ${application_name}
+forceLanguage = ${casdoor_force_language}
+defaultLanguage = ${casdoor_default_language}
 enableGzip = true
 logConfig = {"adapter":"file","filename":"/logs/casdoor.log","maxdays":99999,"perm":"0770"}
 initDataNewOnly = ${casdoor_init_data_new_only}

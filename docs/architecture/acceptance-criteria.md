@@ -34,6 +34,8 @@
 - `NEW-API` 项目内请求限流默认关闭，真实限额由上游模型平台控制。
 - LibreChat 模型动态同步行为符合预期。
 - 本地 Admin Panel 可访问并可用于管理员角色验证。
+- 默认 LibreChat 管理员可登录 LibreChat 和 Admin Panel。
+- 第一个非默认注册用户自动具备 `ADMIN` 角色。
 - 备份恢复脚本可跑通。
 - 管理员手册可直接指导后续接手人。
 - systemd 开机自启动服务可正常安装和运行。
@@ -86,7 +88,7 @@ bash scripts/bootstrap-new-api.sh
 
 ### 四、前台验收
 1. 打开 `http://localhost:3080`
-2. 确认页面只显示 `统一认证登录`
+2. 确认默认会进入统一认证流程；如访问 `/login?redirect=false`，可使用默认管理员本地登录
 3. 点击进入 Casdoor
 4. 至少验证一次邮箱真实登录
 5. 至少验证一次手机号真实登录
@@ -94,11 +96,13 @@ bash scripts/bootstrap-new-api.sh
 7. 确认模型列表按供应商拆分并高阶优先排序
 8. 至少选择一个可用模型发起真实对话，建议优先验证 `glm-5.1` 与 `deepseek-v4-flash`
 9. 重启 LibreChat 后再次走一次统一认证，确认不会稳定复现 state 校验失败页
+10. 使用 `__PLACEHOLDER_EMAIL__` 登录 `http://localhost:3001`，确认 Admin Panel 可进入
 
 ## 通过标准
 
 ### 脚本层
 - `make health` 输出成功
+- `make bootstrap-librechat-admin` 输出成功
 - `make smoke-zhipu` 输出成功
 - 启用 DeepSeek / 阿里云百炼 / Kimi / 火山方舟豆包 / 小米 MiMo 时，`make smoke-deepseek` / `make smoke-aliyun` / `make smoke-kimi` / `make smoke-doubao` / `make smoke-mimo` 输出成功；若豆包返回上游未开通模型服务，需要先在火山方舟控制台开通模型或配置推理接入点
 
@@ -109,6 +113,7 @@ bash scripts/bootstrap-new-api.sh
 
 ### UI 层
 - LibreChat 可访问
+- Admin Panel 可访问，默认管理员可登录
 - Casdoor 可访问
 - 用户可通过邮箱和手机号完成真实认证
 - 自定义端点 `NEW-API` 已生效

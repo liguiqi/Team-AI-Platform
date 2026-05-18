@@ -155,6 +155,7 @@ make up
 - 生成 `runtime/local/casdoor/app.conf` 与 `runtime/local/casdoor/init_data.json`
 - 启动本地 compose 中的核心服务
 - 当前会同时启动 `librechat-admin`
+- 创建或校正 LibreChat 默认管理员，并将第一个非默认注册用户自动提升为 `ADMIN`
 - 将 Casdoor 业务组织与应用配置同步到 PostgreSQL 持久化表
 - 将 Casdoor 邮件与短信 Provider 同步到 PostgreSQL 持久化表
 - LibreChat 会连接 `new-api-redis` 的 DB 1 持久化 OIDC state / session
@@ -196,10 +197,12 @@ bash scripts/bootstrap-new-api.sh
 15. 通过 PostgreSQL 创建或校正服务 token（48 字符强随机，unlimited）
 16. 把 `NEW_API_SERVICE_TOKEN` 回写 `.env`
 17. 重新渲染 LibreChat 配置并重启 LibreChat
+18. 创建或校正 LibreChat 默认管理员
 
 补充说明：
 - 当前 LibreChat 使用 RedisStore 保存 OIDC state / session，重启后不会再因内存 session 丢失而要求重复登录。
 - 若浏览器命中 LibreChat 重启前的旧 OIDC callback，运行时 patch 会自动回到 `/oauth/openid` 重新发起授权，而不是停留在错误页。
+- 默认管理员为 `__PLACEHOLDER_EMAIL__` / `__PLACEHOLDER_PASSWORD__`，会同步到 Casdoor `team-ai` 业务组织；也可用 `http://localhost:3080/login?redirect=false` 走 LibreChat 本地登录。
 
 ## 前端模型同步
 

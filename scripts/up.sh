@@ -16,6 +16,7 @@ bash "$ROOT_DIR/scripts/render-casdoor-config.sh"
 docker_compose up -d
 bash "$ROOT_DIR/scripts/sync-casdoor-auth-config.sh"
 bash "$ROOT_DIR/scripts/sync-casdoor-providers.sh"
+bash "$ROOT_DIR/scripts/bootstrap-librechat-admin.sh"
 
 info "服务已启动"
 if [[ "$MODE" == "local" ]]; then

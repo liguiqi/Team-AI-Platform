@@ -3,6 +3,7 @@ const cookie = require('cookie');
 
 const originalLoad = Module._load;
 const OPENID_STATE_VERIFICATION_ERROR = 'Unable to verify authorization request state';
+const SYNTHETIC_EMAIL_DOMAIN = 'casdoor.team-ai.local';
 
 function escapeForInlineScript(value) {
   return String(value)
@@ -330,6 +331,234 @@ function patchLibreChatApi(api) {
   return api;
 }
 
+function normalizePatchBool(value, defaultValue = false) {
+  if (value === undefined || value === null || value === '') {
+    return defaultValue;
+  }
+
+  return ['1', 'true', 'yes', 'y', 'on'].includes(String(value).trim().toLowerCase());
+}
+
+function getDefaultAdminEmail() {
+  return String(process.env.LIBRECHAT_DEFAULT_ADMIN_EMAIL || '').trim().toLowerCase();
+}
+
+function isValidEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
+}
+
+function isSyntheticOpenIdEmail(value) {
+  return new RegExp(`^oidc-[a-z0-9-]+@${SYNTHETIC_EMAIL_DOMAIN.replace(/\./g, '\\.')}$`).test(
+    String(value || '').trim().toLowerCase(),
+  );
+}
+
+function decodeJwtPayload(token) {
+  if (!token || typeof token !== 'string') {
+    return {};
+  }
+
+  const parts = token.split('.');
+  if (parts.length < 2) {
+    return {};
+  }
+
+  try {
+    const payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const padded = payload.padEnd(payload.length + ((4 - (payload.length % 4)) % 4), '=');
+    return JSON.parse(Buffer.from(padded, 'base64').toString('utf8'));
+  } catch {
+    return {};
+  }
+}
+
+function getOpenIdClaimsFromRequest(req) {
+  const parsedCookies = req?.headers?.cookie ? cookie.parse(req.headers.cookie) : {};
+  const authHeader = String(req?.headers?.authorization || '');
+  const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+  const sessionTokens = req?.session?.openidTokens || {};
+  const userTokens = req?.user?.federatedTokens || {};
+
+  const candidates = [
+    userTokens.id_token,
+    sessionTokens.idToken,
+    parsedCookies.openid_id_token,
+    bearerToken,
+  ];
+
+  for (const token of candidates) {
+    const claims = decodeJwtPayload(token);
+    if (claims && typeof claims === 'object' && claims.sub) {
+      return claims;
+    }
+  }
+
+  return {};
+}
+
+function getClaimString(claims, keys) {
+  for (const key of keys) {
+    const value = claims?.[key];
+    if (typeof value === 'string' && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  return '';
+}
+
+function getOpenIdDisplayIdentifier(userData, req) {
+  const email = String(userData?.email || '').trim();
+  if (!isSyntheticOpenIdEmail(email)) {
+    return email;
+  }
+
+  const claims = getOpenIdClaimsFromRequest(req);
+  const phone = getClaimString(claims, ['phone', 'phone_number', 'mobile']);
+  if (phone) {
+    return phone;
+  }
+
+  const claimEmail = getClaimString(claims, ['email', 'preferred_username', 'upn']);
+  if (isValidEmail(claimEmail) && !isSyntheticOpenIdEmail(claimEmail)) {
+    return claimEmail;
+  }
+
+  return (
+    getClaimString(claims, ['displayName', 'name', 'username']) ||
+    String(userData?.name || userData?.username || userData?.openidId || email).trim()
+  );
+}
+
+function applyDisplayUserInfo(userData, req) {
+  if (!userData || typeof userData !== 'object' || !isSyntheticOpenIdEmail(userData.email)) {
+    return userData;
+  }
+
+  const displayIdentifier = getOpenIdDisplayIdentifier(userData, req);
+  if (!displayIdentifier || displayIdentifier === userData.email) {
+    return userData;
+  }
+
+  return {
+    ...userData,
+    email: displayIdentifier,
+    teamAiInternalEmail: userData.email,
+    teamAiDisplayIdentifier: displayIdentifier,
+    teamAiLoginType: isValidEmail(displayIdentifier) ? 'email' : 'phone',
+  };
+}
+
+function normalizeEmailLocalPart(value) {
+  const normalized = String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+  return normalized || 'user';
+}
+
+function buildSyntheticOpenIdEmail(data) {
+  const source =
+    data?.openidId ||
+    data?.idOnTheSource ||
+    data?.username ||
+    data?.email ||
+    data?.name ||
+    'user';
+
+  return `oidc-${normalizeEmailLocalPart(source)}@${SYNTHETIC_EMAIL_DOMAIN}`;
+}
+
+function normalizeOpenIdUserEmail(data) {
+  if (!data || data.provider !== 'openid') {
+    return data;
+  }
+
+  if (isValidEmail(data.email)) {
+    return data;
+  }
+
+  const syntheticEmail = buildSyntheticOpenIdEmail(data);
+  console.warn('[TeamAI OpenID Patch] Replacing invalid OpenID email with synthetic email', {
+    openidId: data.openidId,
+    username: data.username,
+    originalEmail: data.email,
+    syntheticEmail,
+  });
+
+  data.email = syntheticEmail;
+  data.emailVerified = true;
+  return data;
+}
+
+async function shouldPromoteFirstRegisteredUser(models, data) {
+  if (!normalizePatchBool(process.env.LIBRECHAT_FIRST_USER_ADMIN_ENABLED, true)) {
+    return false;
+  }
+
+  if (!data || typeof models?.countUsers !== 'function') {
+    return false;
+  }
+
+  const email = String(data.email || '').trim().toLowerCase();
+  if (!email || email === getDefaultAdminEmail()) {
+    return false;
+  }
+
+  const role = String(data.role || '').trim().toUpperCase();
+  if (role && role !== 'USER') {
+    return false;
+  }
+
+  const firstUserFilter = { provider: { $ne: 'anonymous' } };
+  const defaultAdminEmail = getDefaultAdminEmail();
+  if (defaultAdminEmail) {
+    firstUserFilter.email = { $ne: defaultAdminEmail };
+  }
+
+  const existingHumanUsers = await models.countUsers(firstUserFilter);
+  return existingHumanUsers === 0;
+}
+
+function patchModels(models) {
+  if (!models || typeof models.createUser !== 'function' || models.__teamAiPatchedModels === true) {
+    return models;
+  }
+
+  const originalCreateUser = models.createUser;
+  const originalUpdateUser = models.updateUser;
+
+  models.createUser = async function patchedCreateUser(data, ...args) {
+    let userData = normalizeOpenIdUserEmail(data);
+
+    if (await shouldPromoteFirstRegisteredUser(models, userData)) {
+      userData = normalizeOpenIdUserEmail({ ...userData, role: 'ADMIN' });
+      console.info(
+        `[TeamAI LibreChat Admin Patch] Promoting first registered user to ADMIN: ${userData.email}`,
+      );
+    }
+
+    return originalCreateUser.call(this, userData, ...args);
+  };
+
+  if (typeof originalUpdateUser === 'function') {
+    models.updateUser = async function patchedUpdateUser(userId, data, ...args) {
+      return originalUpdateUser.call(this, userId, normalizeOpenIdUserEmail(data), ...args);
+    };
+  }
+
+  Object.defineProperty(models, '__teamAiPatchedModels', {
+    value: true,
+    enumerable: false,
+    configurable: false,
+    writable: false,
+  });
+
+  return models;
+}
+
 function patchAuthService(authService) {
   if (
     !authService ||
@@ -398,10 +627,14 @@ function patchLogoutController(controllerModule) {
     const authHeader = String(req?.headers?.authorization || '');
     const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
     const sessionTokens = req?.session?.openidTokens || {};
-    const resolvedIdToken =
-      sessionTokens.idToken || parsedCookies.openid_id_token || bearerToken || undefined;
+    const hasSessionIdToken = !!sessionTokens.idToken;
+    const resolvedIdToken = sessionTokens.idToken || undefined;
     const resolvedRefreshToken =
       sessionTokens.refreshToken || parsedCookies.refreshToken || undefined;
+    const shouldUseCasdoorLogout =
+      req?.user?.provider === 'openid' &&
+      normalizePatchBool(process.env.OPENID_USE_END_SESSION_ENDPOINT, false) &&
+      hasSessionIdToken;
 
     if (req?.user?.provider === 'openid') {
       req.session = req.session || {};
@@ -420,9 +653,41 @@ function patchLogoutController(controllerModule) {
         hasSessionIdToken: !!sessionTokens.idToken,
         hasCookieIdToken: !!parsedCookies.openid_id_token,
         hasBearerToken: !!bearerToken,
+        shouldUseCasdoorLogout,
         resolvedIdTokenLength: resolvedIdToken ? resolvedIdToken.length : 0,
         maxLogoutUrlLength: process.env.OPENID_MAX_LOGOUT_URL_LENGTH,
       });
+
+      if (!shouldUseCasdoorLogout) {
+        const originalSend = res.send;
+        if (typeof originalSend === 'function' && !res.__teamAiPatchedLogoutSend) {
+          res.send = function patchedLogoutSend(body) {
+            if (body && typeof body === 'object' && body.redirect) {
+              const fallbackRedirect =
+                process.env.OPENID_POST_LOGOUT_REDIRECT_URI ||
+                `${String(process.env.DOMAIN_CLIENT || '').replace(/\/+$/, '')}/login`;
+
+              console.warn('[TeamAI OpenID Patch] Suppressing OpenID end-session redirect without session id_token', {
+                fallbackRedirect,
+                hasCookieIdToken: !!parsedCookies.openid_id_token,
+              });
+
+              return originalSend.call(this, {
+                ...body,
+                redirect: fallbackRedirect,
+              });
+            }
+
+            return originalSend.call(this, body);
+          };
+
+          Object.defineProperty(res, '__teamAiPatchedLogoutSend', {
+            value: true,
+            enumerable: false,
+            configurable: true,
+          });
+        }
+      }
     }
 
     return originalLogoutController(req, res, next);
@@ -670,6 +935,55 @@ function patchOpenIdPassport(passportModule) {
   return passportModule;
 }
 
+function patchUserController(controllerModule) {
+  if (
+    !controllerModule ||
+    controllerModule.__teamAiPatchedUserController === true ||
+    typeof controllerModule.getUserController !== 'function'
+  ) {
+    return controllerModule;
+  }
+
+  const originalGetUserController = controllerModule.getUserController;
+
+  controllerModule.getUserController = function patchedGetUserController(req, res, next) {
+    const originalSend = res.send;
+    if (typeof originalSend === 'function' && res.__teamAiPatchedUserSend !== true) {
+      res.send = function patchedUserSend(body) {
+        let patchedBody = body;
+        try {
+          if (body && typeof body === 'object' && !Buffer.isBuffer(body)) {
+            patchedBody = applyDisplayUserInfo(body, req);
+          }
+        } catch (err) {
+          console.error(
+            '[TeamAI OpenID Patch] Failed to apply user display identifier',
+            err && (err.stack || err.message || err),
+          );
+        }
+        return originalSend.call(this, patchedBody);
+      };
+
+      Object.defineProperty(res, '__teamAiPatchedUserSend', {
+        value: true,
+        enumerable: false,
+        configurable: true,
+      });
+    }
+
+    return originalGetUserController.call(this, req, res, next);
+  };
+
+  Object.defineProperty(controllerModule, '__teamAiPatchedUserController', {
+    value: true,
+    enumerable: false,
+    configurable: false,
+    writable: false,
+  });
+
+  return controllerModule;
+}
+
 function wrapOpenIdClient(client) {
   if (
     !client ||
@@ -751,11 +1065,22 @@ Module._load = function patchedModuleLoad(request, parent, isMain) {
     return patchAuthService(loaded);
   }
 
+  if (request === '~/models' || request === '/app/api/models' || request === '/app/api/models/index.js') {
+    return patchModels(loaded);
+  }
+
   if (
     request === '~/server/controllers/auth/LogoutController' ||
     request === '/app/api/server/controllers/auth/LogoutController.js'
   ) {
     return patchLogoutController(loaded);
+  }
+
+  if (
+    request === '~/server/controllers/UserController' ||
+    request === '/app/api/server/controllers/UserController.js'
+  ) {
+    return patchUserController(loaded);
   }
 
   if (request === 'openid-client/passport' || request === '/app/api/node_modules/openid-client/passport') {

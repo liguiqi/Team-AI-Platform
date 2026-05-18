@@ -101,11 +101,13 @@
 
 ### 本仓库的事实边界
 - 本仓库自动化会创建 `NEW-API` 管理员与服务用户。
-- 本仓库不会维护 LibreChat 本地管理员账号体系。
+- 本仓库自动化会创建 LibreChat 默认本地 `ADMIN` 用户，用于兜底进入 LibreChat 与 Admin Panel。
+- 本仓库会把第一个非默认注册用户自动提升为 `ADMIN`，便于继续调试用户组和权限管理。
 
 ### 这意味着什么
-- LibreChat 当前默认关闭本地邮箱登录与注册。
+- LibreChat 当前默认开启本地邮箱登录、关闭本地注册。
 - 用户注册、登录、验证码发送统一由 Casdoor 处理。
+- 默认管理员为 `__PLACEHOLDER_EMAIL__` / `__PLACEHOLDER_PASSWORD__`，会同时写入 LibreChat MongoDB 和 Casdoor `team-ai` 业务组织，可在 `.env` 中通过 `LIBRECHAT_DEFAULT_ADMIN_*` 覆盖。
 - 平台维护人主要通过：
   - 浏览器访问 LibreChat
   - 浏览器访问 Casdoor
@@ -121,13 +123,17 @@
 
 ### 当前策略
 - LibreChat 登录页固定展示 `openid` 统一认证入口。
-- `ALLOW_EMAIL_LOGIN=false`
+- `ALLOW_EMAIL_LOGIN=true`
 - `ALLOW_REGISTRATION=false`
 - `ALLOW_SOCIAL_LOGIN=true`
+- `LIBRECHAT_DEFAULT_ADMIN_ENABLED=true`
+- `LIBRECHAT_DEFAULT_ADMIN_CASDOOR_ENABLED=true`
+- `LIBRECHAT_FIRST_USER_ADMIN_ENABLED=true`
 
 ### 运维含义
 - 若用户无法登录，不要先查 LibreChat 本地用户库。
 - 应优先检查 Casdoor OIDC、SMTP、短信 Provider 与回调地址。
+- 默认管理员可以直接从 Casdoor 统一认证入口登录；如需使用 LibreChat 本地登录，可访问 `http://localhost:3080/login?redirect=false`。
 - 认证配置的详细说明见 [admin-auth-sso.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/admin-auth-sso.md)
 - 当前 compose 已为 LibreChat 开启 RedisStore（DB 1，`REDIS_KEY_PREFIX=librechat`），用于持久化 OIDC state / session。
 - 若 LibreChat 重启后浏览器带回旧 callback，运行时 patch 会自动重发授权，正常情况下不应再要求用户做“第二次统一认证登录”。

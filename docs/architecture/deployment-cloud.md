@@ -135,6 +135,7 @@ MODE=prod bash scripts/up.sh
 - 渲染 `runtime/prod/casdoor/app.conf`
 - 渲染 `runtime/prod/casdoor/init_data.json`
 - 启动 Caddy、NEW-API、Casdoor、LibreChat、PostgreSQL、Redis、MongoDB
+- 创建或校正 LibreChat 默认管理员，并将第一个非默认注册用户自动提升为 `ADMIN`
 - 将 Casdoor 业务组织 / 应用 / Provider 配置回放到 PostgreSQL 持久化表
 - 让 LibreChat 接入 `new-api-redis` 的 DB 1，用于 OIDC state / session 持久化
 - 当前生产 compose **不包含** Admin Panel 服务
@@ -152,6 +153,7 @@ MODE=prod bash scripts/bootstrap-new-api.sh
 - 创建或校正 DeepSeek / 阿里云百炼 / Kimi / 火山方舟豆包 / 小米 MiMo 渠道（启用时）
 - 创建或校正服务 token
 - 重渲染 LibreChat 配置并重启 LibreChat
+- 创建或校正 LibreChat 默认管理员
 
 ### 第三步：真实联调
 ```bash

@@ -13,7 +13,7 @@ make health
 ### 建议每日巡检项
 - 检查容器是否都在 `Up` 状态
 - 检查 `NEW-API`、LibreChat 和 Casdoor 是否可访问
-- 若本地启用了 Admin Panel，顺手确认 `http://localhost:3001` 可访问
+- 若本地启用了 Admin Panel，顺手确认 `http://localhost:3001` 可访问，并用默认管理员确认可登录
 - 检查磁盘空间，尤其是 `runtime/` 与 `backups/`
 - 检查 `NEW-API` 是否还能成功调用智谱
 - 检查容器内存使用是否在限制内
@@ -33,6 +33,7 @@ make health
 
 补充：
 - `make health` 当前不覆盖本地 `librechat-admin`；如本地启用了 Admin Panel，请额外做一次浏览器访问确认。
+- 如管理员账号异常，先执行 `make bootstrap-librechat-admin`，再用 `__PLACEHOLDER_EMAIL__` 登录验证。
 
 ### 主链路联调
 ```bash
@@ -183,6 +184,34 @@ docker compose --env-file .env -f deploy/docker-compose.local.yml logs -f casdoo
 说明：
 - 当前运行时 patch 会把这类 stale callback 自动重定向回 `/oauth/openid`
 - 若仍稳定落到错误页，通常是 Redis session 未生效或 `connect.sid` 未正常保存
+
+### 场景 3.6：Casdoor 登录/注册页语言不是中文
+排查：
+1. 查看 `runtime/local/casdoor/app.conf` 是否包含 `forceLanguage = zh` 与 `defaultLanguage = zh`
+2. 重新执行 `bash scripts/render-casdoor-config.sh`
+3. 重建 Casdoor：`docker compose --env-file .env -f deploy/docker-compose.local.yml up -d --force-recreate casdoor`
+4. 浏览器清理旧的 `jsonWebConfig` cookie 后重新打开登录页
+
+### 场景 3.7：手机号注册后 LibreChat 回调报 email invalid
+排查：
+1. 查看 LibreChat 日志是否有 `User validation failed: email: is invalid`
+2. 确认 LibreChat 容器已加载 `/app/librechat-patches/openid-insecure-http.js`
+3. 确认日志中是否出现 `Replacing invalid OpenID email with synthetic email`
+4. 若没有出现，重建 LibreChat：`docker compose --env-file .env -f deploy/docker-compose.local.yml up -d --force-recreate librechat`
+
+### 场景 3.8：退出登录后出现 Casdoor token 无效 JSON
+排查：
+1. 查看 LibreChat 日志是否出现 `Suppressing OpenID end-session redirect without session id_token`
+2. 这表示浏览器只有 stale `openid_id_token` cookie，没有当前 OpenID session id_token，系统会回退到 `/login?redirect=false`
+3. 若仍直接看到 Casdoor JSON，清理浏览器中 LibreChat/Casdoor 旧 cookie 后重试
+4. 确认 `OPENID_POST_LOGOUT_REDIRECT_URI` 指向 `${LIBRECHAT_PUBLIC_URL}/login?redirect=false`
+
+### 场景 3.9：手机号注册用户左下角显示过长 synthetic email
+排查：
+1. 确认 LibreChat 用户的内部邮箱是否为 `oidc-<openidId>@casdoor.team-ai.local`
+2. 确认 `/api/user` 响应中 `email` 是否已替换为手机号，并带有 `teamAiInternalEmail`
+3. 若仍显示 synthetic email，确认浏览器当前请求带有 `openid_id_token` cookie 或 `Authorization: Bearer <id_token>`
+4. 重建 LibreChat：`docker compose --env-file .env -f deploy/docker-compose.local.yml up -d --force-recreate librechat`
 
 ### 场景 3.1：注册时报 built-in 组织禁止新增用户
 排查：

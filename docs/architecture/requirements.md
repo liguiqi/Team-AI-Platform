@@ -75,6 +75,7 @@
 - `Casdoor` 接入邮箱 SMTP 与阿里云 `PNVS SMS`。
 - `LibreChat` 通过 `NEW-API` 的 OpenAI 兼容接口访问模型。
 - 本地环境内置 LibreChat Admin Panel，用于角色与权限管理。
+- 部署后默认存在一个 LibreChat 本地 ADMIN 用户，且第一个非默认注册用户自动成为 ADMIN。
 - 服务 token、限流配置、模型映射自动化。
 - LibreChat OIDC state / session 跨重启持久化。
 - 备份恢复、健康检查、联调、诊断、密钥校验脚本。
