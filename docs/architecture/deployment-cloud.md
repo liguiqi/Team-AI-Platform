@@ -1,13 +1,15 @@
 # 云端部署
 
 ## 文档目标
-本文档用于指导在单台云服务器上部署本项目的生产版或准生产版环境。默认方案是 Docker Compose + Caddy，适用于中小规模内部平台，不包含多机高可用。
+本文档用于指导在单台云服务器上部署本项目的生产版或准生产版环境。当前生产方案同时支持：
+- **无域名直连模式**：直接开放 `3080 / 13000 / 18000` 给受控内网、堡垒机或安全组，适合 2C2G、少量成员使用的轻量场景。
+- **域名代理模式**：通过 Caddy 提供域名 + HTTPS 入口，适合已有公网域名的场景。
 
 ## 适用前提
 - 单台 Linux 服务器。
 - 拥有 root 或 sudo 权限。
 - 可安装 Docker 与 Docker Compose。
-- 拥有三个可解析到服务器公网 IP 的域名：
+- 若使用域名代理模式，还需要三个可解析到服务器公网 IP 的域名：
   - 面向用户：`PUBLIC_CHAT_DOMAIN`
   - 面向管理员：`NEW_API_ADMIN_DOMAIN`
   - 面向统一认证：`AUTH_PUBLIC_DOMAIN`
@@ -32,12 +34,12 @@
 - 确认 `80`、`443`、`27017`、`5432` 等端口不会被外部直接暴露
 - 配置服务器时区、磁盘空间和日志轮转策略
 
-### DNS 准备
+### DNS 准备（仅域名代理模式需要）
 - `PUBLIC_CHAT_DOMAIN` 解析到服务器公网 IP
 - `NEW_API_ADMIN_DOMAIN` 解析到服务器公网 IP
 - `AUTH_PUBLIC_DOMAIN` 解析到服务器公网 IP
 
-### 证书准备
+### 证书准备（仅域名代理模式需要）
 - 本项目默认由 Caddy 自动申请 HTTPS 证书
 - 必须正确填写 `ACME_EMAIL`
 - 必须确保 80/443 端口公网可达
@@ -48,6 +50,22 @@
 ```bash
 cp deploy/env/prod/.env.example deploy/env/prod/.env
 ```
+
+默认模板是 **域名代理模式**。如果你的 Aliyun VPS **不需要域名访问**，请至少把下面这些值改成直连模式：
+
+```dotenv
+COMPOSE_PROFILES=
+PROD_BIND_ADDRESS=0.0.0.0
+LIBRECHAT_PUBLIC_URL=http://SERVER_IP:3080
+NEW_API_PUBLIC_URL=http://SERVER_IP:13000
+CASDOOR_PUBLIC_URL=http://SERVER_IP:18000
+LIBRECHAT_OPENID_ALLOW_INSECURE_HTTP=true
+```
+
+说明：
+- `COMPOSE_PROFILES=` 为空时，生产 compose **不会启动 Caddy**，从而省掉反向代理的内存占用和域名依赖。
+- 直连模式下请务必依赖阿里云安全组、VPN、堡垒机或内网访问范围控制，不要把 HTTP 入口无保护地暴露到公网。
+- 如果后续切回域名代理模式，恢复 `COMPOSE_PROFILES=domain-proxy`，并把三个公开 URL 改回 `https://...`，同时将 `LIBRECHAT_OPENID_ALLOW_INSECURE_HTTP=false`。
 
 ### 必须重点填写的变量
 - `PUBLIC_CHAT_DOMAIN`
@@ -84,6 +102,10 @@ cp deploy/env/prod/.env.example deploy/env/prod/.env
 - `NEW_API_SYNC_CHANNEL_MODELS_FROM_ENV`
 - `LIBRECHAT_FETCH_MODELS`
 - `LIBRECHAT_VISIBLE_MODELS`
+
+补充：
+- 若使用**无域名直连模式**，`PUBLIC_CHAT_DOMAIN / NEW_API_ADMIN_DOMAIN / AUTH_PUBLIC_DOMAIN / ACME_EMAIL` 可以暂时保留示例值，因为 Caddy profile 不会启动。
+- 若使用**域名代理模式**，则这些变量都必须填写真实值，并保持 `COMPOSE_PROFILES=domain-proxy`。
 
 建议：
 - 所有密码、secret、token 相关变量都使用高强度随机值。
@@ -135,11 +157,13 @@ MODE=prod bash scripts/up.sh
 - 渲染 `runtime/prod/librechat/librechat.yaml`
 - 渲染 `runtime/prod/casdoor/app.conf`
 - 渲染 `runtime/prod/casdoor/init_data.json`
-- 启动 Caddy、NEW-API、Casdoor、LibreChat、PostgreSQL、Redis、MongoDB
+- 启动 NEW-API、Casdoor、LibreChat、PostgreSQL、Redis、MongoDB
+- 当 `COMPOSE_PROFILES=domain-proxy` 时，再额外启动 Caddy
 - 创建或校正 LibreChat 默认管理员，并将第一个非默认注册用户自动提升为 `ADMIN`
 - 将 Casdoor 业务组织 / 应用 / Provider 配置回放到 PostgreSQL 持久化表
 - 让 LibreChat 接入 `new-api-redis` 的 DB 1，用于 OIDC state / session 持久化
 - 当前生产 compose **不包含** Admin Panel 服务
+- 启动前会自动把 `runtime/prod/librechat/images`、`uploads`、`logs` 校正为 LibreChat `node` 用户对应的 `1000:1000`，避免 OIDC 新用户首次登录时因为头像目录不可写而报 `An unknown error occurred.`
 
 ### 第二步：初始化 NEW-API
 ```bash
@@ -184,46 +208,69 @@ MODE=prod bash scripts/sync-provider-models.sh
 
 ## 对外入口
 
-### 用户入口
+### 无域名直连模式
+- LibreChat：`http://SERVER_IP:3080`
+- NEW-API：`http://SERVER_IP:13000`
+- Casdoor：`http://SERVER_IP:18000`
+
+### 域名代理模式
+- 前提：`COMPOSE_PROFILES=domain-proxy`
+
+#### 用户入口
 - `https://$PUBLIC_CHAT_DOMAIN`
 
-### NEW-API 管理后台
+#### NEW-API 管理后台
 - `https://$NEW_API_ADMIN_DOMAIN`
 
-### Casdoor 统一认证
+#### Casdoor 统一认证
 - `https://$AUTH_PUBLIC_DOMAIN`
 
 ### 注意
 - `NEW-API` 后台与 OpenAI 兼容 API 共用同一个服务实例。
-- 若只允许内网或 VPN 管理，建议在 Caddy 之外再加防火墙白名单。
+- 无域名直连模式下，建议直接使用阿里云安全组把 `3080 / 13000 / 18000` 限制在固定办公 IP、VPN 或堡垒机访问范围内。
+- 域名代理模式下，建议把后端端口绑定到 `127.0.0.1`，并在 Caddy 之外再加防火墙白名单。
 - 如需生产启用 Admin Panel，需要额外扩展 `deploy/docker-compose.prod.yml` 与 Caddy 路由；当前仓库默认未开放。
 
 ## 首次上线建议流程
-1. 准备服务器与域名。
+1. 准备服务器；若采用域名代理模式，再准备域名和 80/443 入口。
 2. 填写生产 `.env`（默认保持 `BOOTSTRAP_AUTOCONFIGURE=false`；如需首次一键上线再临时改为 `true`）。
 3. 执行 `MODE=prod bash scripts/up.sh`。
 4. 检查容器状态。
 5. 若未启用自动 bootstrap，执行 `MODE=prod bash scripts/bootstrap-new-api.sh`。
-6. 浏览器验证 `PUBLIC_CHAT_DOMAIN`、`NEW_API_ADMIN_DOMAIN` 与 `AUTH_PUBLIC_DOMAIN`。
+6. 浏览器验证当前所选入口模式：
+   - 直连模式：`SERVER_IP:3080 / 13000 / 18000`
+   - 域名代理模式：`PUBLIC_CHAT_DOMAIN / NEW_API_ADMIN_DOMAIN / AUTH_PUBLIC_DOMAIN`
 7. 记录本次上线的镜像版本、env 校验人和联调结果。
 
 ## 生产环境内存优化
 
 ### 容器内存限制
-已为所有服务配置内存限制，适合 2C2G ECS：
-- LibreChat: 448M（Node old space 默认限制 384MB）
+当前主配置按 **2C2G、实际约 1.6GB 可用内存、同时在线不超过 4 人** 做了进一步收敛：
+- LibreChat: 384M（Node old space 默认限制 320MB，`MALLOC_ARENA_MAX=2`）
 - MongoDB: 320M（WiredTiger 缓存 0.25GB，MongoDB 8 当前不支持再往下调）
-- NEW-API: 128M
-- PostgreSQL: 128M
-- Casdoor: 128M
-- Redis: 64M（LRU 淘汰策略）
-- Caddy: 64M
+- NEW-API: 96M（同时施加 `GOMEMLIMIT=64MiB`）
+- PostgreSQL: 96M（共享缓存下调到 32MB，连接数压到 50）
+- Casdoor: 96M（同时施加 `GOMEMLIMIT=72MiB`）
+- Redis: 48M（AOF 保留，内存上限收敛到 24MB）
+- Caddy: 32M（仅在 `domain-proxy` profile 启用时占用）
 
 推荐保持以下生产 env 默认值：
-- `LIBRECHAT_NODE_MAX_OLD_SPACE_SIZE_MB=384`
-- `LIBRECHAT_MEMORY_LIMIT=448M`
+- `LIBRECHAT_NODE_MAX_OLD_SPACE_SIZE_MB=320`
+- `LIBRECHAT_MEMORY_LIMIT=384M`
 - `LIBRECHAT_MONGODB_MEMORY_LIMIT=320M`
 - `LIBRECHAT_MONGODB_WIREDTIGER_CACHE_GB=0.25`
+- `NEW_API_MEMORY_LIMIT=96M`
+- `NEW_API_POSTGRES_MEMORY_LIMIT=96M`
+- `NEW_API_REDIS_MEMORY_LIMIT=48M`
+- `CASDOOR_MEMORY_LIMIT=96M`
+- `CADDY_MEMORY_LIMIT=32M`
+
+### 为什么当前参考内存表里会出现 Admin Panel
+如果你之前在服务器上看到 `Admin Panel 104/256M`，通常说明运行的不是当前仓库默认的生产 compose，而是：
+- 使用了 `local` compose
+- 或自己额外扩展了 Admin Panel 服务
+
+当前仓库默认的 `deploy/docker-compose.prod.yml` **不包含** Admin Panel，这本身就是 2C2G 优化的一部分。
 
 ### 搜索功能配置
 生产环境需配置搜索 API Key：
@@ -318,6 +365,22 @@ bash scripts/uninstall-service.sh
 - `runtime/prod/librechat/librechat.yaml`
 
 不要直接把模板文件当作运行配置修改；应优先改 `.env` 并重新执行渲染或 bootstrap。
+
+### 关于头像目录权限与 OIDC 首次登录失败
+如果你此前在生产环境遇到：
+- Casdoor 认证成功后回到 LibreChat 报 `An unknown error occurred.`
+- 新注册用户无法自动跳转到聊天页
+
+根因通常是宿主机上的 `runtime/prod/librechat/images` 由 `root` 创建，而 LibreChat 容器实际以 `node(1000:1000)` 运行，首次创建头像目录时没有写权限。
+
+当前仓库已经在 `up / restart / bootstrap-new-api` 前自动修复：
+- `runtime/prod/librechat/images`
+- `runtime/prod/librechat/uploads`
+- `runtime/prod/librechat/logs`
+
+默认会把它们校正为 `1000:1000`；如果你自定义了 LibreChat 镜像用户，可在 `.env` 中改：
+- `LIBRECHAT_RUNTIME_UID`
+- `LIBRECHAT_RUNTIME_GID`
 
 ### 关于模型同步
 - 若你只是调整 `NEW-API` 后台模型矩阵，通常执行 `MODE=prod bash scripts/sync-librechat-models.sh` 即可。

@@ -91,6 +91,7 @@
 - 默认会创建管理员 `__PLACEHOLDER_EMAIL__` / `__PLACEHOLDER_PASSWORD__`，并同步到 LibreChat 本地用户库与 Casdoor `team-ai` 业务组织，可用于登录 LibreChat、统一认证入口和 Admin Panel；第一个非默认注册用户也会自动提升为 `ADMIN`。
 - LibreChat 的 OIDC state / session 当前持久化到 `new-api-redis` 的 DB 1，重启后不会再因为内存 session 丢失而要求重复登录。
 - Casdoor 登录页样式由脚本渲染并随浏览器 `light/dark` 主题自适应，登录/注册页默认中文。
+- 生产 compose 现已支持 **无域名直连**：默认按 `LIBRECHAT_PUBLIC_URL / NEW_API_PUBLIC_URL / CASDOOR_PUBLIC_URL` 直接暴露端口；只有在 `COMPOSE_PROFILES=domain-proxy` 时才启动 Caddy 做域名 HTTPS 反向代理。
 - 当 `ZHIPU_ENABLED=true`、`DEEPSEEK_ENABLED=true`、`ALIYUN_ENABLED=true`、`KIMI_ENABLED=true`、`DOUBAO_ENABLED=true`、`MIMO_ENABLED=true`、`MINIMAX_ENABLED=true` 同时开启时，`make bootstrap` 会同时创建/更新 `zhipu-primary`、`deepseek-primary`、`aliyun-bailian-primary`、`kimi-primary`、`doubao-primary`、`mimo-primary` 与 `minimax-primary` 渠道；LibreChat 展示为 `API-zhipu` / `API-deepseek` / `API-aliyun` / `API-kimi` / `API-doubao` / `API-mimo` / `API-minimax` 七个入口，底层共用同一个 `NEW_API_SERVICE_TOKEN`。
 
 ## 目录结构

@@ -2,6 +2,7 @@ services:
   caddy:
     image: caddy:${CADDY_VERSION}
     container_name: ai-gateway-caddy
+    profiles: ["domain-proxy"]
     restart: always
     depends_on:
       - librechat
@@ -17,7 +18,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 64M
+          memory: ${CADDY_MEMORY_LIMIT:-32M}
     networks:
       - gateway
 
@@ -31,6 +32,8 @@ services:
         condition: service_healthy
       new-api-redis:
         condition: service_healthy
+    ports:
+      - "${PROD_BIND_ADDRESS:-0.0.0.0}:${NEW_API_PORT:-13000}:3000"
     environment:
       TZ: ${TZ}
       SQL_DSN: postgresql://${NEW_API_DB_USER}:${NEW_API_DB_PASSWORD}@new-api-postgres:5432/${NEW_API_DB_NAME}?sslmode=disable
@@ -40,13 +43,15 @@ services:
       ERROR_LOG_ENABLED: "true"
       BATCH_UPDATE_ENABLED: "true"
       GENERATE_DEFAULT_TOKEN: "false"
+      GOMEMLIMIT: ${NEW_API_GOMEMLIMIT:-64MiB}
+      GOGC: ${NEW_API_GOGC:-50}
     volumes:
       - ../runtime/prod/new-api/data:/data
       - ../runtime/prod/new-api/logs:/app/logs
     deploy:
       resources:
         limits:
-          memory: 128M
+          memory: ${NEW_API_MEMORY_LIMIT:-96M}
     networks:
       - gateway
 
@@ -54,6 +59,18 @@ services:
     image: postgres:${POSTGRES_VERSION}
     container_name: ai-gateway-new-api-postgres
     restart: always
+    command:
+      - postgres
+      - -c
+      - shared_buffers=${NEW_API_POSTGRES_SHARED_BUFFERS:-32MB}
+      - -c
+      - work_mem=${NEW_API_POSTGRES_WORK_MEM:-4MB}
+      - -c
+      - maintenance_work_mem=${NEW_API_POSTGRES_MAINTENANCE_WORK_MEM:-16MB}
+      - -c
+      - effective_cache_size=${NEW_API_POSTGRES_EFFECTIVE_CACHE_SIZE:-96MB}
+      - -c
+      - max_connections=${NEW_API_POSTGRES_MAX_CONNECTIONS:-50}
     environment:
       POSTGRES_DB: ${NEW_API_DB_NAME}
       POSTGRES_USER: ${NEW_API_DB_USER}
@@ -69,7 +86,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 128M
+          memory: ${NEW_API_POSTGRES_MEMORY_LIMIT:-96M}
     networks:
       - gateway
 
@@ -77,7 +94,7 @@ services:
     image: redis:${REDIS_VERSION}
     container_name: ai-gateway-new-api-redis
     restart: always
-    command: redis-server --appendonly yes --requirepass ${NEW_API_REDIS_PASSWORD} --maxmemory 32mb --maxmemory-policy allkeys-lru
+    command: redis-server --appendonly yes --appendfsync everysec --requirepass ${NEW_API_REDIS_PASSWORD} --maxmemory ${NEW_API_REDIS_MAXMEMORY:-24mb} --maxmemory-policy allkeys-lru
     healthcheck:
       test: ["CMD-SHELL", "redis-cli -a ${NEW_API_REDIS_PASSWORD} ping | grep -q PONG"]
       interval: 3s
@@ -89,7 +106,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 64M
+          memory: ${NEW_API_REDIS_MEMORY_LIMIT:-48M}
     networks:
       - gateway
 
@@ -101,8 +118,12 @@ services:
     depends_on:
       new-api-postgres:
         condition: service_healthy
+    ports:
+      - "${PROD_BIND_ADDRESS:-0.0.0.0}:${CASDOOR_PORT:-18000}:8000"
     environment:
       RUNNING_IN_DOCKER: "true"
+      GOMEMLIMIT: ${CASDOOR_GOMEMLIMIT:-72MiB}
+      GOGC: ${CASDOOR_GOGC:-50}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:
@@ -118,7 +139,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 128M
+          memory: ${CASDOOR_MEMORY_LIMIT:-96M}
     networks:
       - gateway
 
@@ -135,6 +156,8 @@ services:
         condition: service_started
       casdoor:
         condition: service_healthy
+    ports:
+      - "${PROD_BIND_ADDRESS:-0.0.0.0}:${LIBRECHAT_PORT:-3080}:3080"
     environment:
       HOST: ${LIBRECHAT_HOST}
       PORT: "3080"
@@ -190,7 +213,8 @@ services:
       PLATFORM_THEME_LOCK: ${PLATFORM_THEME_LOCK:-true}
       PLATFORM_HIDE_THEME_SELECTOR: ${PLATFORM_HIDE_THEME_SELECTOR:-true}
       NO_INDEX: "true"
-      NODE_OPTIONS: "--max-old-space-size=${LIBRECHAT_NODE_MAX_OLD_SPACE_SIZE_MB:-384} --require /app/librechat-patches/openid-insecure-http.js"
+      NODE_OPTIONS: "--max-old-space-size=${LIBRECHAT_NODE_MAX_OLD_SPACE_SIZE_MB:-320} --require /app/librechat-patches/openid-insecure-http.js"
+      MALLOC_ARENA_MAX: ${LIBRECHAT_MALLOC_ARENA_MAX:-2}
       TRUST_PROXY: "1"
     volumes:
       - ../runtime/prod/librechat/librechat.yaml:/app/librechat.yaml:ro
@@ -203,7 +227,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: ${LIBRECHAT_MEMORY_LIMIT:-448M}
+          memory: ${LIBRECHAT_MEMORY_LIMIT:-384M}
     networks:
       - gateway
 

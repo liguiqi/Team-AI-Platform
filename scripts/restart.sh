@@ -9,6 +9,7 @@ load_env
 if [[ "$MODE" == "local" ]]; then
   bash "$ROOT_DIR/scripts/stop-local-smtp-relay.sh"
 fi
+prepare_librechat_runtime_dirs
 bash "$ROOT_DIR/scripts/render-librechat-config.sh"
 bash "$ROOT_DIR/scripts/render-casdoor-config.sh"
 docker_compose down

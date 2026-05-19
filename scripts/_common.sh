@@ -128,6 +128,39 @@ host_librechat_url() {
   fi
 }
 
+prod_domain_proxy_enabled() {
+  local profiles=",${COMPOSE_PROFILES:-},"
+  [[ "$profiles" == *",domain-proxy,"* ]]
+}
+
+librechat_runtime_root() {
+  if [[ "$MODE" == "local" ]]; then
+    printf '%s/runtime/local/librechat\n' "$ROOT_DIR"
+  else
+    printf '%s/runtime/prod/librechat\n' "$ROOT_DIR"
+  fi
+}
+
+prepare_librechat_runtime_dirs() {
+  local root uid gid dir
+  root="$(librechat_runtime_root)"
+  uid="${LIBRECHAT_RUNTIME_UID:-1000}"
+  gid="${LIBRECHAT_RUNTIME_GID:-1000}"
+
+  mkdir -p \
+    "$root" \
+    "$root/images" \
+    "$root/uploads" \
+    "$root/logs" \
+    "$root/mongodb"
+
+  for dir in "$root/images" "$root/uploads" "$root/logs"; do
+    if ! chown -R "${uid}:${gid}" "$dir" 2>/dev/null; then
+      warn "无法将 ${dir} 调整为 ${uid}:${gid}，LibreChat 可能无法写入头像或运行日志"
+    fi
+  done
+}
+
 random_hex() {
   local length="$1"
   local result="" attempt

@@ -66,7 +66,7 @@
 - `LIBRECHAT_OPENID_SESSION_SECRET`
 - `LIBRECHAT_OPENID_SCOPE`
 - `LIBRECHAT_OPENID_BUTTON_LABEL`
-- `LIBRECHAT_OPENID_ALLOW_INSECURE_HTTP`：仅本地 `http://localhost` 调试时设为 `true`，生产必须保持 `false`。
+- `LIBRECHAT_OPENID_ALLOW_INSECURE_HTTP`：本地调试可设为 `true`；生产若使用域名 + HTTPS，必须保持 `false`；若是内网/安全组限制下的 **无域名直连 HTTP 部署**，则需要设为 `true`，否则 OIDC 回调无法完成。
 
 ### OIDC state 与 Redis 会话持久化
 - 当前 local / prod compose 都会为 LibreChat 注入：
