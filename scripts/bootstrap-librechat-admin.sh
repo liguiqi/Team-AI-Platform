@@ -163,6 +163,23 @@ db.systemgrants.updateOne(
   { upsert: true },
 );
 
+const userMarketplaceRoleUpdate = db.roles.updateOne(
+  { name: "USER" },
+  {
+    $set: {
+      "permissions.MARKETPLACE.USE": true,
+      "permissions.AGENTS.USE": true,
+      updatedAt: now,
+    },
+  },
+);
+
+if (userMarketplaceRoleUpdate.matchedCount > 0) {
+  print("[TeamAI LibreChat Admin] 已开放 USER 角色的智能体市场可见权限");
+} else {
+  print("[TeamAI LibreChat Admin] 未找到 USER 角色，跳过智能体市场可见权限校正");
+}
+
 if (firstUserAdminEnabled) {
   const firstUserFilter = { provider: { $ne: "anonymous" } };
   if (defaultAdminEmail) {

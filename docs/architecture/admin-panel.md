@@ -172,6 +172,7 @@ scripts/bootstrap-librechat-admin.sh
 4. 创建或更新 Casdoor `team-ai` 业务组织下的默认管理员用户
 5. 将第一个非默认注册用户设置为 `ADMIN`
 6. 补齐 `ADMIN` 角色的 `access:admin` system grant
+7. 将 `USER` 角色的 `MARKETPLACE.USE` 与 `AGENTS.USE` 保持开启，确保普通用户可见智能体市场
 
 也可以单独执行：
 
