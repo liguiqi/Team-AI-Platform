@@ -104,6 +104,25 @@ docker_compose_up_retry() {
   done
 }
 
+compose_container_name_for_service() {
+  case "$1" in
+    casdoor) printf 'ai-gateway-casdoor' ;;
+    librechat) printf 'ai-gateway-librechat' ;;
+    *) printf '' ;;
+  esac
+}
+
+remove_stale_compose_service() {
+  local service="$1" container_name status
+  container_name="$(compose_container_name_for_service "$service")"
+  [[ -n "$container_name" ]] || return 0
+
+  status="$(docker ps -a --filter "name=^/${container_name}$" --format '{{.Status}}' 2>/dev/null || true)"
+  if [[ "$status" =~ ^(Created|Exited|Dead|Restarting) ]]; then
+    docker_compose rm -f -s "$service" >/dev/null 2>&1 || true
+  fi
+}
+
 host_new_api_url() {
   if [[ "$MODE" == "local" ]]; then
     printf 'http://127.0.0.1:%s' "${NEW_API_PORT}"
@@ -141,11 +160,20 @@ librechat_runtime_root() {
   fi
 }
 
+casdoor_runtime_root() {
+  if [[ "$MODE" == "local" ]]; then
+    printf '%s/runtime/local/casdoor\n' "$ROOT_DIR"
+  else
+    printf '%s/runtime/prod/casdoor\n' "$ROOT_DIR"
+  fi
+}
+
 prepare_librechat_runtime_dirs() {
-  local root uid gid dir
+  local root uid gid dir needs_docker_chown
   root="$(librechat_runtime_root)"
   uid="${LIBRECHAT_RUNTIME_UID:-1000}"
   gid="${LIBRECHAT_RUNTIME_GID:-1000}"
+  needs_docker_chown=0
 
   mkdir -p \
     "$root" \
@@ -155,10 +183,101 @@ prepare_librechat_runtime_dirs() {
     "$root/mongodb"
 
   for dir in "$root/images" "$root/uploads" "$root/logs"; do
-    if ! chown -R "${uid}:${gid}" "$dir" 2>/dev/null; then
-      warn "无法将 ${dir} 调整为 ${uid}:${gid}，LibreChat 可能无法写入头像或运行日志"
+    if chown -R "${uid}:${gid}" "$dir" 2>/dev/null; then
+      chmod -R ug+rwX "$dir" 2>/dev/null || true
+    else
+      needs_docker_chown=1
     fi
   done
+
+  if (( needs_docker_chown == 0 )); then
+    return 0
+  fi
+
+  if command -v docker >/dev/null 2>&1; then
+    if docker run --rm --user 0:0 \
+      -e TARGET_UID="${uid}" \
+      -e TARGET_GID="${gid}" \
+      -v "${root}:/teamai-librechat-runtime" \
+      busybox:1.36 \
+      sh -c 'chown -R "${TARGET_UID}:${TARGET_GID}" /teamai-librechat-runtime/images /teamai-librechat-runtime/uploads /teamai-librechat-runtime/logs && chmod -R ug+rwX /teamai-librechat-runtime/images /teamai-librechat-runtime/uploads /teamai-librechat-runtime/logs' \
+      >/dev/null 2>&1; then
+      return 0
+    fi
+  fi
+
+  warn "无法将 LibreChat 运行目录调整为 ${uid}:${gid}，OIDC 首次登录可能因头像目录不可写失败"
+}
+
+prepare_casdoor_runtime_dirs() {
+  local root logs_dir
+  root="$(casdoor_runtime_root)"
+  logs_dir="$root/logs"
+
+  mkdir -p "$logs_dir"
+  if chmod 0777 "$logs_dir" 2>/dev/null; then
+    return 0
+  fi
+
+  if command -v docker >/dev/null 2>&1 && docker run --rm --user 0:0 \
+    -v "${root}:/teamai-casdoor-runtime" \
+    busybox:1.36 \
+    sh -c 'mkdir -p /teamai-casdoor-runtime/logs && chmod 0777 /teamai-casdoor-runtime/logs' \
+    >/dev/null 2>&1; then
+    return 0
+  fi
+
+  warn "无法修复 Casdoor 日志目录权限，Casdoor 可能因 /logs/casdoor.log 不可写启动失败"
+}
+
+prepare_runtime_file_path() {
+  local target_file="$1" target_dir target_base target_parent target_dir_base host_uid host_gid
+
+  [[ -n "$target_file" && "$target_file" == "$ROOT_DIR"/runtime/* ]] || die "非法运行态文件路径: ${target_file}"
+  target_dir="$(dirname "$target_file")"
+  target_base="$(basename "$target_file")"
+  target_parent="$(dirname "$target_dir")"
+  target_dir_base="$(basename "$target_dir")"
+  host_uid="$(id -u)"
+  host_gid="$(id -g)"
+
+  mkdir -p "$target_dir"
+  if [[ ! -w "$target_dir" ]]; then
+    if ! command -v docker >/dev/null 2>&1 || ! docker run --rm --user 0:0 \
+      -e TARGET_BASE="$target_dir_base" \
+      -e TARGET_UID="$host_uid" \
+      -e TARGET_GID="$host_gid" \
+      -v "${target_parent}:/teamai-runtime-parent" \
+      busybox:1.36 \
+      sh -c 'chown "${TARGET_UID}:${TARGET_GID}" "/teamai-runtime-parent/${TARGET_BASE}" && chmod ug+rwX "/teamai-runtime-parent/${TARGET_BASE}"' \
+      >/dev/null 2>&1; then
+      die "运行态目录不可写: ${target_dir}"
+    fi
+  fi
+
+  if [[ -d "$target_file" ]]; then
+    if ! rm -rf "$target_file" 2>/dev/null; then
+      if ! command -v docker >/dev/null 2>&1 || ! docker run --rm --user 0:0 \
+        -e TARGET_BASE="$target_base" \
+        -v "${target_dir}:/teamai-runtime-dir" \
+        busybox:1.36 \
+        sh -c 'rm -rf "/teamai-runtime-dir/${TARGET_BASE}"' \
+        >/dev/null 2>&1; then
+        die "无法清理被 Docker 创建成目录的运行态文件路径: ${target_file}"
+      fi
+    fi
+  elif [[ -e "$target_file" && ! -w "$target_file" ]]; then
+    if ! rm -f "$target_file" 2>/dev/null; then
+      if ! command -v docker >/dev/null 2>&1 || ! docker run --rm --user 0:0 \
+        -e TARGET_BASE="$target_base" \
+        -v "${target_dir}:/teamai-runtime-dir" \
+        busybox:1.36 \
+        sh -c 'rm -f "/teamai-runtime-dir/${TARGET_BASE}"' \
+        >/dev/null 2>&1; then
+        die "无法清理不可写运行态文件: ${target_file}"
+      fi
+    fi
+  fi
 }
 
 random_hex() {

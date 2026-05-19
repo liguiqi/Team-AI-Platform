@@ -9,7 +9,7 @@ require_cmd sed
 new_api_url="$(host_new_api_url)"
 
 target_file="$(librechat_config_file)"
-mkdir -p "$(dirname "$target_file")"
+prepare_runtime_file_path "$target_file"
 
 if is_placeholder "${CASDOOR_CLIENT_SECRET:-}" || is_placeholder "${LIBRECHAT_OPENID_SESSION_SECRET:-}" || is_placeholder "${CASDOOR_PUBLIC_URL:-}"; then
   warn "Casdoor OIDC 变量仍为占位值，LibreChat 登录页将显示统一认证入口，但无法完成真实登录"

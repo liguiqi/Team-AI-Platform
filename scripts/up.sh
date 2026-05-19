@@ -12,8 +12,11 @@ if [[ "$MODE" == "local" ]]; then
   bash "$ROOT_DIR/scripts/start-local-smtp-relay.sh"
 fi
 prepare_librechat_runtime_dirs
+prepare_casdoor_runtime_dirs
 bash "$ROOT_DIR/scripts/render-librechat-config.sh"
 bash "$ROOT_DIR/scripts/render-casdoor-config.sh"
+remove_stale_compose_service casdoor
+remove_stale_compose_service librechat
 docker_compose_up_retry 3
 bash "$ROOT_DIR/scripts/sync-casdoor-auth-config.sh"
 bash "$ROOT_DIR/scripts/sync-casdoor-providers.sh"

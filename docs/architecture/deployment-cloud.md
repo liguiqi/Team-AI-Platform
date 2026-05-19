@@ -378,7 +378,7 @@ bash scripts/uninstall-service.sh
 - `runtime/prod/librechat/uploads`
 - `runtime/prod/librechat/logs`
 
-默认会把它们校正为 `1000:1000`；如果你自定义了 LibreChat 镜像用户，可在 `.env` 中改：
+默认会把它们校正为 `1000:1000`；如果当前执行用户不能直接 `chown` root 拥有的目录，脚本会自动用一次性 `busybox` 容器做兜底修复。如果你自定义了 LibreChat 镜像用户，可在 `.env` 中改：
 - `LIBRECHAT_RUNTIME_UID`
 - `LIBRECHAT_RUNTIME_GID`
 

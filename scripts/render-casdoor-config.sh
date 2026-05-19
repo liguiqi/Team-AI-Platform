@@ -25,7 +25,8 @@ resolve_public_asset_url() {
 
 target_config_file="$(casdoor_config_file)"
 target_init_data_file="$(casdoor_init_data_file)"
-mkdir -p "$(dirname "$target_config_file")" "$(dirname "$target_init_data_file")"
+prepare_runtime_file_path "$target_config_file"
+prepare_runtime_file_path "$target_init_data_file"
 
 if [[ "$MODE" == "local" ]]; then
   casdoor_runmode="dev"

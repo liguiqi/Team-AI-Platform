@@ -63,6 +63,7 @@ fi
 
 load_env
 prepare_librechat_runtime_dirs
+prepare_casdoor_runtime_dirs
 while IFS= read -r prefix; do
   api_key_var="${prefix}_API_KEY"
   if [[ "$(provider_is_enabled_env "$prefix")" == "true" ]] && is_placeholder "${!api_key_var:-}"; then

@@ -364,7 +364,6 @@ if [[ -z "${TOKEN_ID:-}" ]]; then
   TOKEN_KEY="$(random_alnum 48)" || { warn "random_alnum failed"; TOKEN_KEY="fallback$(date +%s)"; }
   token_key_sql="$(sql_escape "${TOKEN_KEY}")" || { warn "sql_escape failed"; token_key_sql="${TOKEN_KEY}"; }
   created_time="$(date +%s)"
-  info "token_key_sql=[${token_key_sql}] token_name=[${token_name_sql}]"
   # INSERT 不含 "group" 列
   docker exec \
     -e PGPASSWORD="${NEW_API_DB_PASSWORD}" \
