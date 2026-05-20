@@ -9,6 +9,8 @@ require_cmd jq
 prepare_env_file
 load_env
 new_api_url="$(host_new_api_url)"
+new_api_postgres_container="$(container_name new-api-postgres)"
+librechat_container="$(container_name librechat)"
 
 if [[ "$MODE" == "local" ]]; then
   sync_local_env_copy
@@ -197,10 +199,10 @@ psql_exec() {
   cat > "$tmp" <<PSQLEOF
 $sql
 PSQLEOF
-  docker cp "$tmp" ai-gateway-new-api-postgres:/tmp/_psql_cmd.sql >/dev/null
-  docker exec ai-gateway-new-api-postgres env PGPASSWORD="${NEW_API_DB_PASSWORD}" \
+  docker cp "$tmp" "${new_api_postgres_container}:/tmp/_psql_cmd.sql" >/dev/null
+  docker exec "$new_api_postgres_container" env PGPASSWORD="${NEW_API_DB_PASSWORD}" \
     psql -U "${NEW_API_DB_USER}" -d "${NEW_API_DB_NAME}" -v ON_ERROR_STOP=1 -At -F $'\t' -f /tmp/_psql_cmd.sql
-  docker exec ai-gateway-new-api-postgres rm -f /tmp/_psql_cmd.sql >/dev/null
+  docker exec "$new_api_postgres_container" rm -f /tmp/_psql_cmd.sql >/dev/null
   rm -f "$tmp"
 }
 
@@ -303,7 +305,8 @@ EOF
 
 put_option SelfUseModeEnabled "${NEW_API_SELF_USE_MODE_ENABLED}"
 put_option DemoSiteEnabled "${NEW_API_DEMO_SITE_ENABLED}"
-info "系统配置已写入（SelfUseMode / DemoSite）"
+put_option ServerAddress "\"$(json_escape "${NEW_API_PUBLIC_URL}")\""
+info "系统配置已写入（SelfUseMode / DemoSite / ServerAddress）"
 
 put_option ModelRequestRateLimitEnabled "${NEW_API_RATE_LIMIT_ENABLED}"
 put_option ModelRequestRateLimitDurationMinutes "${NEW_API_RATE_LIMIT_WINDOW_MINUTES}"
@@ -378,7 +381,7 @@ if [[ -z "${TOKEN_ID:-}" ]]; then
     -e _MLE="${token_model_limits_enabled_sql}" \
     -e _ML="${token_model_limits_sql}" \
     -e _GRP="${token_group_sql}" \
-    ai-gateway-new-api-postgres \
+    "$new_api_postgres_container" \
     bash -c 'psql -U "$_UID" -d "$_DB" -v ON_ERROR_STOP=1 -c "INSERT INTO tokens (user_id, key, status, name, created_time, accessed_time, expired_time, remain_quota, unlimited_quota, model_limits_enabled, model_limits, used_quota, cross_group_retry) VALUES ($_SID, '\''$_KEY'\'', 1, '\''$_NAME'\'', $_CT, $_CT, -1, $_QUOTA, $_UNL, $_MLE, '\''$_ML'\'', 0, false);"
 psql -U "$_UID" -d "$_DB" -c "UPDATE tokens SET \"group\" = '\''$_GRP'\'' WHERE user_id = $_SID AND name = '\''$_NAME'\'';"'
   # 反查 token
@@ -387,19 +390,19 @@ psql -U "$_UID" -d "$_DB" -c "UPDATE tokens SET \"group\" = '\''$_GRP'\'' WHERE 
   TOKEN_KEY="$(printf '%s' "$token_row" | cut -f2)"
 else
   info "更新 LibreChat 服务 token（ID: ${TOKEN_ID}）"
-  docker exec ai-gateway-new-api-postgres \
+  docker exec "$new_api_postgres_container" \
     env PGPASSWORD="${NEW_API_DB_PASSWORD}" \
     psql -U "${NEW_API_DB_USER}" -d "${NEW_API_DB_NAME}" -c \
     "UPDATE tokens SET status = 1, expired_time = -1, remain_quota = ${NEW_API_SERVICE_TOKEN_QUOTA}, unlimited_quota = ${NEW_API_SERVICE_TOKEN_UNLIMITED}, model_limits_enabled = ${token_model_limits_enabled_sql}, model_limits = ${token_model_limits_sql}, cross_group_retry = false WHERE id = ${TOKEN_ID};"
   # 单独更新 group 列
-  docker exec ai-gateway-new-api-postgres \
+  docker exec "$new_api_postgres_container" \
     env PGPASSWORD="${NEW_API_DB_PASSWORD}" \
     psql -U "${NEW_API_DB_USER}" -d "${NEW_API_DB_NAME}" -c \
     'UPDATE tokens SET "group" = '"'"''${token_group_sql}''"'"' WHERE id = '${TOKEN_ID}';'
 fi
 
-[[ -n "${TOKEN_ID:-}" ]] || { info "反查 token ID 失败，尝试从数据库重新获取"; TOKEN_ID="$(docker exec ai-gateway-new-api-postgres psql -U "${NEW_API_DB_USER}" -d "${NEW_API_DB_NAME}" -At -c "SELECT id FROM tokens WHERE user_id = ${SERVICE_ID} AND name = '${token_name_sql}' ORDER BY id DESC LIMIT 1;" 2>/dev/null)"; }
-[[ -n "${TOKEN_KEY:-}" ]] || { info "反查 token key 失败，尝试从数据库重新获取"; TOKEN_KEY="$(docker exec ai-gateway-new-api-postgres psql -U "${NEW_API_DB_USER}" -d "${NEW_API_DB_NAME}" -At -c "SELECT key FROM tokens WHERE user_id = ${SERVICE_ID} AND name = '${token_name_sql}' ORDER BY id DESC LIMIT 1;" 2>/dev/null)"; }
+[[ -n "${TOKEN_ID:-}" ]] || { info "反查 token ID 失败，尝试从数据库重新获取"; TOKEN_ID="$(docker exec "$new_api_postgres_container" psql -U "${NEW_API_DB_USER}" -d "${NEW_API_DB_NAME}" -At -c "SELECT id FROM tokens WHERE user_id = ${SERVICE_ID} AND name = '${token_name_sql}' ORDER BY id DESC LIMIT 1;" 2>/dev/null)"; }
+[[ -n "${TOKEN_KEY:-}" ]] || { info "反查 token key 失败，尝试从数据库重新获取"; TOKEN_KEY="$(docker exec "$new_api_postgres_container" psql -U "${NEW_API_DB_USER}" -d "${NEW_API_DB_NAME}" -At -c "SELECT key FROM tokens WHERE user_id = ${SERVICE_ID} AND name = '${token_name_sql}' ORDER BY id DESC LIMIT 1;" 2>/dev/null)"; }
 [[ -n "${TOKEN_ID:-}" ]] || die "无法获取服务 token ID"
 [[ -n "${TOKEN_KEY:-}" ]] || die "无法获取服务 token 明文"
 
@@ -409,7 +412,7 @@ if [[ "$MODE" == "local" ]]; then
 fi
 
 bash "$ROOT_DIR/scripts/render-librechat-config.sh"
-if docker ps -a --format '{{.Names}}' | grep -qx 'ai-gateway-librechat'; then
+if docker ps -a --format '{{.Names}}' | grep -qx "$librechat_container"; then
   prepare_librechat_runtime_dirs
   docker_compose_up_retry 3 --force-recreate librechat >/dev/null 2>&1 || docker_compose restart librechat >/dev/null 2>&1 || true
   info "LibreChat 已按最新 token 重载配置"

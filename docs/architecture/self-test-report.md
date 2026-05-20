@@ -6,7 +6,7 @@
 ## 自测环境
 - 操作系统：Linux 开发环境（Ubuntu）
 - 部署模式：`MODE=local`
-- 测试日期：2026-05-18（登录页样式、OIDC 重启恢复、多供应商接入与 LibreChat 默认管理员初始化后复测）
+- 测试日期：2026-05-20（main 本机隔离部署、API key 本地注入、脱敏提交准备、2C2G 配置复核后复测）
 - 运行组件：
   - `calciumion/new-api:v0.12.1`
   - `ghcr.io/danny-avila/librechat:v0.8.5`
@@ -45,23 +45,23 @@
 ### 1. 容器状态
 结果：**通过**
 
-所有 7 个容器正常运行：
+main 本机隔离环境所有 7 个核心容器正常运行，容器名统一为 `ai-gateway-main-*`：
 ```
-ai-gateway-librechat         Up                      0.0.0.0:3080->3080/tcp
-ai-gateway-librechat-admin   Up                      0.0.0.0:3001->3000/tcp
-ai-gateway-new-api           Up                      0.0.0.0:13000->3000/tcp
-ai-gateway-casdoor           Up (healthy)            0.0.0.0:18000->8000/tcp
-ai-gateway-new-api-postgres  Up                      5432/tcp
-ai-gateway-new-api-redis     Up                      6379/tcp
-ai-gateway-librechat-mongodb Up                      127.0.0.1:27017->27017/tcp
+ai-gateway-main-librechat           Up                      0.0.0.0:3081->3080/tcp
+ai-gateway-main-librechat-admin     Up (healthy)            0.0.0.0:3003->3000/tcp
+ai-gateway-main-new-api             Up                      0.0.0.0:13001->3000/tcp
+ai-gateway-main-casdoor             Up (healthy)            0.0.0.0:18001->8000/tcp
+ai-gateway-main-new-api-postgres    Up (healthy)            5432/tcp
+ai-gateway-main-new-api-redis       Up (healthy)            6379/tcp
+ai-gateway-main-librechat-mongodb   Up (healthy)            127.0.0.1:27018->27017/tcp
 ```
 
 ### 2. Casdoor SSO
 结果：**通过**
 
 ```
-GET http://localhost:18000/.well-known/openid-configuration
-- issuer: http://__YOUR_SERVER_IP__:18000
+GET http://localhost:18001/.well-known/openid-configuration
+- issuer: http://__YOUR_SERVER_IP__:18001
 - 19 OIDC endpoints 可用
 - 健康检查: healthy
 - 登录页支持浏览器 light / dark 自适应
@@ -83,7 +83,7 @@ GET http://localhost:18000/.well-known/openid-configuration
 结果：**通过**
 
 ```
-GET http://localhost:13000/api/status
+GET http://localhost:13001/api/status
 - success: true
 ```
 
@@ -91,7 +91,7 @@ GET http://localhost:13000/api/status
 结果：**通过**
 
 ```
-GET http://localhost:13000/v1/models
+GET http://localhost:13001/v1/models
 - Total models: 19
 - Chat models (13): glm-5.1, glm-5, glm-5-turbo, glm-4.7, ...
 - Vision models (6): glm-5v-turbo, glm-4.6v, glm-4.1v-thinking-flashx, ...
@@ -110,7 +110,7 @@ POST /v1/chat/completions (model: glm-5.1 / deepseek-v4-flash / qwen-plus / kimi
 结果：**通过**
 
 ```
-GET http://localhost:3080/
+GET http://localhost:3081/
 - HTTP 200
 - 页面正常加载
 ```
@@ -122,11 +122,11 @@ LibreChat 容器内环境变量确认：
 ```
 SEARCH=true
 SEARCH_PROVIDER=serper
-SERPER_API_KEY=0b9e...（已配置）
+SERPER_API_KEY=已配置（不在文档记录明文）
 SCRAPER=firecrawl
-FIRECRAWL_API_KEY=fc-57a...（已配置）
+FIRECRAWL_API_KEY=已配置（不在文档记录明文）
 RERANKER=jina
-JINA_API_KEY=jina_72ce...（已配置）
+JINA_API_KEY=已配置（不在文档记录明文）
 ```
 
 ### 8. 内存使用
@@ -134,14 +134,14 @@ JINA_API_KEY=jina_72ce...（已配置）
 
 各容器实际内存占用在限制内：
 ```
-librechat-admin   140.6MiB / 256MiB (54.94%)
-librechat         254.9MiB / 448MiB (56.89%)
-casdoor           23.07MiB / 128MiB (18.03%)
-new-api           19.88MiB / 128MiB (15.53%)
-new-api-postgres  45.59MiB / 128MiB (35.62%)
-new-api-redis      3.97MiB /  64MiB (6.20%)
-librechat-mongodb 88.27MiB / 320MiB (27.59%)
-总计约 576MiB
+ai-gateway-main-librechat           280.8MiB / 352MiB (79.78%)
+ai-gateway-main-librechat-admin     114.2MiB / 192MiB (59.49%)
+ai-gateway-main-casdoor              27.2MiB /  96MiB (28.30%)
+ai-gateway-main-new-api              21.8MiB /  96MiB (22.66%)
+ai-gateway-main-new-api-postgres     40.6MiB /  80MiB (50.69%)
+ai-gateway-main-new-api-redis         6.1MiB /  40MiB (15.35%)
+ai-gateway-main-librechat-mongodb    61.5MiB / 320MiB (19.20%)
+本地含 Admin Panel 总计约 553MiB；生产 compose 默认不启用 Admin Panel，按同类负载估算核心服务约 439MiB。
 ```
 
 ### 9. Auto-bootstrap
@@ -297,10 +297,10 @@ POST /api/admin/login/local
 
 Casdoor OIDC code 登录
 - Casdoor /api/login 返回授权 code
-- LibreChat /oauth/openid/callback 返回 302 到 http://__YOUR_SERVER_IP__:3080
+- LibreChat /oauth/openid/callback 返回 302 到 http://__YOUR_SERVER_IP__:3081
 - 默认管理员在 LibreChat 中完成 OpenID 关联，role=ADMIN
 
-GET http://localhost:3001
+GET http://localhost:3003
 - Admin Panel Web 入口返回 200
 ```
 
@@ -315,7 +315,7 @@ Casdoor 默认语言
 手机/无邮箱 OIDC 用户
 - 临时 Casdoor 用户仅配置 phone，email 为空
 - Casdoor /api/login 返回授权 code
-- LibreChat /oauth/openid/callback 返回 302 到 http://__YOUR_SERVER_IP__:3080
+- LibreChat /oauth/openid/callback 返回 302 到 http://__YOUR_SERVER_IP__:3081
 - LibreChat 自动生成 synthetic email: oidc-<openidId>@casdoor.team-ai.local
 - 未再出现 User validation failed: email: is invalid
 - `/api/user` 对前端返回手机号作为 `email` 展示值，并保留 `teamAiInternalEmail`
@@ -323,7 +323,7 @@ Casdoor 默认语言
 
 Logout stale token fallback
 - 有 session id_token 时仍返回 Casdoor /api/logout end-session redirect
-- 仅存在 stale openid_id_token cookie 且无当前 session id_token 时，返回 http://__YOUR_SERVER_IP__:3080/login?redirect=false
+- 仅存在 stale openid_id_token cookie 且无当前 session id_token 时，返回 http://__YOUR_SERVER_IP__:3081/login?redirect=false
 - 避免浏览器直达 Casdoor JSON 错误：未查询到对应token, accessToken无效
 ```
 
@@ -376,7 +376,7 @@ Logout stale token fallback
 - 智谱、DeepSeek、阿里云百炼、Kimi、火山方舟豆包、小米 MiMo 与 MiniMax 模型按供应商分组可见；豆包真实 chat 需先在火山方舟账号侧开通模型服务或配置推理接入点
 - 自动 bootstrap 一次部署即可使用
 - 搜索功能（Serper/Firecrawl/Jina）已配置
-- 内存使用适合 2C2G ECS 部署（当前实测总计约 576MiB）
+- 内存使用适合 2C2G ECS 部署（本地含 Admin Panel 实测约 553MiB；生产默认不启用 Admin Panel）
 - 统一认证通过 Casdoor OIDC 正常工作
 - Admin Panel 已在本地 compose 中集成，生产仍按需扩展
 - LibreChat 重启后，OIDC state 不再因内存 session 丢失而强制用户二次登录

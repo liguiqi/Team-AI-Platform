@@ -134,8 +134,8 @@ MODE=prod bash scripts/healthcheck.sh
 ## 管理入口
 
 ### 本地
-- Casdoor：`http://localhost:18000`
-- LibreChat：`http://localhost:3080`
+- Casdoor：`http://localhost:18001`
+- LibreChat：`http://localhost:3081`
 
 补充：
 - 当本地启用 `LIBRECHAT_OPENID_ALLOW_INSECURE_HTTP=true` 时，初始化脚本会把 `localhost` 公网地址自动替换为宿主机 IP。
@@ -209,7 +209,7 @@ docker compose -f deploy/docker-compose.prod.yml --env-file deploy/env/prod/.env
 
 效果：
 - 宿主机会启动 `runtime/local/smtp-relay/relay.log` 对应的 Python relay
-- Casdoor 持久化 Provider 会自动切换为 `host.docker.internal:2525`
+- Casdoor 持久化 Provider 会自动切换为 `host.docker.internal:2526`
 - relay 再使用宿主机 Python 把邮件投递到真实企业邮箱 SMTP
 
 ### 更换阿里云短信凭据
@@ -229,7 +229,7 @@ docker compose -f deploy/docker-compose.prod.yml --env-file deploy/env/prod/.env
 - `docker compose ... ps`
 - `docker compose ... logs -f casdoor`
 - `curl $CASDOOR_PUBLIC_URL/.well-known/openid-configuration`
-- 检查 Casdoor 健康检查状态：`docker inspect ai-gateway-casdoor | jq '.[0].State.Health'`
+- 检查 Casdoor 健康检查状态：`docker inspect ai-gateway-main-casdoor | jq '.[0].State.Health'`
 
 ### 重启后需要再次登录，或落到 `/oauth/error`
 排查：
@@ -266,7 +266,7 @@ docker compose -f deploy/docker-compose.prod.yml --env-file deploy/env/prod/.env
 - 若曾在测试过程中暴露过真实 SMTP / 短信 / OIDC 凭据，建议在验收完成后做一次统一轮换。
 
 ## 建议联读
-1. [architecture.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/architecture.md)
-2. [deployment-local.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/deployment-local.md)
-3. [deployment-cloud.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/deployment-cloud.md)
-4. [admin-librechat.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/admin-librechat.md)
+1. [architecture.md](docs/architecture/architecture.md)
+2. [deployment-local.md](docs/architecture/deployment-local.md)
+3. [deployment-cloud.md](docs/architecture/deployment-cloud.md)
+4. [admin-librechat.md](docs/architecture/admin-librechat.md)

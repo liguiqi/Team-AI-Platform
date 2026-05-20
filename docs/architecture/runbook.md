@@ -13,7 +13,7 @@ make health
 ### 建议每日巡检项
 - 检查容器是否都在 `Up` 状态
 - 检查 `NEW-API`、LibreChat 和 Casdoor 是否可访问
-- 若本地启用了 Admin Panel，顺手确认 `http://localhost:3001` 可访问，并用默认管理员确认可登录
+- 若本地启用了 Admin Panel，顺手确认 `http://localhost:3002` 可访问，并用默认管理员确认可登录；当前 main 本机如端口冲突则以 `.env` 为准
 - 检查磁盘空间，尤其是 `runtime/` 与 `backups/`
 - 检查 `NEW-API` 是否还能成功调用智谱
 - 检查容器内存使用是否在限制内
@@ -47,6 +47,11 @@ make smoke-zhipu
 
 ## systemd 服务管理（生产环境）
 
+安装脚本默认按生产模式写入 `Environment=MODE=prod`：
+```bash
+sudo bash scripts/install-service.sh /opt/ai-gateway-chat/repo prod
+```
+
 ### 检查服务状态
 ```bash
 sudo systemctl status ai-gateway-chat.service
@@ -71,9 +76,11 @@ docker stats --no-stream --format "table {{.Name}}\t{{.MemUsage}}\t{{.MemPerc}}"
 ```
 
 ### 内存告警阈值
-- LibreChat > 380MiB：关注
-- MongoDB > 260MiB：关注
-- Casdoor > 110MiB：关注
+- LibreChat > 310MiB：关注，接近 352M 限制时优先检查长上下文会话和插件调用
+- MongoDB > 260MiB：关注，当前 WiredTiger cache 固定为 0.25GB
+- PostgreSQL > 65MiB：关注，当前生产限制为 80M
+- Casdoor > 75MiB：关注，当前限制为 96M
+- Redis > 30MiB：关注，当前限制为 40M 且 `maxmemory=20mb`
 
 ## 服务状态查看
 
@@ -151,7 +158,7 @@ docker compose --env-file .env -f deploy/docker-compose.local.yml logs -f casdoo
 ### 场景 1：NEW-API 后台打不开
 排查：
 1. `docker compose ... ps`
-2. `curl http://localhost:13000/api/status`
+2. `curl http://localhost:13001/api/status`
 3. 查看 `new-api`、`new-api-postgres`、`new-api-redis` 日志
 
 常见原因：
@@ -161,7 +168,7 @@ docker compose --env-file .env -f deploy/docker-compose.local.yml logs -f casdoo
 
 ### 场景 2：LibreChat 页面能打开但无法聊天
 排查：
-1. `curl http://localhost:3080/health`
+1. `curl http://localhost:3081/health`
 2. 查看 `runtime/local/librechat/librechat.yaml` 是否已渲染
 3. 确认 `.env` 中有 `NEW_API_SERVICE_TOKEN`
 4. 重新执行 `make bootstrap`
@@ -169,10 +176,10 @@ docker compose --env-file .env -f deploy/docker-compose.local.yml logs -f casdoo
 
 ### 场景 3：统一认证跳转失败
 排查：
-1. `curl http://localhost:18000/.well-known/openid-configuration`
+1. `curl http://localhost:18001/.well-known/openid-configuration`
 2. 查看 `docker compose ... logs -f casdoor`
 3. 确认 `CASDOOR_PUBLIC_URL` 与实际入口一致
-4. 确认 `runtime/local/casdoor/init_data.json` 中的回调地址是 `http://localhost:3080/oauth/openid/callback`
+4. 确认 `runtime/local/casdoor/init_data.json` 中的回调地址是 `http://localhost:3081/oauth/openid/callback`
 5. 确认 LibreChat 已启用 RedisStore，`REDIS_URI` 指向 `new-api-redis:6379/1`
 
 ### 场景 3.5：LibreChat 重启后又要求做一次统一认证
@@ -349,7 +356,7 @@ make smoke-zhipu
 ## 建议搭配文档
 遇到具体问题时，建议按职责边界补充阅读：
 
-1. 前台页面、模型显示、上传与用户体验问题，优先看 [admin-librechat.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/admin-librechat.md)
-2. 渠道、token、额度、限流、上游模型映射问题，优先看 [admin-new-api.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/admin-new-api.md)
-3. 统一认证、短信、邮件验证码问题，优先看 [admin-auth-sso.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/admin-auth-sso.md)
-4. 若需要回看整体设计，再看 [architecture.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/architecture.md)
+1. 前台页面、模型显示、上传与用户体验问题，优先看 [admin-librechat.md](docs/architecture/admin-librechat.md)
+2. 渠道、token、额度、限流、上游模型映射问题，优先看 [admin-new-api.md](docs/architecture/admin-new-api.md)
+3. 统一认证、短信、邮件验证码问题，优先看 [admin-auth-sso.md](docs/architecture/admin-auth-sso.md)
+4. 若需要回看整体设计，再看 [architecture.md](docs/architecture/architecture.md)

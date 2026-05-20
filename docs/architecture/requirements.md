@@ -16,7 +16,7 @@
 ## 项目目标
 
 ### 总目标
-构建一个可在本地和单机云服务器上稳定运行的内部 AI 对话平台，首期以智谱作为主验收渠道，后续能够平滑扩展到其它模型提供商。
+构建一个可在本地和单机云服务器上稳定运行的内部 AI 对话平台，当前主线同时支持智谱、DeepSeek、阿里云百炼、Kimi、火山方舟豆包、小米 MiMo 与 MiniMax 渠道，并能在 2C2G Aliyun VPS 上按无域名直连模式部署运行。
 
 ### 具体目标
 - 使用 `NEW-API` 统一管理上游渠道、模型映射、服务 token、额度与限流。
@@ -37,7 +37,7 @@
 - 负责把用户的验收工作尽量收敛为最少步骤。
 
 ### 用户Project Owner
-- 负责提供真实可用的 `ZHIPU_API_KEY`。
+- 负责提供真实可用的上游模型 API Key。
 - 负责提供真实可用的短信与邮箱凭据。
 - 负责执行最终人工验收。
 - 不承担工程集成、脚本补位或第三方组件手工修复工作。
@@ -93,6 +93,7 @@
 ### 启停与初始化
 - 本地必须支持 `make init`、`make up`、`make down`、`make restart`。
 - 生产必须支持 `MODE=prod bash scripts/up.sh` 等等效操作。
+- 生产 systemd 自启动必须显式使用 `MODE=prod`，避免在云服务器误按 local compose 启动。
 - 初始化时自动生成本地随机密钥，减少手工输入。
 
 ### 网关治理
@@ -131,7 +132,7 @@
 
 ### 可复现
 - 新机器在具备 Docker 与 Compose 的前提下，应能按文档复现。
-- 版本必须固定，不允许使用 `latest`。
+- 生产核心服务版本必须固定，不允许依赖 `latest`；本地 Admin Panel 若上游仅提供 `latest`，必须保持仅本地启用，生产 compose 默认不包含该服务。
 
 ### 可维护
 - 尽量使用官方镜像与外置配置。
@@ -150,19 +151,21 @@
 - LibreChat 只持有 `NEW_API_SERVICE_TOKEN`，不持有智谱官方采购密钥。
 - LibreChat 默认关闭本地邮箱登录，避免绕过统一认证。
 - `.env`、运行时数据目录、备份包必须在 `.gitignore` 中忽略。
+- 仓库只提交 `.env.example`、`deploy/env/local/.env.example` 与 `deploy/env/prod/.env.example` 等模板文件；真实 `.env`、`deploy/env/local/.env`、`deploy/env/prod/.env` 不得被 Git 跟踪。
 - 敏感配置变更后，必须重新渲染 LibreChat 配置并重启相关容器。
 
 ## 工程约束
-- 平台首期必须以智谱链路打通为第一优先级。
+- 平台主线以多供应商链路为标准交付，智谱仍作为默认启用和回归验证渠道。
 - 编排方式固定为 Docker Compose，不引入额外编排系统。
 - 管理员操作必须尽量集中在 `NEW-API` 后台和仓库脚本，不依赖复杂的手工数据库编辑。
 - 运维文档必须可直接供接手人员使用。
 
 ## 验收前提
-- 用户提供真实可用的 `ZHIPU_API_KEY`。
-- 本地机器可访问智谱上游地址。
-- 本地 `13000`、`3080` 端口可用。
+- 用户提供至少一个真实可用的上游模型 API Key。
+- 本地机器可访问已启用供应商的上游地址。
+- 本地 `13001`、`3081`、`18001` 端口可用；如启用 Admin Panel，`3002` 需可用，已被占用时可改为 `3003`。
 - 运行机器已安装 Docker Engine 与 Docker Compose v2。
+- Aliyun 2C2G VPS 生产部署默认使用 `deploy/docker-compose.prod.yml`、`deploy/env/prod/.env`、`COMPOSE_PROFILES=` 与直连 IP 入口，不启用 Admin Panel 和 Caddy。
 
 ## 成功标准
 - `NEW-API` 管理后台可访问。

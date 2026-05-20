@@ -14,7 +14,7 @@ participant "LibreChat" as Libre
 participant "NEW-API" as NewAPI
 database "NEW-API PostgreSQL" as PG
 database "Redis" as Redis
-participant "上游模型供应商\n智谱 / Future Providers" as LLM
+participant "上游模型供应商\n智谱 / DeepSeek / 百炼 / Kimi / 豆包 / MiMo / MiniMax" as LLM
 database "MongoDB" as Mongo
 
 group 部署或变更时的模型配置生成

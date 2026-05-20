@@ -66,15 +66,16 @@ NEW-API OpenAI 兼容接口
 - 与 `NEW-API` 的治理数据库分离，避免职责混淆。
 
 ### Caddy
-- 仅在生产方案中启用。
-- 对外暴露三个域名：
+- 仅在生产 `COMPOSE_PROFILES=domain-proxy` 时启用。
+- 默认 Aliyun 2C2G 生产方案使用无域名直连模式，不启动 Caddy，从而减少内存占用。
+- 域名代理模式下对外暴露三个域名：
   - `PUBLIC_CHAT_DOMAIN` 对应 LibreChat
   - `NEW_API_ADMIN_DOMAIN` 对应 `NEW-API`
   - `AUTH_PUBLIC_DOMAIN` 对应 Casdoor
 - 负责 TLS 证书申请和反向代理。
 
 ### 运行时渲染配置
-- 仓库保留模板文件 [deploy/librechat/config/librechat.yaml](/home/lgq/repoWorkProject/TeamAIPlatform/deploy/librechat/config/librechat.yaml)。
+- 仓库保留模板文件 [deploy/librechat/config/librechat.yaml](deploy/librechat/config/librechat.yaml)。
 - 实际运行时，脚本会把 `.env` 中的变量渲染为真实文件：
   - 本地：`runtime/local/librechat/librechat.yaml`
   - 生产：`runtime/prod/librechat/librechat.yaml`
@@ -250,18 +251,20 @@ LibreChat 集成了网络搜索与内容抓取能力：
 ### 容器内存限制
 | 容器 | 内存限制 |
 |------|---------|
-| LibreChat | 448M |
+| LibreChat | 352M |
 | MongoDB | 320M |
-| NEW-API | 128M |
-| PostgreSQL | 128M |
-| Casdoor | 128M |
-| Redis | 64M |
-| Caddy（生产） | 64M |
+| NEW-API | 96M |
+| PostgreSQL | 80M |
+| Casdoor | 96M |
+| Redis | 40M |
+| Caddy（仅 domain-proxy） | 32M |
 
 ### 数据库缓存优化
 - MongoDB：`--wiredTigerCacheSizeGB=0.25` 是 MongoDB 8 当前允许的最低值，因此 2C2G 方案改为给 MongoDB 320M 容器余量，同时压低 LibreChat Node 堆上限
-- LibreChat：`NODE_OPTIONS` 默认附带 `--max-old-space-size=384`，限制 Node 堆上限，避免聊天高峰时挤占整机内存
-- Redis：`--maxmemory 32mb --maxmemory-policy allkeys-lru`
+- LibreChat：`NODE_OPTIONS` 默认附带 `--max-old-space-size=288`，并设置 `MALLOC_ARENA_MAX=2`，限制 Node 堆和 glibc arena 扩张
+- NEW-API / Casdoor：设置 `GOMEMLIMIT=64MiB` 与 `GOGC=50`，降低 Go 服务在小内存机器上的 GC 滞后风险
+- PostgreSQL：`shared_buffers=24MB`、`work_mem=2MB`、`maintenance_work_mem=12MB`、`effective_cache_size=80MB`、`max_connections=40`
+- Redis：`--maxmemory 20mb --maxmemory-policy allkeys-lru`
 
 ## 自动 Bootstrap
 - 当 `BOOTSTRAP_AUTOCONFIGURE=true` 时，`make up` 会自动执行 bootstrap

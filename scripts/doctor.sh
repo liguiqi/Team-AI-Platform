@@ -20,7 +20,12 @@ fi
 
 if [[ "$MODE" == "local" ]]; then
   sync_local_env_copy
-  for port in "${NEW_API_PORT}" "${LIBRECHAT_PORT}" "${CASDOOR_PORT}"; do
+  smtp_relay_port=""
+  if [[ "$(normalize_bool "${LOCAL_SMTP_RELAY_ENABLED:-false}")" == "true" ]]; then
+    smtp_relay_port="${LOCAL_SMTP_RELAY_PORT:-2526}"
+  fi
+  for port in "${NEW_API_PORT}" "${LIBRECHAT_PORT}" "${CASDOOR_PORT}" "${LIBRECHAT_ADMIN_PANEL_PORT:-}" "${LIBRECHAT_MONGODB_LOCAL_PORT:-}" "$smtp_relay_port"; do
+    [[ -n "$port" ]] || continue
     if ss -ltn 2>/dev/null | awk '{print $4}' | grep -q ":${port}$"; then
       warn "端口 ${port} 已被占用或已有服务监听"
     fi

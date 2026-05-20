@@ -1,7 +1,7 @@
 services:
   new-api:
     image: calciumion/new-api:${NEW_API_VERSION}
-    container_name: ai-gateway-new-api
+    container_name: ${CONTAINER_NAME_PREFIX:-ai-gateway-main}-new-api
     restart: always
     command: --log-dir /app/logs
     depends_on:
@@ -20,20 +20,34 @@ services:
       ERROR_LOG_ENABLED: "true"
       BATCH_UPDATE_ENABLED: "true"
       GENERATE_DEFAULT_TOKEN: "false"
+      GOMEMLIMIT: ${NEW_API_GOMEMLIMIT:-64MiB}
+      GOGC: ${NEW_API_GOGC:-50}
     volumes:
       - ../runtime/local/new-api/data:/data
       - ../runtime/local/new-api/logs:/app/logs
     deploy:
       resources:
         limits:
-          memory: 128M
+          memory: ${NEW_API_MEMORY_LIMIT:-96M}
     networks:
       - gateway
 
   new-api-postgres:
     image: postgres:${POSTGRES_VERSION}
-    container_name: ai-gateway-new-api-postgres
+    container_name: ${CONTAINER_NAME_PREFIX:-ai-gateway-main}-new-api-postgres
     restart: always
+    command:
+      - postgres
+      - -c
+      - shared_buffers=${NEW_API_POSTGRES_SHARED_BUFFERS:-24MB}
+      - -c
+      - work_mem=${NEW_API_POSTGRES_WORK_MEM:-2MB}
+      - -c
+      - maintenance_work_mem=${NEW_API_POSTGRES_MAINTENANCE_WORK_MEM:-12MB}
+      - -c
+      - effective_cache_size=${NEW_API_POSTGRES_EFFECTIVE_CACHE_SIZE:-80MB}
+      - -c
+      - max_connections=${NEW_API_POSTGRES_MAX_CONNECTIONS:-40}
     environment:
       POSTGRES_DB: ${NEW_API_DB_NAME}
       POSTGRES_USER: ${NEW_API_DB_USER}
@@ -49,15 +63,15 @@ services:
     deploy:
       resources:
         limits:
-          memory: 128M
+          memory: ${NEW_API_POSTGRES_MEMORY_LIMIT:-80M}
     networks:
       - gateway
 
   new-api-redis:
     image: redis:${REDIS_VERSION}
-    container_name: ai-gateway-new-api-redis
+    container_name: ${CONTAINER_NAME_PREFIX:-ai-gateway-main}-new-api-redis
     restart: always
-    command: redis-server --appendonly yes --requirepass ${NEW_API_REDIS_PASSWORD} --maxmemory 32mb --maxmemory-policy allkeys-lru
+    command: redis-server --appendonly yes --requirepass ${NEW_API_REDIS_PASSWORD} --maxmemory ${NEW_API_REDIS_MAXMEMORY:-20mb} --maxmemory-policy allkeys-lru
     healthcheck:
       test: ["CMD-SHELL", "redis-cli -a ${NEW_API_REDIS_PASSWORD} ping | grep -q PONG"]
       interval: 3s
@@ -69,13 +83,13 @@ services:
     deploy:
       resources:
         limits:
-          memory: 64M
+          memory: ${NEW_API_REDIS_MEMORY_LIMIT:-40M}
     networks:
       - gateway
 
   casdoor:
     image: casbin/casdoor:${CASDOOR_VERSION}
-    container_name: ai-gateway-casdoor
+    container_name: ${CONTAINER_NAME_PREFIX:-ai-gateway-main}-casdoor
     restart: always
     entrypoint: /bin/sh -c './server --createDatabase=true'
     depends_on:
@@ -85,6 +99,8 @@ services:
       - "${CASDOOR_PORT}:8000"
     environment:
       RUNNING_IN_DOCKER: "true"
+      GOMEMLIMIT: ${CASDOOR_GOMEMLIMIT:-64MiB}
+      GOGC: ${CASDOOR_GOGC:-50}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:
@@ -100,13 +116,13 @@ services:
     deploy:
       resources:
         limits:
-          memory: 128M
+          memory: ${CASDOOR_MEMORY_LIMIT:-96M}
     networks:
       - gateway
 
   librechat:
     image: ghcr.io/danny-avila/librechat:${LIBRECHAT_VERSION}
-    container_name: ai-gateway-librechat
+    container_name: ${CONTAINER_NAME_PREFIX:-ai-gateway-main}-librechat
     restart: always
     depends_on:
       librechat-mongodb:
@@ -176,7 +192,8 @@ services:
       PLATFORM_THEME_LOCK: ${PLATFORM_THEME_LOCK:-true}
       PLATFORM_HIDE_THEME_SELECTOR: ${PLATFORM_HIDE_THEME_SELECTOR:-true}
       NO_INDEX: "true"
-      NODE_OPTIONS: "--max-old-space-size=${LIBRECHAT_NODE_MAX_OLD_SPACE_SIZE_MB:-384} --require /app/librechat-patches/openid-insecure-http.js"
+      NODE_OPTIONS: "--max-old-space-size=${LIBRECHAT_NODE_MAX_OLD_SPACE_SIZE_MB:-288} --require /app/librechat-patches/openid-insecure-http.js"
+      MALLOC_ARENA_MAX: ${LIBRECHAT_MALLOC_ARENA_MAX:-2}
       TRUST_PROXY: "1"
     volumes:
       - ../runtime/local/librechat/librechat.yaml:/app/librechat.yaml:ro
@@ -189,13 +206,13 @@ services:
     deploy:
       resources:
         limits:
-          memory: ${LIBRECHAT_MEMORY_LIMIT:-448M}
+          memory: ${LIBRECHAT_MEMORY_LIMIT:-352M}
     networks:
       - gateway
 
   librechat-mongodb:
     image: mongo:${MONGO_VERSION}
-    container_name: ai-gateway-librechat-mongodb
+    container_name: ${CONTAINER_NAME_PREFIX:-ai-gateway-main}-librechat-mongodb
     restart: always
     command:
       - mongod
@@ -220,13 +237,13 @@ services:
 
   librechat-admin:
     image: ghcr.io/clickhouse/librechat-admin-panel:${LIBRECHAT_ADMIN_PANEL_VERSION:-latest}
-    container_name: ai-gateway-librechat-admin
+    container_name: ${CONTAINER_NAME_PREFIX:-ai-gateway-main}-librechat-admin
     restart: always
     depends_on:
       librechat:
         condition: service_started
     ports:
-      - "${LIBRECHAT_ADMIN_PANEL_PORT:-3001}:3000"
+      - "${LIBRECHAT_ADMIN_PANEL_PORT:-3002}:3000"
     environment:
       SESSION_SECRET: ${LIBRECHAT_ADMIN_PANEL_SESSION_SECRET}
       VITE_API_BASE_URL: ${LIBRECHAT_PUBLIC_URL}
@@ -237,7 +254,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256M
+          memory: ${LIBRECHAT_ADMIN_PANEL_MEMORY_LIMIT:-192M}
     networks:
       - gateway
 

@@ -13,7 +13,7 @@ from typing import Iterable
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Local SMTP relay for Casdoor")
     parser.add_argument("--listen-host", default="0.0.0.0")
-    parser.add_argument("--listen-port", type=int, default=2525)
+    parser.add_argument("--listen-port", type=int, default=2526)
     parser.add_argument("--remote-host", default=os.getenv("LOCAL_SMTP_RELAY_REMOTE_HOST"))
     parser.add_argument(
         "--remote-port",

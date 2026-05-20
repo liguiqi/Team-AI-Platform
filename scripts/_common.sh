@@ -104,10 +104,20 @@ docker_compose_up_retry() {
   done
 }
 
+container_name_prefix() {
+  printf '%s' "${CONTAINER_NAME_PREFIX:-ai-gateway-main}"
+}
+
+container_name() {
+  local service="$1"
+  printf '%s-%s' "$(container_name_prefix)" "$service"
+}
+
 compose_container_name_for_service() {
   case "$1" in
-    casdoor) printf 'ai-gateway-casdoor' ;;
-    librechat) printf 'ai-gateway-librechat' ;;
+    caddy|new-api|new-api-postgres|new-api-redis|casdoor|librechat|librechat-mongodb|librechat-admin)
+      container_name "$1"
+      ;;
     *) printf '' ;;
   esac
 }
@@ -428,7 +438,7 @@ detect_local_host_ip() {
 
 migrate_local_public_urls_for_oidc() {
   local file="$1"
-  local allow_insecure_http host_ip current changed
+  local allow_insecure_http host_ip current changed librechat_port new_api_port casdoor_port
 
   [[ "$MODE" == "local" ]] || return 0
 
@@ -438,23 +448,30 @@ migrate_local_public_urls_for_oidc() {
   host_ip="$(detect_local_host_ip)"
   [[ -n "$host_ip" ]] || return 0
 
+  librechat_port="$(current_env_value LIBRECHAT_PORT "$file")"
+  new_api_port="$(current_env_value NEW_API_PORT "$file")"
+  casdoor_port="$(current_env_value CASDOOR_PORT "$file")"
+  librechat_port="${librechat_port:-3081}"
+  new_api_port="${new_api_port:-13001}"
+  casdoor_port="${casdoor_port:-18001}"
+
   changed=0
 
   current="$(current_env_value LIBRECHAT_PUBLIC_URL "$file")"
-  if [[ "$current" == "http://localhost:3080" || "$current" == "http://127.0.0.1:3080" ]]; then
-    replace_or_append_env LIBRECHAT_PUBLIC_URL "http://${host_ip}:3080" "$file"
+  if [[ "$current" =~ ^http://(localhost|127\.0\.0\.1)(:[0-9]+)?/?$ ]]; then
+    replace_or_append_env LIBRECHAT_PUBLIC_URL "http://${host_ip}:${librechat_port}" "$file"
     changed=1
   fi
 
   current="$(current_env_value NEW_API_PUBLIC_URL "$file")"
-  if [[ "$current" == "http://localhost:13000" || "$current" == "http://127.0.0.1:13000" ]]; then
-    replace_or_append_env NEW_API_PUBLIC_URL "http://${host_ip}:13000" "$file"
+  if [[ "$current" =~ ^http://(localhost|127\.0\.0\.1)(:[0-9]+)?/?$ ]]; then
+    replace_or_append_env NEW_API_PUBLIC_URL "http://${host_ip}:${new_api_port}" "$file"
     changed=1
   fi
 
   current="$(current_env_value CASDOOR_PUBLIC_URL "$file")"
-  if [[ "$current" == "http://localhost:18000" || "$current" == "http://127.0.0.1:18000" ]]; then
-    replace_or_append_env CASDOOR_PUBLIC_URL "http://${host_ip}:18000" "$file"
+  if [[ "$current" =~ ^http://(localhost|127\.0\.0\.1)(:[0-9]+)?/?$ ]]; then
+    replace_or_append_env CASDOOR_PUBLIC_URL "http://${host_ip}:${casdoor_port}" "$file"
     changed=1
   fi
 
@@ -481,6 +498,7 @@ wait_for_http() {
 
 sync_local_env_copy() {
   if [[ "$MODE" == "local" && -f "$ROOT_DIR/.env" ]]; then
+    mkdir -p "$ROOT_DIR/deploy/env/local"
     cp "$ROOT_DIR/.env" "$ROOT_DIR/deploy/env/local/.env"
   fi
 }

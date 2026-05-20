@@ -18,8 +18,8 @@
 ## 平台入口
 
 ### 本地
-- 地址：`http://localhost:3080`
-- Admin Panel：`http://localhost:3001`
+- 地址：`http://localhost:3081`
+- Admin Panel：`http://localhost:3002`（当前 main 本机如有冲突可设为 `3003`）
 
 ### 生产
 - 地址：`https://$PUBLIC_CHAT_DOMAIN`
@@ -47,7 +47,7 @@
 ## 本项目如何给 LibreChat 配置模型端点
 
 ### 模板文件
-- [deploy/librechat/config/librechat.yaml](/home/lgq/repoWorkProject/TeamAIPlatform/deploy/librechat/config/librechat.yaml)
+- [deploy/librechat/config/librechat.yaml](deploy/librechat/config/librechat.yaml)
 
 ### 实际运行文件
 - 本地：`runtime/local/librechat/librechat.yaml`
@@ -62,7 +62,7 @@
 这些变量不能直接以 `${...}` 占位符形式交给容器，否则 LibreChat 实际加载时会拿到字面字符串，而不是正确配置。
 
 ### 渲染脚本
-- [scripts/render-librechat-config.sh](/home/lgq/repoWorkProject/TeamAIPlatform/scripts/render-librechat-config.sh)
+- [scripts/render-librechat-config.sh](scripts/render-librechat-config.sh)
 
 ### 什么时候会自动渲染
 - `make up`
@@ -135,8 +135,8 @@
 ### 运维含义
 - 若用户无法登录，不要先查 LibreChat 本地用户库。
 - 应优先检查 Casdoor OIDC、SMTP、短信 Provider 与回调地址。
-- 默认管理员可以直接从 Casdoor 统一认证入口登录；如需使用 LibreChat 本地登录，可访问 `http://localhost:3080/login?redirect=false`。
-- 认证配置的详细说明见 [admin-auth-sso.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/admin-auth-sso.md)
+- 默认管理员可以直接从 Casdoor 统一认证入口登录；如需使用 LibreChat 本地登录，可访问 `http://localhost:3081/login?redirect=false`。
+- 认证配置的详细说明见 [admin-auth-sso.md](docs/architecture/admin-auth-sso.md)
 - 当前 compose 已为 LibreChat 开启 RedisStore（DB 1，`REDIS_KEY_PREFIX=librechat`），用于持久化 OIDC state / session。
 - 若 LibreChat 重启后浏览器带回旧 callback，运行时 patch 会自动重发授权，正常情况下不应再要求用户做“第二次统一认证登录”。
 
@@ -145,13 +145,13 @@
 ### 1. 页面可访问
 浏览器打开：
 ```text
-http://localhost:3080
+http://localhost:3081
 ```
 或生产域名。
 
 ### 2. 健康接口正常
 ```bash
-curl http://localhost:3080/health
+curl http://localhost:3081/health
 ```
 
 返回应为：
@@ -161,7 +161,7 @@ OK
 
 ### 3. 端点配置已生效
 ```bash
-curl http://localhost:3080/api/endpoints
+curl http://localhost:3081/api/endpoints
 ```
 
 正常情况下应能看到：
@@ -201,7 +201,7 @@ curl -fsS "$NEW_API_PUBLIC_URL/v1/models" \
 ### 场景 1：用户反馈没有模型可选
 优先检查：
 1. `runtime/local/librechat/librechat.yaml` 是否已渲染
-2. `curl http://localhost:3080/api/endpoints`
+2. `curl http://localhost:3081/api/endpoints`
 3. `NEW-API /v1/models`
 4. 确认 `NEW_API_TOKEN_MODEL_LIMITS_ENABLED=false`
 5. LibreChat 日志
@@ -407,6 +407,6 @@ make sync-provider-models
 这些都应优先回到 `NEW-API` 管理员手册和 runbook 排查。
 
 ## 推荐搭配阅读
-1. [admin-new-api.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/admin-new-api.md)
-2. [deployment-local.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/deployment-local.md)
-3. [runbook.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/runbook.md)
+1. [admin-new-api.md](docs/architecture/admin-new-api.md)
+2. [deployment-local.md](docs/architecture/deployment-local.md)
+3. [runbook.md](docs/architecture/runbook.md)

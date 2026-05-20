@@ -16,8 +16,8 @@ if [[ "$default_admin_enabled" != "true" && "$default_admin_casdoor_enabled" != 
   exit 0
 fi
 
-mongo_container="${LIBRECHAT_MONGODB_CONTAINER:-ai-gateway-librechat-mongodb}"
-librechat_container="${LIBRECHAT_CONTAINER:-ai-gateway-librechat}"
+mongo_container="${LIBRECHAT_MONGODB_CONTAINER:-$(container_name librechat-mongodb)}"
+librechat_container="${LIBRECHAT_CONTAINER:-$(container_name librechat)}"
 
 wait_for_container() {
   local container="$1"

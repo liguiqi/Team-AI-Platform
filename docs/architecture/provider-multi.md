@@ -50,7 +50,7 @@ LibreChat -> NEW-API (统一网关) -> 各供应商渠道
 ```dotenv
 # 以 DeepSeek 为例
 DEEPSEEK_ENABLED=true
-DEEPSEEK_API_KEY=sk-xxxxx
+DEEPSEEK_API_KEY=__FILL_BY_USER__
 DEEPSEEK_API_BASE_URL=https://api.deepseek.com
 DEEPSEEK_DEFAULT_MODEL=deepseek-v4-flash
 DEEPSEEK_TEST_MODEL=deepseek-v4-flash
@@ -109,7 +109,7 @@ curl -fsS "$NEW_API_PUBLIC_URL/v1/models" \
 ### DeepSeek
 
 ```dotenv
-DEEPSEEK_API_KEY=sk-xxxxx
+DEEPSEEK_API_KEY=__FILL_BY_USER__
 DEEPSEEK_API_BASE_URL=https://api.deepseek.com
 ```
 
@@ -126,7 +126,7 @@ DEEPSEEK_API_BASE_URL=https://api.deepseek.com
 
 ```dotenv
 ALIYUN_ENABLED=true
-ALIYUN_API_KEY=sk-xxxxx
+ALIYUN_API_KEY=__FILL_BY_USER__
 ALIYUN_API_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode
 ALIYUN_DEFAULT_MODEL=qwen-plus
 ALIYUN_TEST_MODEL=qwen-plus
@@ -156,7 +156,7 @@ ALIYUN_MODEL_EXCLUDE_REGEX='(embedding|rerank|tts|asr|audio|image|video|vl|omni|
 
 ```dotenv
 KIMI_ENABLED=true
-KIMI_API_KEY=sk-xxxxx
+KIMI_API_KEY=__FILL_BY_USER__
 KIMI_API_BASE_URL=https://api.moonshot.cn
 KIMI_DEFAULT_MODEL=kimi-k2.6
 KIMI_TEST_MODEL=kimi-k2.6
@@ -184,7 +184,7 @@ KIMI_MODEL_LIST_URLS=https://api.moonshot.cn/v1/models
 
 ```dotenv
 DOUBAO_ENABLED=true
-DOUBAO_API_KEY=ark-xxxxx
+DOUBAO_API_KEY=__FILL_BY_USER__
 DOUBAO_API_BASE_URL=https://ark.cn-beijing.volces.com
 DOUBAO_DEFAULT_MODEL=doubao-seed-1-6-250615
 DOUBAO_TEST_MODEL=doubao-seed-1-6-250615
@@ -212,7 +212,7 @@ DOUBAO_MODEL_LIST_URLS=https://ark.cn-beijing.volces.com/api/v3/models
 
 ```dotenv
 MIMO_ENABLED=true
-MIMO_API_KEY=sk-xxxxx
+MIMO_API_KEY=__FILL_BY_USER__
 MIMO_API_BASE_URL=https://api.xiaomimimo.com
 MIMO_DEFAULT_MODEL=mimo-v2.5-pro
 MIMO_TEST_MODEL=mimo-v2.5-pro
@@ -241,7 +241,7 @@ MIMO_MODEL_LIST_URLS=https://api.xiaomimimo.com/v1/models
 
 ```dotenv
 MINIMAX_ENABLED=true
-MINIMAX_API_KEY=sk-xxxxx
+MINIMAX_API_KEY=__FILL_BY_USER__
 MINIMAX_API_BASE_URL=https://api.minimaxi.com
 MINIMAX_DEFAULT_MODEL=MiniMax-M2.7
 MINIMAX_TEST_MODEL=MiniMax-M2.7
@@ -270,7 +270,7 @@ MINIMAX_MODEL_INCLUDE_REGEX='^MiniMax-M2(\.|$|-)'
 ### OpenAI
 
 ```dotenv
-OPENAI_API_KEY=sk-xxxxx
+OPENAI_API_KEY=__FILL_BY_USER__
 OPENAI_API_BASE_URL=https://api.openai.com
 ```
 

@@ -107,10 +107,10 @@ glm-5.1
 模型名之间用英文逗号分隔，不要有空格。确保每个模型名都是智谱真实模型 ID。
 
 ## 仓库中与智谱相关的落地文件
-- bootstrap 脚本：[scripts/bootstrap-new-api.sh](/home/lgq/repoWorkProject/TeamAIPlatform/scripts/bootstrap-new-api.sh)
-- smoke 脚本：[scripts/smoke-test-zhipu.sh](/home/lgq/repoWorkProject/TeamAIPlatform/scripts/smoke-test-zhipu.sh)
-- 渲染脚本：[scripts/render-librechat-config.sh](/home/lgq/repoWorkProject/TeamAIPlatform/scripts/render-librechat-config.sh)
-- LibreChat 配置模板：[deploy/librechat/config/librechat.yaml](/home/lgq/repoWorkProject/TeamAIPlatform/deploy/librechat/config/librechat.yaml)
+- bootstrap 脚本：[scripts/bootstrap-new-api.sh](scripts/bootstrap-new-api.sh)
+- smoke 脚本：[scripts/smoke-test-zhipu.sh](scripts/smoke-test-zhipu.sh)
+- 渲染脚本：[scripts/render-librechat-config.sh](scripts/render-librechat-config.sh)
+- LibreChat 配置模板：[deploy/librechat/config/librechat.yaml](deploy/librechat/config/librechat.yaml)
 
 ## bootstrap 如何处理智谱渠道
 `bash scripts/bootstrap-new-api.sh` 会自动完成：

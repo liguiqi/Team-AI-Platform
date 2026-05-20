@@ -20,10 +20,10 @@ actor "本机运维工具\nChat2DB" as Chat2DB
 
 cloud "阿里云 PNVS SMS\nDypnsapi / SendSmsVerifyCode" as AliSMS
 cloud "企业邮箱 SMTP\n163 企业邮等" as SMTP
-cloud "上游模型供应商\n智谱 / DeepSeek / 百炼 / Kimi / 豆包 / MiMo" as Upstream
+cloud "上游模型供应商\n智谱 / DeepSeek / 百炼 / Kimi / 豆包 / MiMo / MiniMax" as Upstream
 
 rectangle "接入层" {
-  component "Caddy\n仅生产环境启用\nTLS / Reverse Proxy / 域名分流" as Caddy
+  component "Caddy\ndomain-proxy 时启用\nTLS / Reverse Proxy / 域名分流" as Caddy
 }
 
 node "Docker Compose Stack\nnetwork = gateway" {
@@ -57,11 +57,11 @@ package "自动化脚本与运维入口" {
 
 EndUser --> Libre : 本地直连\nhttp://HOST:${LIBRECHAT_PORT}
 EndUser --> Casdoor : 统一认证登录 / 注册 / 验证码
-EndUser --> Caddy : 生产环境入口\nPUBLIC_CHAT_DOMAIN / AUTH_PUBLIC_DOMAIN
+EndUser --> Caddy : 域名代理入口\nPUBLIC_CHAT_DOMAIN / AUTH_PUBLIC_DOMAIN
 
 Admin --> NewAPI : 后台治理\n渠道 / Token / 用户 / 日志 / 限流
 Admin --> Casdoor : 管理员后台\n组织 / 应用 / Provider / 用户
-Admin --> Caddy : 生产环境统一入口
+Admin --> Caddy : 域名代理入口
 Admin --> Chat2DB : 本机数据库查看\n仅本地调试
 Chat2DB --> Mongo : 127.0.0.1:${LIBRECHAT_MONGODB_LOCAL_PORT}\nNo Authentication
 
@@ -145,9 +145,10 @@ end note
 legend right
 = 环境差异 =
 1. 本地模式: 浏览器通常直连 LibreChat/Casdoor 暴露端口
-2. 生产模式: 由 Caddy 统一承接 80/443 与域名路由
-3. MongoDB 仅本地映射到 127.0.0.1:${LIBRECHAT_MONGODB_LOCAL_PORT}
-4. Casdoor 与 NEW-API 共享 PostgreSQL 实例, 但使用不同逻辑库
+2. 生产默认: direct-ip 直连 ${LIBRECHAT_PORT}/${NEW_API_PORT}/${CASDOOR_PORT}
+3. 域名代理: COMPOSE_PROFILES=domain-proxy 时由 Caddy 承接 80/443
+4. MongoDB 仅本地映射到 127.0.0.1:${LIBRECHAT_MONGODB_LOCAL_PORT}
+5. Casdoor 与 NEW-API 共享 PostgreSQL 实例, 但使用不同逻辑库
 endlegend
 
 @enduml
@@ -263,7 +264,7 @@ participant "LibreChat" as Libre
 participant "NEW-API" as NewAPI
 database "NEW-API PostgreSQL" as PG
 database "Redis" as Redis
-participant "上游模型供应商\n智谱 / Future Providers" as LLM
+participant "上游模型供应商\n智谱 / DeepSeek / 百炼 / Kimi / 豆包 / MiMo / MiniMax" as LLM
 database "MongoDB" as Mongo
 
 group 部署或变更时的模型配置生成
@@ -333,7 +334,7 @@ if (MODE == local ?) then (yes)
   - Casdoor 容器直连 SMTP 报 broken pipe
   - 宿主机本地 Python 发信正常
   结果:
-  - Casdoor 改连 host.docker.internal:2525
+  - Casdoor 改连 host.docker.internal:${LOCAL_SMTP_RELAY_PORT}
   - relay 再转发到真实企业邮箱 SMTP
   end note
 else (no)
@@ -401,7 +402,7 @@ if (BOOTSTRAP_AUTOCONFIGURE == true ?) then (yes)
   - root 登录
   - 写入限流 option
   - 创建或校正服务用户
-  - 创建或更新智谱渠道
+  - 创建或更新智谱 / DeepSeek / 阿里云百炼 / Kimi / 豆包 / MiMo / MiniMax 渠道
   - 直接写 PostgreSQL tokens 表
   - 回写 NEW_API_SERVICE_TOKEN 到 .env
   - 再次 render-librechat-config.sh

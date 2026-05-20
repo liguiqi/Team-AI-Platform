@@ -163,10 +163,10 @@ make up
 - LibreChat 会连接 `new-api-redis` 的 DB 1 持久化 OIDC state / session
 
 ### 正常启动后入口
-- LibreChat：`http://localhost:3080`
-- Admin Panel：`http://localhost:3001`
-- NEW-API：`http://localhost:13000`
-- Casdoor：`http://localhost:18000`
+- LibreChat：`http://localhost:3081`
+- Admin Panel：`http://localhost:3002`（本机如 `3002` 已占用，可在 `.env` 改为 `3003`）
+- NEW-API：`http://localhost:13001`
+- Casdoor：`http://localhost:18001`
 
 ## 初始化网关配置
 
@@ -205,7 +205,7 @@ bash scripts/bootstrap-new-api.sh
 补充说明：
 - 当前 LibreChat 使用 RedisStore 保存 OIDC state / session，重启后不会再因内存 session 丢失而要求重复登录。
 - 若浏览器命中 LibreChat 重启前的旧 OIDC callback，运行时 patch 会自动回到 `/oauth/openid` 重新发起授权，而不是停留在错误页。
-- 默认管理员为 `__PLACEHOLDER_EMAIL__` / `__PLACEHOLDER_PASSWORD__`，会同步到 Casdoor `team-ai` 业务组织；也可用 `http://localhost:3080/login?redirect=false` 走 LibreChat 本地登录。
+- 默认管理员为 `__PLACEHOLDER_EMAIL__` / `__PLACEHOLDER_PASSWORD__`，会同步到 Casdoor `team-ai` 业务组织；也可用 `http://localhost:3081/login?redirect=false` 走 LibreChat 本地登录。
 
 ## 前端模型同步
 
@@ -279,18 +279,18 @@ make health
 ## 常见入口
 
 ### NEW-API 后台
-- 地址：`http://localhost:13000`
+- 地址：`http://localhost:13001`
 - 登录账号：读取 `.env` 中的 `NEW_API_SETUP_USERNAME`
 - 登录密码：读取 `.env` 中的 `NEW_API_SETUP_PASSWORD`
 
 ### Casdoor 统一认证后台
-- 地址：`http://localhost:18000`
+- 地址：`http://localhost:18001`
 - 管理员账号：`built-in/admin`
 - 管理员邮箱：读取 `.env` 中的 `CASDOOR_ADMIN_EMAIL`
 - 管理员密码：读取 `.env` 中的 `CASDOOR_ADMIN_PASSWORD`
 
 ### LibreChat
-- 地址：`http://localhost:3080`
+- 地址：`http://localhost:3081`
 - 默认只保留 `统一认证登录`
 - 本地邮箱密码登录与注册已关闭
 - 是否有用户能登录，取决于 Casdoor OIDC、SMTP 与短信 Provider 是否可用
@@ -300,14 +300,14 @@ make health
 ### 端口被占用
 现象：
 - `make up` 失败
-- 或 `make doctor` 提示 `13000` / `3080` / `18000` 已被占用
+- 或 `make doctor` 提示 `13001` / `3081` / `18001` 已被占用
 
 处理：
 ```bash
 make doctor
-ss -ltn | grep 13000
-ss -ltn | grep 3080
-ss -ltn | grep 18000
+ss -ltn | grep 13001
+ss -ltn | grep 3081
+ss -ltn | grep 18001
 ```
 
 ### PostgreSQL 起不来
@@ -333,8 +333,8 @@ ss -ltn | grep 18000
 
 ### 统一认证按钮点击后失败，或重启后要求再次登录
 重点检查：
-- `curl http://localhost:18000/.well-known/openid-configuration`
-- `runtime/local/casdoor/init_data.json` 中 `redirectUris` 是否包含 `http://localhost:3080/oauth/openid/callback`
+- `curl http://localhost:18001/.well-known/openid-configuration`
+- `runtime/local/casdoor/init_data.json` 中 `redirectUris` 是否包含 `http://localhost:3081/oauth/openid/callback`
 - `.env` 中 `CASDOOR_PUBLIC_URL` 是否与本地入口一致
 - `deploy/docker-compose.local.yml` 中 LibreChat 是否启用了 `USE_REDIS=true`
 - `REDIS_URI` 是否指向 `new-api-redis:6379/1`，且 Redis DB 1 中能看到 `librechat:` 前缀 session key
@@ -430,18 +430,19 @@ make smoke-zhipu
 ## 内存限制
 
 本地开发环境已配置容器内存限制：
-- LibreChat: 448M（Node old space 默认限制 384MB）
+- LibreChat: 352M（Node old space 默认限制 288MB，`MALLOC_ARENA_MAX=2`）
 - MongoDB: 320M（WiredTiger 缓存 0.25GB，MongoDB 8 当前不支持再往下调）
-- NEW-API: 128M
-- PostgreSQL: 128M
-- Casdoor: 128M
-- Redis: 64M（LRU 淘汰策略）
+- NEW-API: 96M（`GOMEMLIMIT=64MiB`，`GOGC=50`）
+- PostgreSQL: 80M（`shared_buffers=24MB`，`work_mem=2MB`，`max_connections=40`）
+- Casdoor: 96M（`GOMEMLIMIT=64MiB`，`GOGC=50`）
+- Redis: 40M（`maxmemory=20mb`，LRU 淘汰策略）
+- Admin Panel: 192M（仅本地 compose 启用）
 
 ## 开机自启动（可选）
 
 如需开机自动启动服务：
 ```bash
-bash scripts/install-service.sh
+sudo bash scripts/install-service.sh "$PWD" local
 ```
 
 卸载：
@@ -452,14 +453,14 @@ bash scripts/uninstall-service.sh
 ## 建议配套阅读
 如果你已经完成本地部署，下一步建议阅读：
 
-1. [admin-new-api.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/admin-new-api.md)
-2. [admin-librechat.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/admin-librechat.md)
-3. [admin-auth-sso.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/admin-auth-sso.md)
-4. [runbook.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/runbook.md)
-5. [acceptance-criteria.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/acceptance-criteria.md)
+1. [admin-new-api.md](docs/architecture/admin-new-api.md)
+2. [admin-librechat.md](docs/architecture/admin-librechat.md)
+3. [admin-auth-sso.md](docs/architecture/admin-auth-sso.md)
+4. [runbook.md](docs/architecture/runbook.md)
+5. [acceptance-criteria.md](docs/architecture/acceptance-criteria.md)
 
 完成后再在浏览器中：
-1. 打开 `http://localhost:3080`
+1. 打开 `http://localhost:3081`
 2. 点击 `统一认证登录` 并跳转到 Casdoor
 3. 选择 `NEW-API`
 4. 在模型列表中选择任一智谱模型（共 19 个可用）

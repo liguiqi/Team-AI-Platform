@@ -15,7 +15,7 @@ if (MODE == local ?) then (yes)
   - Casdoor 容器直连 SMTP 报 broken pipe
   - 宿主机本地 Python 发信正常
   结果:
-  - Casdoor 改连 host.docker.internal:2525
+  - Casdoor 改连 host.docker.internal:${LOCAL_SMTP_RELAY_PORT}
   - relay 再转发到真实企业邮箱 SMTP
   end note
 else (no)
@@ -83,7 +83,7 @@ if (BOOTSTRAP_AUTOCONFIGURE == true ?) then (yes)
   - root 登录
   - 写入限流 option
   - 创建或校正服务用户
-  - 创建或更新智谱渠道
+  - 创建或更新智谱 / DeepSeek / 阿里云百炼 / Kimi / 豆包 / MiMo / MiniMax 渠道
   - 直接写 PostgreSQL tokens 表
   - 回写 NEW_API_SERVICE_TOKEN 到 .env
   - 再次 render-librechat-config.sh

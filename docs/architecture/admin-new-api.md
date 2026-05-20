@@ -26,7 +26,7 @@
 ## 入口与账号
 
 ### 本地后台入口
-- 地址：`http://localhost:13000`
+- 地址：`http://localhost:13001`
 
 ### 生产后台入口
 - 地址：`https://$NEW_API_ADMIN_DOMAIN`
@@ -377,7 +377,7 @@ make sync-provider-models
 - 智谱上游限流
 
 ## 建议阅读顺序
-1. [architecture.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/architecture.md)
-2. [provider-zhipu.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/provider-zhipu.md)
-3. [runbook.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/runbook.md)
+1. [architecture.md](docs/architecture/architecture.md)
+2. [provider-zhipu.md](docs/architecture/provider-zhipu.md)
+3. [runbook.md](docs/architecture/runbook.md)
 4. 本文档

@@ -43,7 +43,7 @@
 目标：让核心组件能在本机稳定启动。
 
 主要工作：
-- 编写 [deploy/docker-compose.local.yml](/home/lgq/repoWorkProject/TeamAIPlatform/deploy/docker-compose.local.yml)
+- 编写 [deploy/docker-compose.local.yml](deploy/docker-compose.local.yml)
 - 设计 `runtime/local/` 持久化目录
 - 实现 `init/up/down/restart`
 - 解决 PostgreSQL 与 Redis 的基础依赖
@@ -223,7 +223,7 @@
 - 生产证书签发依赖 DNS 与公网连通性。
 
 ## 风险控制
-- 固定镜像版本，避免上游 `latest` 漂移。
+- 固定生产核心镜像版本，避免上游 `latest` 漂移；本地 Admin Panel 可通过变量锁定，生产 compose 默认不启用。
 - 使用脚本代替人工后台点击，降低重复错误。
 - 关键配置回写 `.env`，减少多份配置分叉。
 - 用自测报告固化真实联调结果。

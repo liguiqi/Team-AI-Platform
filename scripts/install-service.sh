@@ -2,10 +2,12 @@
 set -euo pipefail
 
 # AI Gateway Chat - systemd 开机自启动安装脚本
-# 用法: sudo bash scripts/install-service.sh [项目路径]
-# 默认路径: /opt/TeamAIPlatform
+# 用法: sudo bash scripts/install-service.sh [项目路径] [local|prod]
+# 默认路径: /opt/ai-gateway-chat/repo
+# 默认模式: prod
 
-PROJECT_DIR="${1:-/opt/TeamAIPlatform}"
+PROJECT_DIR="${1:-/opt/ai-gateway-chat/repo}"
+SERVICE_MODE="${2:-prod}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SERVICE_NAME="ai-gateway-chat"
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
@@ -13,6 +15,7 @@ SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 [[ "$(id -u)" -ne 0 ]] && { echo "请使用 sudo 执行"; exit 1; }
 [[ -d "$PROJECT_DIR" ]] || { echo "项目目录不存在: $PROJECT_DIR"; exit 1; }
 [[ -f "${PROJECT_DIR}/Makefile" ]] || { echo "Makefile 不存在: ${PROJECT_DIR}/Makefile"; exit 1; }
+[[ "$SERVICE_MODE" == "local" || "$SERVICE_MODE" == "prod" ]] || { echo "模式只能是 local 或 prod，当前为: ${SERVICE_MODE}"; exit 1; }
 
 echo "[1/4] 生成 systemd service 文件..."
 cat > "$SERVICE_FILE" <<EOF
@@ -27,6 +30,7 @@ StartLimitBurst=5
 Type=oneshot
 RemainAfterExit=yes
 WorkingDirectory=${PROJECT_DIR}
+Environment=MODE=${SERVICE_MODE}
 ExecStart=/bin/bash -lc 'make up'
 ExecStop=/bin/bash -lc 'make down'
 ExecReload=/bin/bash -lc 'make restart'
@@ -50,6 +54,7 @@ echo ""
 echo "安装完成！"
 echo "  项目目录: ${PROJECT_DIR}"
 echo "  服务名称: ${SERVICE_NAME}"
+echo "  运行模式: MODE=${SERVICE_MODE}"
 echo ""
 echo "常用命令:"
 echo "  启动:   sudo systemctl start ${SERVICE_NAME}"

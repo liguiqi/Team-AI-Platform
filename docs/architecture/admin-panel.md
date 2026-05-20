@@ -46,7 +46,7 @@ LibreChat Admin Panel 是一个**独立 Web 服务**（独立容器），提供�
 | 变量 | 说明 |
 |------|------|
 | `LIBRECHAT_ADMIN_PANEL_VERSION` | Admin Panel 镜像版本，当前主配置为 `latest` |
-| `LIBRECHAT_ADMIN_PANEL_PORT` | 本地映射端口，当前主配置为 `3001` |
+| `LIBRECHAT_ADMIN_PANEL_PORT` | 本地映射端口，模板默认 `3002`；当前 main 本机部署为 `3003` |
 | `LIBRECHAT_ADMIN_PANEL_SESSION_SECRET` | Admin Panel 自身的 Session Secret |
 | `LIBRECHAT_PUBLIC_URL` | 浏览器访问 LibreChat 的公网/本机地址，Admin Panel 前端会复用它 |
 | `LIBRECHAT_DEFAULT_ADMIN_ENABLED` | 是否自动创建 LibreChat 默认管理员 |
@@ -72,7 +72,7 @@ docker compose --env-file .env -f deploy/docker-compose.local.yml up -d librecha
 ## 访问 Admin Panel
 
 ### 本地访问
-- 地址：`http://localhost:3001`（端口取决于 `LIBRECHAT_ADMIN_PANEL_PORT` 配置）
+- 地址：`http://localhost:3002`（端口取决于 `LIBRECHAT_ADMIN_PANEL_PORT` 配置；当前 main 本机为 `3003`）
 
 ### 生产访问
 - 当前生产 compose 默认**没有**该入口。
@@ -154,7 +154,7 @@ LibreChat v0.8.5 的权限体系分为三层：
 默认管理员会同时写入 LibreChat MongoDB 与 Casdoor `team-ai` 业务组织，可直接通过统一认证入口登录；如需绕过 Casdoor 使用本地登录，可访问：
 
 ```bash
-http://localhost:3080/login?redirect=false
+http://localhost:3081/login?redirect=false
 ```
 
 ### 自动初始化
@@ -166,7 +166,7 @@ scripts/bootstrap-librechat-admin.sh
 ```
 
 该脚本会：
-1. 等待 `ai-gateway-librechat-mongodb` 就绪
+1. 等待 `ai-gateway-main-librechat-mongodb` 就绪
 2. 使用 LibreChat 容器内的 `bcryptjs` 生成默认管理员密码哈希
 3. 创建或更新默认本地 ADMIN 用户
 4. 创建或更新 Casdoor `team-ai` 业务组织下的默认管理员用户
@@ -184,7 +184,7 @@ make bootstrap-librechat-admin
 如果需要临时提升某个用户：
 
 ```bash
-docker exec ai-gateway-librechat-mongodb mongosh --eval '
+docker exec ai-gateway-main-librechat-mongodb mongosh --eval '
   db = db.getSiblingDB("LibreChat");
   db.users.updateOne(
     { email: "target@example.com" },
@@ -195,7 +195,7 @@ docker exec ai-gateway-librechat-mongodb mongosh --eval '
 
 验证：
 ```bash
-docker exec ai-gateway-librechat-mongodb mongosh --eval '
+docker exec ai-gateway-main-librechat-mongodb mongosh --eval '
   db = db.getSiblingDB("LibreChat");
   db.users.find({ role: "ADMIN" }, { name: 1, email: 1, provider: 1, role: 1 });
 '
@@ -296,7 +296,7 @@ Admin Panel 与 NEW-API 后台是两个独立的管理界面：
 ### 本地已启用
 - `deploy/docker-compose.local.yml` 已内置 `librechat-admin`
 - `.env.example` / 本地主配置已补齐 Admin Panel 相关变量
-- 本地默认访问入口为 `http://localhost:3001`
+- 本地默认访问入口为 `http://localhost:3002`
 
 ### 生产仍需按需扩展
 - 当前 `deploy/docker-compose.prod.yml` 未包含 Admin Panel 服务
@@ -308,7 +308,7 @@ Admin Panel 与 NEW-API 后台是两个独立的管理界面：
 2. 若要生产启用，先在测试环境验证 `ADMIN` 角色、反向代理和访问控制，再复制到生产编排。
 
 ## 推荐联读
-1. [admin-librechat.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/admin-librechat.md) — LibreChat 主服务运维
-2. [admin-new-api.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/admin-new-api.md) — NEW-API 网关管理
-3. [admin-auth-sso.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/admin-auth-sso.md) — Casdoor 统一认证
-4. [architecture.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/architecture.md) — 整体架构
+1. [admin-librechat.md](docs/architecture/admin-librechat.md) — LibreChat 主服务运维
+2. [admin-new-api.md](docs/architecture/admin-new-api.md) — NEW-API 网关管理
+3. [admin-auth-sso.md](docs/architecture/admin-auth-sso.md) — Casdoor 统一认证
+4. [architecture.md](docs/architecture/architecture.md) — 整体架构

@@ -2,7 +2,7 @@
 
 ## 文档目标
 本文档用于指导在单台云服务器上部署本项目的生产版或准生产版环境。当前生产方案同时支持：
-- **无域名直连模式**：直接开放 `3080 / 13000 / 18000` 给受控内网、堡垒机或安全组，适合 2C2G、少量成员使用的轻量场景。
+- **无域名直连模式**：直接开放 `3081 / 13001 / 18001` 给受控内网、堡垒机或安全组，适合 2C2G、少量成员使用的轻量场景。
 - **域名代理模式**：通过 Caddy 提供域名 + HTTPS 入口，适合已有公网域名的场景。
 
 ## 适用前提
@@ -51,21 +51,21 @@
 cp deploy/env/prod/.env.example deploy/env/prod/.env
 ```
 
-默认模板是 **域名代理模式**。如果你的 Aliyun VPS **不需要域名访问**，请至少把下面这些值改成直连模式：
+默认模板是 **无域名直连模式**。Aliyun VPS 不需要域名访问时，只需要把 `SERVER_IP` 替换为服务器公网或内网 IP：
 
 ```dotenv
 COMPOSE_PROFILES=
 PROD_BIND_ADDRESS=0.0.0.0
-LIBRECHAT_PUBLIC_URL=http://SERVER_IP:3080
-NEW_API_PUBLIC_URL=http://SERVER_IP:13000
-CASDOOR_PUBLIC_URL=http://SERVER_IP:18000
+LIBRECHAT_PUBLIC_URL=http://SERVER_IP:3081
+NEW_API_PUBLIC_URL=http://SERVER_IP:13001
+CASDOOR_PUBLIC_URL=http://SERVER_IP:18001
 LIBRECHAT_OPENID_ALLOW_INSECURE_HTTP=true
 ```
 
 说明：
 - `COMPOSE_PROFILES=` 为空时，生产 compose **不会启动 Caddy**，从而省掉反向代理的内存占用和域名依赖。
 - 直连模式下请务必依赖阿里云安全组、VPN、堡垒机或内网访问范围控制，不要把 HTTP 入口无保护地暴露到公网。
-- 如果后续切回域名代理模式，恢复 `COMPOSE_PROFILES=domain-proxy`，并把三个公开 URL 改回 `https://...`，同时将 `LIBRECHAT_OPENID_ALLOW_INSECURE_HTTP=false`。
+- 如果后续切回域名代理模式，恢复 `COMPOSE_PROFILES=domain-proxy`，把 `PROD_BIND_ADDRESS` 改为 `127.0.0.1`，并把三个公开 URL 改回 `https://...`，同时将 `LIBRECHAT_OPENID_ALLOW_INSECURE_HTTP=false`。
 
 ### 必须重点填写的变量
 - `PUBLIC_CHAT_DOMAIN`
@@ -110,7 +110,7 @@ LIBRECHAT_OPENID_ALLOW_INSECURE_HTTP=true
 建议：
 - 所有密码、secret、token 相关变量都使用高强度随机值。
 - 生产 `.env` 不要使用示例值。
-- 生产必须保持 `LIBRECHAT_OPENID_ALLOW_INSECURE_HTTP=false`，不要为了省事把 HTTP 调试开关带到公网环境。
+- 无域名直连 HTTP 模式需要 `LIBRECHAT_OPENID_ALLOW_INSECURE_HTTP=true`，并必须依赖安全组或内网访问控制；域名 HTTPS 代理模式应保持 `LIBRECHAT_OPENID_ALLOW_INSECURE_HTTP=false`。
 - 推荐默认保持：
   - `NEW_API_SERVICE_TOKEN_UNLIMITED=true`
   - `NEW_API_PROVIDER_CHANNEL_BALANCE=999999999999`
@@ -209,9 +209,9 @@ MODE=prod bash scripts/sync-provider-models.sh
 ## 对外入口
 
 ### 无域名直连模式
-- LibreChat：`http://SERVER_IP:3080`
-- NEW-API：`http://SERVER_IP:13000`
-- Casdoor：`http://SERVER_IP:18000`
+- LibreChat：`http://SERVER_IP:3081`
+- NEW-API：`http://SERVER_IP:13001`
+- Casdoor：`http://SERVER_IP:18001`
 
 ### 域名代理模式
 - 前提：`COMPOSE_PROFILES=domain-proxy`
@@ -227,7 +227,7 @@ MODE=prod bash scripts/sync-provider-models.sh
 
 ### 注意
 - `NEW-API` 后台与 OpenAI 兼容 API 共用同一个服务实例。
-- 无域名直连模式下，建议直接使用阿里云安全组把 `3080 / 13000 / 18000` 限制在固定办公 IP、VPN 或堡垒机访问范围内。
+- 无域名直连模式下，建议直接使用阿里云安全组把 `3081 / 13001 / 18001` 限制在固定办公 IP、VPN 或堡垒机访问范围内。
 - 域名代理模式下，建议把后端端口绑定到 `127.0.0.1`，并在 Caddy 之外再加防火墙白名单。
 - 如需生产启用 Admin Panel，需要额外扩展 `deploy/docker-compose.prod.yml` 与 Caddy 路由；当前仓库默认未开放。
 
@@ -238,7 +238,7 @@ MODE=prod bash scripts/sync-provider-models.sh
 4. 检查容器状态。
 5. 若未启用自动 bootstrap，执行 `MODE=prod bash scripts/bootstrap-new-api.sh`。
 6. 浏览器验证当前所选入口模式：
-   - 直连模式：`SERVER_IP:3080 / 13000 / 18000`
+   - 直连模式：`SERVER_IP:3081 / 13001 / 18001`
    - 域名代理模式：`PUBLIC_CHAT_DOMAIN / NEW_API_ADMIN_DOMAIN / AUTH_PUBLIC_DOMAIN`
 7. 记录本次上线的镜像版本、env 校验人和联调结果。
 
@@ -246,22 +246,22 @@ MODE=prod bash scripts/sync-provider-models.sh
 
 ### 容器内存限制
 当前主配置按 **2C2G、实际约 1.6GB 可用内存、同时在线不超过 4 人** 做了进一步收敛：
-- LibreChat: 384M（Node old space 默认限制 320MB，`MALLOC_ARENA_MAX=2`）
-- MongoDB: 320M（WiredTiger 缓存 0.25GB，MongoDB 8 当前不支持再往下调）
+- LibreChat: 352M（Node old space 默认限制 288MB，`MALLOC_ARENA_MAX=2`）
+- MongoDB: 320M（WiredTiger 缓存 0.25GB，MongoDB 8 当前要求至少 0.25GB）
 - NEW-API: 96M（同时施加 `GOMEMLIMIT=64MiB`）
-- PostgreSQL: 96M（共享缓存下调到 32MB，连接数压到 50）
-- Casdoor: 96M（同时施加 `GOMEMLIMIT=72MiB`）
-- Redis: 48M（AOF 保留，内存上限收敛到 24MB）
+- PostgreSQL: 80M（共享缓存下调到 24MB，连接数压到 40）
+- Casdoor: 96M（同时施加 `GOMEMLIMIT=64MiB`）
+- Redis: 40M（AOF 保留，内存上限收敛到 20MB）
 - Caddy: 32M（仅在 `domain-proxy` profile 启用时占用）
 
 推荐保持以下生产 env 默认值：
-- `LIBRECHAT_NODE_MAX_OLD_SPACE_SIZE_MB=320`
-- `LIBRECHAT_MEMORY_LIMIT=384M`
+- `LIBRECHAT_NODE_MAX_OLD_SPACE_SIZE_MB=288`
+- `LIBRECHAT_MEMORY_LIMIT=352M`
 - `LIBRECHAT_MONGODB_MEMORY_LIMIT=320M`
 - `LIBRECHAT_MONGODB_WIREDTIGER_CACHE_GB=0.25`
 - `NEW_API_MEMORY_LIMIT=96M`
-- `NEW_API_POSTGRES_MEMORY_LIMIT=96M`
-- `NEW_API_REDIS_MEMORY_LIMIT=48M`
+- `NEW_API_POSTGRES_MEMORY_LIMIT=80M`
+- `NEW_API_REDIS_MEMORY_LIMIT=40M`
 - `CASDOOR_MEMORY_LIMIT=96M`
 - `CADDY_MEMORY_LIMIT=32M`
 
@@ -282,13 +282,17 @@ MODE=prod bash scripts/sync-provider-models.sh
 
 安装 systemd 服务：
 ```bash
-bash scripts/install-service.sh
+sudo bash scripts/install-service.sh /opt/ai-gateway-chat/repo prod
 ```
 
 卸载：
 ```bash
-bash scripts/uninstall-service.sh
+sudo bash scripts/uninstall-service.sh
 ```
+
+说明：
+- `install-service.sh` 默认生成 `Environment=MODE=prod`，systemd 拉起时会读取 `deploy/env/prod/.env` 与 `deploy/docker-compose.prod.yml`。
+- 生产服务不会读取根目录 `.env`，因此本地开发密钥和端口不会误带到 Aliyun VPS。
 
 ## 升级流程
 
@@ -389,8 +393,8 @@ bash scripts/uninstall-service.sh
 ## 建议配套阅读
 生产部署完成后，建议继续阅读：
 
-1. [admin-new-api.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/admin-new-api.md)
-2. [admin-librechat.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/admin-librechat.md)
-3. [admin-auth-sso.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/admin-auth-sso.md)
-4. [runbook.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/runbook.md)
-5. [acceptance-criteria.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/acceptance-criteria.md)
+1. [admin-new-api.md](docs/architecture/admin-new-api.md)
+2. [admin-librechat.md](docs/architecture/admin-librechat.md)
+3. [admin-auth-sso.md](docs/architecture/admin-auth-sso.md)
+4. [runbook.md](docs/architecture/runbook.md)
+5. [acceptance-criteria.md](docs/architecture/acceptance-criteria.md)

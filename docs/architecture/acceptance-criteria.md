@@ -77,7 +77,7 @@ bash scripts/bootstrap-new-api.sh
 ```
 
 ### 三、后台验收
-1. 打开 `http://localhost:13000`
+1. 打开 `http://localhost:13001`
 2. 使用 `.env` 中的 `NEW_API_SETUP_USERNAME` / `NEW_API_SETUP_PASSWORD` 登录
 3. 检查以下内容：
    - 能看到渠道列表
@@ -87,7 +87,7 @@ bash scripts/bootstrap-new-api.sh
    - 服务 token 存在
 
 ### 四、前台验收
-1. 打开 `http://localhost:3080`
+1. 打开 `http://localhost:3081`
 2. 确认默认会进入统一认证流程；如访问 `/login?redirect=false`，可使用默认管理员本地登录
 3. 点击进入 Casdoor
 4. 至少验证一次邮箱真实登录
@@ -96,7 +96,7 @@ bash scripts/bootstrap-new-api.sh
 7. 确认模型列表按供应商拆分并高阶优先排序
 8. 至少选择一个可用模型发起真实对话，建议优先验证 `glm-5.1` 与 `deepseek-v4-flash`
 9. 重启 LibreChat 后再次走一次统一认证，确认不会稳定复现 state 校验失败页
-10. 使用 `__PLACEHOLDER_EMAIL__` 登录 `http://localhost:3001`，确认 Admin Panel 可进入
+10. 使用 `__PLACEHOLDER_EMAIL__` 登录 `http://localhost:3002`，确认 Admin Panel 可进入；当前 main 本机如端口冲突则以 `.env` 中 `LIBRECHAT_ADMIN_PANEL_PORT` 为准
 
 ## 通过标准
 

@@ -1,6 +1,6 @@
 # AI Gateway Chat
 
-基于 `NEW-API + LibreChat` 的内部 AI 对话整合仓库，目标是把公司采购的上游模型能力统一收口到 `NEW-API`，再由 `LibreChat` 提供部门同学使用的对话界面。本地默认入口为 `http://localhost:3080` 与 `http://localhost:13000`。
+基于 `NEW-API + LibreChat` 的内部 AI 对话整合仓库，目标是把公司采购的上游模型能力统一收口到 `NEW-API`，再由 `LibreChat` 提供部门同学使用的对话界面。本地默认入口为 `http://localhost:3081` 与 `http://localhost:13001`。
 
 ## 责任边界
 - Codex 负责完整实施、结构整理、文档交付、脚本生成、配置模板、联调路径设计、自测与问题收敛。
@@ -21,7 +21,7 @@
 - `NEW-API` 原生 `ZhipuV4` 渠道 + 火山方舟豆包原生渠道 + DeepSeek / 阿里云百炼 / Kimi / 小米 MiMo / MiniMax OpenAI 兼容渠道
 - `LibreChat` 自定义 OpenAI 兼容端点按供应商拆分为 `API-zhipu` / `API-deepseek` / `API-aliyun` / `API-kimi` / `API-doubao` / `API-mimo` / `API-minimax`，底层仍统一走 `NEW-API`
 - `Docker Compose` 作为本地与单机生产的统一编排方式
-- `Caddy` 作为生产反向代理
+- 生产默认使用 direct-ip 直连端口；`Caddy` 仅在 `COMPOSE_PROFILES=domain-proxy` 时作为域名 HTTPS 反向代理启用
 
 ## 版本矩阵
 - `calciumion/new-api:v0.12.1`
@@ -34,7 +34,7 @@
 版本选择依据：
 - `NEW-API v0.12.1` 来自官方 GitHub Release / Docker Hub tag。
 - `LibreChat v0.8.5` 来自官方 Git tag 与 GHCR 镜像 tag。
-- 其余基础镜像均固定为可用的明确版本，避免 `latest` 漂移。
+- 其余核心基础镜像均固定为可用的明确版本，避免 `latest` 漂移；本地 Admin Panel 当前由 `LIBRECHAT_ADMIN_PANEL_VERSION` 控制，默认值仍为上游提供的 `latest`，生产 compose 默认不启用该服务。
 
 ## 快速开始
 1. 复制环境文件并填写至少一组真实上游密钥：
@@ -87,11 +87,13 @@
 说明：
 - `make smoke-zhipu` / `make smoke-deepseek` / `make smoke-aliyun` / `make smoke-kimi` / `make smoke-doubao` / `make smoke-mimo` / `make smoke-minimax` 都会先调用 `scripts/bootstrap-new-api.sh`，自动完成 `NEW-API` 初始化、限流参数写入、已启用供应商渠道创建、LibreChat 服务用户与 token 生成。
 - bootstrap 过程会把自动生成的 `NEW_API_SERVICE_TOKEN` 回写到本地 `.env`，无需手工复制 token。
-- 本地 compose 当前默认带上 `LibreChat Admin Panel`，入口为 `http://localhost:3001`。
+- 本地 compose 当前默认带上 `LibreChat Admin Panel`，入口由 `LIBRECHAT_ADMIN_PANEL_PORT` 控制；main 本机部署当前使用 `http://localhost:3003`，避免与已运行分支和本机其它进程冲突。
+- main 分支容器默认使用 `ai-gateway-main-*` 命名，避免和 `ai-gateway-*` 分支环境互相覆盖。
 - 默认会创建管理员 `__PLACEHOLDER_EMAIL__` / `__PLACEHOLDER_PASSWORD__`，并同步到 LibreChat 本地用户库与 Casdoor `team-ai` 业务组织，可用于登录 LibreChat、统一认证入口和 Admin Panel；第一个非默认注册用户也会自动提升为 `ADMIN`。
 - LibreChat 的 OIDC state / session 当前持久化到 `new-api-redis` 的 DB 1，重启后不会再因为内存 session 丢失而要求重复登录。
 - Casdoor 登录页样式由脚本渲染并随浏览器 `light/dark` 主题自适应，登录/注册页默认中文。
 - 生产 compose 现已支持 **无域名直连**：默认按 `LIBRECHAT_PUBLIC_URL / NEW_API_PUBLIC_URL / CASDOOR_PUBLIC_URL` 直接暴露端口；只有在 `COMPOSE_PROFILES=domain-proxy` 时才启动 Caddy 做域名 HTTPS 反向代理。
+- 生产 env 模板和 compose 已按 Aliyun 2C2G、实际可用内存约 1.6GB 收敛；生产默认不启用 Admin Panel，不启动 Caddy。
 - 当 `ZHIPU_ENABLED=true`、`DEEPSEEK_ENABLED=true`、`ALIYUN_ENABLED=true`、`KIMI_ENABLED=true`、`DOUBAO_ENABLED=true`、`MIMO_ENABLED=true`、`MINIMAX_ENABLED=true` 同时开启时，`make bootstrap` 会同时创建/更新 `zhipu-primary`、`deepseek-primary`、`aliyun-bailian-primary`、`kimi-primary`、`doubao-primary`、`mimo-primary` 与 `minimax-primary` 渠道；LibreChat 展示为 `API-zhipu` / `API-deepseek` / `API-aliyun` / `API-kimi` / `API-doubao` / `API-mimo` / `API-minimax` 七个入口，底层共用同一个 `NEW_API_SERVICE_TOKEN`。
 
 ## 目录结构
@@ -298,7 +300,7 @@ LIBRECHAT_FIRST_USER_ADMIN_ENABLED=true
 说明：
 - `make up` 和 `make bootstrap` 会自动执行 `scripts/bootstrap-librechat-admin.sh`。
 - 默认管理员会同时写入 LibreChat MongoDB 和 Casdoor `team-ai` 业务组织，因此既可以走 LibreChat 本地登录，也可以从 Casdoor 统一认证入口登录。
-- 登录 LibreChat 本体时如被自动跳转到统一认证页，可打开 `http://localhost:3080/login?redirect=false` 使用默认管理员账号。
+- 登录 LibreChat 本体时如被自动跳转到统一认证页，可打开 `http://localhost:3081/login?redirect=false` 使用默认管理员账号。
 - 第一个非默认注册用户会自动设置为 `ADMIN`，之后注册的用户保持普通 `USER`，便于在 Admin Panel 中继续调试用户组和权限。
 
 ## smoke test
@@ -340,32 +342,32 @@ LIBRECHAT_FIRST_USER_ADMIN_ENABLED=true
   ```
 
 ## 常见入口
-- 需求说明：[docs/architecture/requirements.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/requirements.md)
-- 架构说明：[docs/architecture/architecture.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/architecture.md)
-- 实施计划：[docs/architecture/implementation-plan.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/implementation-plan.md)
-- 本地部署说明：[docs/architecture/deployment-local.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/deployment-local.md)
-- 云端部署说明：[docs/architecture/deployment-cloud.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/deployment-cloud.md)
-- 智谱接入说明：[docs/architecture/provider-zhipu.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/provider-zhipu.md)
-- DeepSeek 接入说明：[docs/architecture/provider-deepseek.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/provider-deepseek.md)
-- 阿里云百炼接入说明：[docs/architecture/provider-aliyun.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/provider-aliyun.md)
-- Kimi 接入说明：[docs/architecture/provider-kimi.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/provider-kimi.md)
-- 火山方舟豆包接入说明：[docs/architecture/provider-doubao.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/provider-doubao.md)
-- 小米 MiMo 接入说明：[docs/architecture/provider-mimo.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/provider-mimo.md)
-- MiniMax 接入说明：[docs/architecture/provider-minimax.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/provider-minimax.md)
-- NEW-API 管理员手册：[docs/architecture/admin-new-api.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/admin-new-api.md)
-- LibreChat 管理员手册：[docs/architecture/admin-librechat.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/admin-librechat.md)
-- Admin Panel 管理说明：[docs/architecture/admin-panel.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/admin-panel.md)
-- 运行手册：[docs/architecture/runbook.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/runbook.md)
-- 验收标准：[docs/architecture/acceptance-criteria.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/acceptance-criteria.md)
-- 自测报告：[docs/architecture/self-test-report.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/self-test-report.md)
+- 需求说明：[docs/architecture/requirements.md](docs/architecture/requirements.md)
+- 架构说明：[docs/architecture/architecture.md](docs/architecture/architecture.md)
+- 实施计划：[docs/architecture/implementation-plan.md](docs/architecture/implementation-plan.md)
+- 本地部署说明：[docs/architecture/deployment-local.md](docs/architecture/deployment-local.md)
+- 云端部署说明：[docs/architecture/deployment-cloud.md](docs/architecture/deployment-cloud.md)
+- 智谱接入说明：[docs/architecture/provider-zhipu.md](docs/architecture/provider-zhipu.md)
+- DeepSeek 接入说明：[docs/architecture/provider-deepseek.md](docs/architecture/provider-deepseek.md)
+- 阿里云百炼接入说明：[docs/architecture/provider-aliyun.md](docs/architecture/provider-aliyun.md)
+- Kimi 接入说明：[docs/architecture/provider-kimi.md](docs/architecture/provider-kimi.md)
+- 火山方舟豆包接入说明：[docs/architecture/provider-doubao.md](docs/architecture/provider-doubao.md)
+- 小米 MiMo 接入说明：[docs/architecture/provider-mimo.md](docs/architecture/provider-mimo.md)
+- MiniMax 接入说明：[docs/architecture/provider-minimax.md](docs/architecture/provider-minimax.md)
+- NEW-API 管理员手册：[docs/architecture/admin-new-api.md](docs/architecture/admin-new-api.md)
+- LibreChat 管理员手册：[docs/architecture/admin-librechat.md](docs/architecture/admin-librechat.md)
+- Admin Panel 管理说明：[docs/architecture/admin-panel.md](docs/architecture/admin-panel.md)
+- 运行手册：[docs/architecture/runbook.md](docs/architecture/runbook.md)
+- 验收标准：[docs/architecture/acceptance-criteria.md](docs/architecture/acceptance-criteria.md)
+- 自测报告：[docs/architecture/self-test-report.md](docs/architecture/self-test-report.md)
 
 ## 建议阅读顺序
 如果你是第一次接手本项目，建议按下面顺序阅读：
 
-1. [docs/architecture/requirements.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/requirements.md)
-2. [docs/architecture/architecture.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/architecture.md)
-3. [docs/architecture/implementation-plan.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/implementation-plan.md)
-4. [docs/architecture/deployment-local.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/deployment-local.md) 或 [docs/architecture/deployment-cloud.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/deployment-cloud.md)
-5. [docs/architecture/admin-new-api.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/admin-new-api.md) 与 [docs/architecture/admin-librechat.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/admin-librechat.md)
-6. [docs/architecture/runbook.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/runbook.md)
-7. [docs/architecture/acceptance-criteria.md](/home/lgq/repoWorkProject/TeamAIPlatform/docs/architecture/acceptance-criteria.md)
+1. [docs/architecture/requirements.md](docs/architecture/requirements.md)
+2. [docs/architecture/architecture.md](docs/architecture/architecture.md)
+3. [docs/architecture/implementation-plan.md](docs/architecture/implementation-plan.md)
+4. [docs/architecture/deployment-local.md](docs/architecture/deployment-local.md) 或 [docs/architecture/deployment-cloud.md](docs/architecture/deployment-cloud.md)
+5. [docs/architecture/admin-new-api.md](docs/architecture/admin-new-api.md) 与 [docs/architecture/admin-librechat.md](docs/architecture/admin-librechat.md)
+6. [docs/architecture/runbook.md](docs/architecture/runbook.md)
+7. [docs/architecture/acceptance-criteria.md](docs/architecture/acceptance-criteria.md)

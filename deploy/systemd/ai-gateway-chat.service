@@ -8,7 +8,8 @@ StartLimitBurst=5
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-WorkingDirectory=/opt/TeamAIPlatform
+WorkingDirectory=/opt/ai-gateway-chat/repo
+Environment=MODE=prod
 ExecStart=/bin/bash -lc 'make up'
 ExecStop=/bin/bash -lc 'make down'
 ExecReload=/bin/bash -lc 'make restart'

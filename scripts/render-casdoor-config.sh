@@ -39,15 +39,15 @@ casdoor_init_data_new_only="$(normalize_bool "${CASDOOR_INIT_DATA_NEW_ONLY:-fals
 email_port="${CASDOOR_EMAIL_SMTP_PORT:-25}"
 admin_phone="${CASDOOR_ADMIN_PHONE:-}"
 admin_country_code="${CASDOOR_ADMIN_COUNTRY_CODE:-CN}"
-compose_project_name="${COMPOSE_PROJECT_NAME:-ai-gateway-chat}"
+compose_project_name="${COMPOSE_PROJECT_NAME:-ai-gateway-main}"
 new_api_db_user="${NEW_API_DB_USER:-newapi}"
 new_api_db_password="${NEW_API_DB_PASSWORD:-}"
 casdoor_db_name="${CASDOOR_DB_NAME:-casdoor}"
-casdoor_public_url="${CASDOOR_PUBLIC_URL:-http://localhost:18000}"
+casdoor_public_url="${CASDOOR_PUBLIC_URL:-http://localhost:18001}"
 casdoor_public_url="${casdoor_public_url%/}"
 application_name="${CASDOOR_APPLICATION_NAME:-team-ai-librechat}"
 application_display_name="${CASDOOR_APPLICATION_DISPLAY_NAME:-Team AI Platform SSO}"
-librechat_public_url="${LIBRECHAT_PUBLIC_URL:-http://localhost:3080}"
+librechat_public_url="${LIBRECHAT_PUBLIC_URL:-http://localhost:3081}"
 librechat_public_url="${librechat_public_url%/}"
 user_org_name="${CASDOOR_USER_ORGANIZATION_NAME:-team-ai}"
 user_org_display_name="${CASDOOR_USER_ORGANIZATION_DISPLAY_NAME:-Team AI Platform}"
@@ -95,7 +95,7 @@ fi
 
 if [[ "$MODE" == "local" && "$(normalize_bool "${LOCAL_SMTP_RELAY_ENABLED:-false}")" == "true" ]]; then
   smtp_host="${LOCAL_SMTP_RELAY_HOST:-host.docker.internal}"
-  email_port="${LOCAL_SMTP_RELAY_PORT:-2525}"
+  email_port="${LOCAL_SMTP_RELAY_PORT:-2526}"
   smtp_ssl_mode="Disable"
 fi
 
