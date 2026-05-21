@@ -221,8 +221,6 @@ services:
       - ../runtime/prod/librechat/images:/app/client/public/images
       - ./branding/team-ai-platform-logo.svg:/app/client/public/images/team-ai-platform-logo.svg:ro
       - ./branding/team-ai-platform-mark.svg:/app/client/public/images/team-ai-platform-mark.svg:ro
-      - ../public/branding/librechat-login-logo.svg:/app/client/dist/assets/logo.svg:ro
-      - ../public/branding/librechat-login-logo.svg:/app/client/public/assets/logo.svg:ro
       - ../runtime/prod/librechat/uploads:/app/uploads
       - ../runtime/prod/librechat/logs:/app/logs
       - ./librechat/patches:/app/librechat-patches:ro
