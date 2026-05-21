@@ -1,4 +1,37 @@
-# AI Gateway Chat
+# Team AI Platform
+
+> AI Gateway Chat — 面向中小型团队的全模型聚合对话平台
+
+无论对于企业团队还是个人用户，LLM 对话数据的私有化管理正变得愈发重要。基于近期对 Chatlog Data 私有化管理的实际需求，本项目完成了一个面向小型团队/公司的 AI-Agent-Chatlog 聚合平台验证，目前已基本调通并稳定部署。
+
+虽然本质上是一个 AI Gateway Chat 项目，但更愿意称之为 **Team AI Platform**。
+
+## 主要特性
+
+1. **全模型 Chat 平台** — 面向中小型团队/公司，支持所有主流大模型供应商
+2. **统一认证与国际化** — 支持邮箱、手机交叉验证注册/登录，多国语言国际化支持
+3. **Prompt 工程与 Agent 编排** — 支持 Prompt 工程、AI Native ChatAgent 智能体编排、官方原生 Model 超参微调调用
+4. **Chatlog 高度私有化** — 支持多 Agent Workflow 编排与交叉复用，Agent 智能体广场共享
+5. **API Key 统一管控** — 聚合官方模型，API Key 由 Admin 后端统一管理，团队成员只需关注对话与智能体产出
+6. **全渠道拓展能力** — 支持国内外任意模型厂商渠道，支持第三方中转站接口向下拓展
+7. **7 大渠道 165+ 模型矩阵** — 已接入智谱、DeepSeek、阿里云百炼、Kimi、火山豆包、小米 MiMo 共 7 个 API 渠道，165+ 款模型任意调用
+8. **对话操作能力** — 支持 Chat History 热修改、Chat Fork、Chat Export（Picture/Markdown）、Chat with Internet（第三方）
+9. **RAG/MCP 与制品策略** — 支持 Chat Platform 制品策略、RAG/MCP，模型/智能体双列对比调用验证
+10. **精细化管理与数据隔离** — Admin Panel 支持用户、用户组精细化管理，用户数据与 Chat Platform 容器化隔离，保障数据安全
+
+目前开发已近收尾，待域名审批后上线使用，欢迎届时注册体验。
+
+## 致谢
+
+该项目站在巨人的肩膀上完成，感谢以下优秀开源项目：
+
+- [LibreChat](https://github.com/danny-avila/LibreChat)
+- [NEW-API](https://github.com/calciumion/new-api)
+- [Casdoor](https://github.com/casdoor/casdoor)
+
+---
+
+## 责任边界
 
 基于 `NEW-API + LibreChat` 的内部 AI 对话整合仓库，目标是把公司采购的上游模型能力统一收口到 `NEW-API`，再由 `LibreChat` 提供部门同学使用的对话界面。本地默认入口为 `http://localhost:3081` 与 `http://localhost:13001`。
 
