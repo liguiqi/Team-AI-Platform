@@ -1,5 +1,5 @@
 # 文档文件不入库
-README.md
+CLAUDE.md
 AGENTS.md
 
 # 本地真实 env 和运行期数据不入库；提交模板文件即可
