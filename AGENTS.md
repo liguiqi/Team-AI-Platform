@@ -22,3 +22,6 @@
 
 ## Agent 说明
 本仓库协作者与自动化代理默认必须使用中文回复，包括进度说明、评审意见和最终总结。代码、命令、路径、环境变量名保持原始技术写法；除非维护者明确要求，说明性文字不要切换为英文。
+- 本项目路径 `/home/lgq/repoWorkProject/TeamAIPlatform_main` 只允许面向 `main` 分支工作和提交；不得在此路径切换到或提交 `hetbot-deploy` 等其它分支。
+- 本机存在另一套 `hetbot-deploy` 调试环境；本项目只能操作 `ai-gateway-main-*` 容器，禁止停止、删除、重建或改名 `ai-gateway-*` 容器。
+- main 本地环境端口采用相对 `hetbot-deploy` 的 `+1` 策略；真实 `.env`、`deploy/env/local/.env`、`deploy/env/prod/.env` 必须保持 Git 忽略，不得提交。
