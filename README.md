@@ -23,6 +23,47 @@ While it is essentially an AI Gateway Chat project, we prefer to call it **Team 
 
 Development is nearing completion. Registration will be available once domain approval is finalized.
 
+## Screenshots
+
+<table>
+  <tr>
+    <td align="center"><b>Unified Sign-In</b></td>
+    <td align="center"><b>Welcome Page</b></td>
+  </tr>
+  <tr>
+    <td><img src="docs/assets/teamaiplatform-微信图片_20260518151155_2_2.png" alt="Unified Sign-In" width="480"/></td>
+    <td><img src="docs/assets/teamaiplatform-wechat_2026-05-18_155401_772.png" alt="Welcome Page" width="480"/></td>
+  </tr>
+  <tr>
+    <td align="center">Casdoor-based unified login with password / verification code and multi-language support</td>
+    <td align="center">LibreChat landing page with file search, web search, code interpreter, and artifacts tools</td>
+  </tr>
+  <tr>
+    <td align="center"><b>Multi-Provider Model Selection</b></td>
+    <td align="center"><b>Agent Marketplace</b></td>
+  </tr>
+  <tr>
+    <td><img src="docs/assets/teamaiplatform-微信图片_20260518153357_3_2.png" alt="Multi-Provider Model Selection" width="480"/></td>
+    <td><img src="docs/assets/teamaiplatform-微信图片_20260518153615_4_2.png" alt="Agent Marketplace" width="480"/></td>
+  </tr>
+  <tr>
+    <td align="center">Switch across 7 provider endpoints (Zhipu, DeepSeek, Aliyun, Kimi, Doubao, MiMo, MiniMax) with 165+ models</td>
+    <td align="center">Browse and use shared AI agents categorized by department (HR, R&D, Finance, IT, Sales, etc.)</td>
+  </tr>
+  <tr>
+    <td align="center"><b>Side-by-Side Model Comparison</b></td>
+    <td align="center"><b>Channel Management Dashboard</b></td>
+  </tr>
+  <tr>
+    <td><img src="docs/assets/teamaiplatform-微信图片_20260518153742_5_2.png" alt="Side-by-Side Comparison" width="480"/></td>
+    <td><img src="docs/assets/teamaiplatform-微信图片_20260518153823_6_2.png" alt="Channel Management" width="480"/></td>
+  </tr>
+  <tr>
+    <td align="center">Compare responses from different models / agents side-by-side in real time</td>
+    <td align="center">NEW-API admin panel showing all 7 provider channels with status, latency, and usage metrics</td>
+  </tr>
+</table>
+
 ## Acknowledgements
 
 This project stands on the shoulders of giants. Thanks to the following excellent open-source projects:

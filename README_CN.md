@@ -23,6 +23,47 @@
 
 目前开发已近收尾，待域名审批后上线使用，欢迎届时注册体验。
 
+## 界面展示
+
+<table>
+  <tr>
+    <td align="center"><b>统一登录页</b></td>
+    <td align="center"><b>欢迎页</b></td>
+  </tr>
+  <tr>
+    <td><img src="docs/assets/teamaiplatform-微信图片_20260518151155_2_2.png" alt="统一登录页" width="480"/></td>
+    <td><img src="docs/assets/teamaiplatform-wechat_2026-05-18_155401_772.png" alt="欢迎页" width="480"/></td>
+  </tr>
+  <tr>
+    <td align="center">基于 Casdoor 的统一登录，支持密码 / 验证码登录及多语言切换</td>
+    <td align="center">LibreChat 欢迎页，集成文件搜索、网络搜索、代码解释器、Artifacts 等工具</td>
+  </tr>
+  <tr>
+    <td align="center"><b>多供应商模型选择</b></td>
+    <td align="center"><b>智能体市场</b></td>
+  </tr>
+  <tr>
+    <td><img src="docs/assets/teamaiplatform-微信图片_20260518153357_3_2.png" alt="多供应商模型选择" width="480"/></td>
+    <td><img src="docs/assets/teamaiplatform-微信图片_20260518153615_4_2.png" alt="智能体市场" width="480"/></td>
+  </tr>
+  <tr>
+    <td align="center">支持智谱、DeepSeek、阿里云百炼、Kimi、豆包、MiMo、MiniMax 7 大供应商 165+ 模型切换</td>
+    <td align="center">按部门分类的智能体市场，浏览和使用共享 AI 智能体（人事、研发、财务、IT、销售等）</td>
+  </tr>
+  <tr>
+    <td align="center"><b>双列模型对比</b></td>
+    <td align="center"><b>渠道管理后台</b></td>
+  </tr>
+  <tr>
+    <td><img src="docs/assets/teamaiplatform-微信图片_20260518153742_5_2.png" alt="双列模型对比" width="480"/></td>
+    <td><img src="docs/assets/teamaiplatform-微信图片_20260518153823_6_2.png" alt="渠道管理后台" width="480"/></td>
+  </tr>
+  <tr>
+    <td align="center">不同模型 / 智能体的回复双列实时对比，方便验证调优</td>
+    <td align="center">NEW-API 管理面板，展示 7 个供应商渠道的状态、响应延迟和用量统计</td>
+  </tr>
+</table>
+
 ## 致谢
 
 该项目站在巨人的肩膀上完成，感谢以下优秀开源项目：
