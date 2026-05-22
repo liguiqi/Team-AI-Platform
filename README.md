@@ -72,6 +72,10 @@ This project stands on the shoulders of giants. Thanks to the following excellen
 - [NEW-API](https://github.com/calciumion/new-api)
 - [Casdoor](https://github.com/casdoor/casdoor)
 
+## License
+
+This project is licensed under the [Apache License 2.0](LICENSE).
+
 ---
 
 ## Scope

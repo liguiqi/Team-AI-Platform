@@ -72,6 +72,10 @@
 - [NEW-API](https://github.com/calciumion/new-api)
 - [Casdoor](https://github.com/casdoor/casdoor)
 
+## 开源协议
+
+本项目基于 [Apache License 2.0](LICENSE) 协议开源。
+
 ---
 
 ## 责任边界
